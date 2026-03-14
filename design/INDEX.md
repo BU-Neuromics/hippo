@@ -15,10 +15,10 @@
 | `sec2_architecture.md` | 2. Architecture | 🔄 In review | Generic entity routing, domain-neutral examples |
 | `sec3_data_model.md` | 3. Data Model | 🔄 In review | v0.3 — conceptual model only; storage detail moved to sec3b |
 | `sec3b_relational_storage.md` | 3b. Relational Storage Mapping | 🔄 In review | Reference impl for SQLite/PostgreSQL adapters |
-| `sec4_api_layer.md` | 4. API Layer | ⬜ Not started | |
-| `sec5_ingestion.md` | 5. Ingestion & Integration | ⬜ Not started | |
-| `sec6_provenance.md` | 6. Provenance & Audit | ⬜ Not started | Closely coupled to sec3 |
-| `sec7_nfr.md` | 7. Non-Functional Requirements | ⬜ Not started | |
+| `sec4_api_layer.md` | 4. API Layer | 🔄 In review | Draft v0.1 — HippoClient, filters, pagination, REST endpoints |
+| `sec5_ingestion.md` | 5. Ingestion & Integration | 🔄 In review | Draft v0.1 — flat-file, upsert-by-ExternalID, batch sessions, reference data |
+| `sec6_provenance.md` | 6. Provenance & Audit | 🔄 In review | Draft v0.1 — event model, structured context, provenance API, retention |
+| `sec7_nfr.md` | 7. Non-Functional Requirements | 🔄 In review | Draft v0.1 — performance targets, scalability tiers, reliability, security posture |
 | `appendix_a_example_schema_omics.md` | Appendix A. Example Schema (Omics) | 🔄 In review | Example deployment config; not system spec |
 
 ---
@@ -65,13 +65,18 @@ See `platform/design/INDEX.md` for full rationale and design details.
 
 ## Open Questions
 
-| Question | Section | Priority |
-|---|---|---|
-| ~~WorkflowRun execution state — enum extension vs properties JSON?~~ | sec3/sec4 | ✅ Resolved — dedicated enum field (domain schema decision, no longer in system spec) |
-| Where does the omics schema ultimately live? (config repo, `schemas/omics/`, deferred) | — | Medium |
-| Pagination strategy for large query results | sec4 | High |
-| Ingestion idempotency key design | sec5 | High |
-| Provenance retention policy | sec6 | Medium |
+| Question | Section | Priority | Notes |
+|---|---|---|---|
+| ~~WorkflowRun execution state — enum extension vs properties JSON?~~ | sec3/sec4 | ✅ Resolved | Dedicated enum field — domain schema decision |
+| ~~Pagination strategy for large query results~~ | sec4 | ✅ Resolved | Offset-based (page/page_size); cursor pagination deferred |
+| ~~Provenance retention policy~~ | sec6 | ✅ Resolved | Retain indefinitely; archival to cold storage is a future feature |
+| Where does the omics schema ultimately live? | — | Medium | Config repo, `schemas/omics/`, or a community `hippo-reference-omics` package |
+| Ingestion idempotency for live webhook integrations | sec5 | High | ExternalID upsert handles batch; webhook retry deduplication deferred from MVP |
+| `BatchIngestionSession` isolation level | sec5 | Medium | Concurrent write isolation; revisit at PostgreSQL adapter |
+| Bulk availability change endpoint | sec4 | Medium | `POST /entities/{type}/bulk-availability` for dataset archival; deferred |
+| OR filter composition in query API | sec4 | Low | AND-only v0.1; CEL expression filter endpoint is future |
+| Per-validator timeout | sec2 | Low | Plugin validators should complete in <100ms; configurable timeout deferred |
+| `hippo_poll` efficiency at scale | sec3b/sec6 | Medium | Provenance timestamp index handles current workload; may need denormalised `updated_at` column for very high entity counts |
 
 ---
 
