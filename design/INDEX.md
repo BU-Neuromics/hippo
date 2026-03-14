@@ -95,8 +95,8 @@ The following changes are required based on decisions recorded in `platform/desi
 | `sec3_data_model.md` | Add `search` field declaration to schema config field type system | Fuzzy search |
 | `sec3_data_model.md` | Add `requires:` block to schema config format | Reference loader plugin system |
 | `sec3b_relational_storage.md` | Add storage strategy for polymorphic inheritance (type discriminator column vs. joined tables) | Schema inheritance |
-| `sec4_api_layer.md` | *(not started)* Include fuzzy search endpoint + `ScoredMatch` response | Fuzzy search |
-| `sec5_ingestion.md` | *(not started)* Include `hippo reference` CLI commands + `ReferenceLoader` lifecycle | Reference loader plugin system |
+| `sec4_api_layer.md` | ✅ Done — fuzzy search endpoint + ScoredMatch included in Draft v0.1 | Fuzzy search |
+| `sec5_ingestion.md` | ✅ Done — reference CLI + ReferenceLoader lifecycle included in Draft v0.1 | Reference loader plugin system |
 
 ---
 
