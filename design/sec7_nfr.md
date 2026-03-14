@@ -2,86 +2,116 @@
 
 **Document status:** Draft v0.1
 **Depends on:** sec2_architecture.md, sec4_api_layer.md
-**Feeds into:** (implementation)
+**Feeds into:** Implementation
 
 ---
 
 ### 7.1 Performance
 
-#### Targets (v0.1, SQLite adapter, single-host deployment)
+#### Target workloads
+
+Hippo v0.1 is designed for **small-to-medium research deployments**. Performance targets are
+set for these workloads and are not intended to cover enterprise-scale deployments (which
+would use PostgreSQL or a cloud adapter).
+
+| Workload profile | Entity count | Concurrent users | Write rate |
+|---|---|---|---|
+| **Small** (single researcher, local) | < 100k | 1 | < 10 writes/min |
+| **Medium** (small team, shared server) | 100k – 2M | 2–10 | < 100 writes/min |
+| **Large** (institutional, PostgreSQL) | 2M+ | 10+ | Adapter-dependent |
+
+#### Performance targets (SQLite adapter, v0.1)
 
 | Operation | Target | Notes |
 |---|---|---|
-| Single entity `get()` | < 5 ms | With provenance derivation |
-| Filter query, 100 results | < 50 ms | On indexed fields, available records only |
-| Filter query, 1000 results | < 200 ms | Same |
-| `put()` single entity | < 20 ms | Includes schema validation + provenance write |
-| `upsert()` single entity | < 25 ms | Includes ExternalID lookup + conditional write |
-| Batch ingest, 500 records | < 5 s | One committed batch |
-| Fuzzy search (FTS), top 10 | < 100 ms | SQLite FTS5 |
-| `events_since()`, 1000 events | < 100 ms | Via `idx_provenance_timestamp` |
+| Single entity read (`client.get`) | < 5ms p99 | Indexed UUID lookup |
+| Filtered query (100 results) | < 50ms p99 | With partial index on filter field |
+| Single entity write (`client.put`) | < 20ms p99 | Includes schema validation + provenance |
+| Batch ingest (1000 entities) | < 30s | ~30ms/entity including validation |
+| Fuzzy search (FTS5, 10 results) | < 100ms p99 | SQLite FTS5; field must have `search: fts` |
+| `query_updated_since` (500 entities) | < 200ms p99 | Via provenance summary view |
+| `client.history` (100 events) | < 50ms p99 | Indexed by entity_id |
 
-These targets assume a warm SQLite connection, indexed fields, and a dataset of up to ~1M
-entities. Performance degrades gracefully beyond this scale — the PostgreSQL adapter is the
-recommended upgrade path for larger deployments.
+**Degradation**: Performance degrades gracefully as entity count grows past the medium tier.
+Queries that do not use indexed fields will perform full table scans — this is expected and
+documented behaviour. Callers are responsible for declaring appropriate `indexed: true` fields
+on query-critical columns.
 
-#### Performance constraints
+#### Performance anti-patterns to avoid
 
-- **No unbounded queries.** All list operations are paginated (max `page_size` 1000). The SDK
-  and REST API refuse requests without pagination parameters.
-- **Partial indexes on `is_available`.** All indexed fields use partial indexes scoped to
-  `is_available = true` (sec3b §3b.2). Query performance is independent of how many
-  unavailable entities have accumulated.
-- **Provenance queries use dedicated indexes.** The `idx_provenance_entity` and
-  `idx_provenance_timestamp` indexes (sec6 §6.4) ensure provenance operations do not scan
-  the full events table.
-- **Write validators are bounded.** Config-driven validator expand paths have a
-  `max_expand_list_size` cap (default 200, hard cap 1000). Plugin validators should complete
-  within 100 ms; a configurable per-validator timeout will be added in a future release.
+- N+1 provenance queries: use the `entity_provenance_summary` view for batch reads
+- Unbounded queries: always supply a `limit`; the SDK enforces a hard max of 10,000
+- Unexpanded `ref` fields in CEL validators on large collections: set `max_expand_list_size`
+  appropriately; default is 200
 
 ---
 
-### 7.2 Scalability
+### 7.2 Reliability and Data Integrity
 
-Hippo scales via adapter selection and deployment tier — no code changes required.
+#### Transaction guarantees
 
-| Scale | Adapter | Transport | Notes |
-|---|---|---|---|
-| Single researcher | SQLite | SDK direct (no server) | In-process, no network overhead |
-| Small team (< 20 concurrent) | SQLite or PostgreSQL | REST (`hippo serve`, 4 workers) | WAL mode handles concurrent reads |
-| Mid-size lab (20–100 concurrent) | PostgreSQL | REST (multiple workers or replicas) | Connection pooling via `psycopg2` |
-| Enterprise / cloud | PostgreSQL (RDS) or DynamoDB | REST behind ALB | Managed scaling, multi-AZ |
-
-The SQLite adapter is suitable for deployments ingesting up to ~10M entities and ~100M
-provenance events. Beyond this, PostgreSQL is strongly recommended.
-
----
-
-### 7.3 Reliability
-
-#### Data integrity
-
-- **All writes are atomic.** A write either commits fully (entity + provenance event) or not
-  at all. There are no partial writes.
-- **No hard deletes.** Entities and provenance records are retained indefinitely.
-  `is_available` is the only lifecycle operation that reduces visibility.
-- **Schema migrations are reversible** for additive changes. Destructive changes (field type
-  changes, entity type removal) are rejected by the migration planner.
+All writes (entity create/update, relationship creation, provenance recording) are wrapped in
+a single database transaction. Either all succeed together or none are written. This applies
+to:
+- Single entity writes (entity data + provenance event — atomic)
+- Supersession (availability change + relationship edge + provenance — atomic)
+- ExternalID correction (old invalidation + new creation + provenance — atomic)
 
 #### SQLite durability
 
-- WAL mode is enabled by default (`PRAGMA journal_mode=WAL`).
-- Synchronous mode is set to `NORMAL` (`PRAGMA synchronous=NORMAL`) — this provides
-  durability against application crashes while accepting a small risk of data loss on OS
-  crash. Set to `FULL` for stricter durability at a write-performance cost.
-- Regular `VACUUM` is recommended for deployments with high write volume (many unavailability
-  transitions accumulate dead rows).
+The SQLite adapter uses WAL (Write-Ahead Logging) mode with `PRAGMA synchronous = NORMAL`.
+This provides:
+- Crash recovery: in-progress transactions are rolled back on restart
+- No data loss on clean shutdown
+- Acceptable durability for research workloads (not ACID-full; `synchronous = FULL` is
+  available as a config option for deployments requiring stronger durability guarantees)
 
-#### Error handling
+```yaml
+# hippo.yaml — optional stricter durability
+adapter:
+  type: sqlite
+  sqlite:
+    path: ./hippo.db
+    synchronous: FULL    # default: NORMAL
+```
 
-All storage adapter errors are wrapped in `AdapterError` before surfacing to callers.
-Internal implementation details (SQLite error codes, PostgreSQL exceptions) never leak
-through the SDK boundary. See sec2 §2.11 for the full error hierarchy.
+#### Provenance immutability enforcement
+
+The storage adapter enforces immutability of provenance records at the database level via
+triggers (see sec6 §6.6). This cannot be bypassed by the SDK or REST layer.
+
+#### Schema validation is non-bypassable
+
+Schema validation (Tier 1) runs on every write regardless of caller. There is no `--force`
+or bypass flag. Business rule validators (Tier 2) can be omitted by not configuring a
+`validators.yaml`, but field-level schema validation is always active.
+
+---
+
+### 7.3 Scalability
+
+#### Vertical scaling
+
+The SQLite adapter scales vertically (faster CPU, more memory) within its single-writer
+constraint. For most research deployments, a modest server (4 cores, 16GB RAM) is sufficient
+for the medium workload profile.
+
+#### Horizontal scaling path
+
+| When | Action |
+|---|---|
+| Write throughput saturates SQLite | Migrate to PostgreSQL adapter |
+| Data volume exceeds practical SQLite limits (~10GB) | Migrate to PostgreSQL adapter |
+| Multi-region or cloud-native requirement | Migrate to DynamoDB or PostgreSQL on RDS |
+
+Migration path: `hippo migrate` applies schema to new adapter; data migration is a one-time
+`hippo export / hippo import` operation (deferred tooling; not in v0.1).
+
+#### REST server scaling
+
+The REST server (Uvicorn + FastAPI) scales horizontally behind a load balancer. Each worker
+maintains its own SQLite connection in WAL mode. Write throughput is still bounded by SQLite's
+single-writer model; reads scale linearly with workers.
 
 ---
 
@@ -89,88 +119,109 @@ through the SDK boundary. See sec2 §2.11 for the full error hierarchy.
 
 #### v0.1 posture
 
-Authentication and authorisation are **explicitly out of scope for v0.1**. The REST layer
-includes a no-op auth stub. Hippo v0.1 is designed for trusted-network or single-user
-deployments where network-level access control is sufficient.
+Authentication and authorisation are **explicitly out of scope for v0.1**. The REST API
+accepts all requests with no credential check. The auth middleware stub passes all requests
+through.
 
-**Consequence:** Any client with network access to the REST API can read, write, or modify
-any entity. Do not expose the v0.1 REST API to untrusted networks.
+**Recommended deployment for v0.1**: Run `hippo serve` on `localhost` or within a private
+network only. Do not expose the REST API to the public internet without an external auth proxy.
 
-#### Planned auth model (post-v0.1)
+#### Actor field
 
-- JWT bearer tokens validated at the REST transport layer before the SDK is called
-- RBAC roles: `reader` (GET only), `writer` (GET + POST/PATCH), `admin` (all + migrate)
-- The SDK is intentionally auth-unaware — auth is a transport concern
-- The `actor` field is populated by the transport layer from the authenticated identity
+All write operations require an `actor` string. In v0.1 this is advisory (not authenticated).
+When auth is added in a future version, the transport layer will validate the caller's
+identity and override the `actor` field — callers will not be able to impersonate other actors.
 
-#### Data protection
+#### Future auth design (deferred)
 
-- **No PII by default.** Hippo is a metadata registry. Raw data files are never ingested.
-  Deployments that store PII-adjacent metadata (subject demographics, clinical data) must
-  ensure network-level and filesystem-level controls are in place.
-- **Audit trail is immutable.** The provenance log cannot be modified or redacted via the
-  SDK. Physical database access is required to alter provenance records.
+The auth middleware stub in `hippo/rest/auth.py` defines the interface that real auth will
+implement:
 
-#### Input validation
+```python
+class AuthMiddleware(ABC):
+    @abstractmethod
+    def authenticate(self, request: Request) -> str:
+        # Returns actor identity or raises 401
+        ...
 
-- All user-supplied field values are validated against schema config before storage
-- `ref` field values are validated against entity existence and availability
-- JSON fields are parsed and re-serialised to prevent injection via raw JSON strings
-- URI fields are validated against the declared allowed schemes
+    @abstractmethod
+    def authorize(self, actor: str, operation: str, entity_type: str) -> bool:
+        # Returns True if allowed or raises 403
+        ...
+```
+
+RBAC, JWT validation, and API key management are deferred. The stub ensures the app
+structure accommodates auth without restructuring.
+
+#### Data sensitivity
+
+Hippo stores metadata and provenance records. In bioinformatics research deployments, this
+may include sensitive clinical or phenotypic data. Deployers are responsible for:
+- Access controls at the network/OS level in v0.1
+- Disk encryption for the SQLite database file
+- Compliance with applicable regulations (HIPAA, GDPR, etc.) at the deployment level
+
+Hippo makes no compliance guarantees in v0.1.
 
 ---
 
 ### 7.5 Observability
 
-#### Structured logging
+#### Logging
 
-Hippo emits structured JSON logs at INFO and DEBUG levels. Log entries include:
-- Operation type (read/write/search/migrate)
-- Entity type and ID (where applicable)
-- Duration in milliseconds
-- Actor
-- Error type and message (on failure)
+Hippo uses Python's stdlib `logging` module. Structured JSON logging is configurable:
 
-Log output goes to stdout by default; configurable via `logging.output` in `hippo.yaml`.
-
-#### Health endpoint (REST only)
-
-```
-GET /health
-→ {"status": "ok", "adapter": "sqlite", "schema_version": "1.0", "uptime_s": 3600}
+```yaml
+# hippo.yaml
+logging:
+  level: INFO          # DEBUG | INFO | WARNING | ERROR
+  format: json         # json | text (default: text for local, json for server)
 ```
 
-Returns HTTP 200 when the server is healthy and can reach the storage backend.
-Returns HTTP 503 if the storage backend is unreachable.
+Key log events:
+- Every write operation: entity type, entity id, actor, duration, validator names run
+- Every validation failure: validator name, entity type, error message
+- Every ingestion batch: source, records processed, created/updated/unchanged/errors
+- Startup: adapter type, schema version, plugins loaded, search capability validation
 
 #### Metrics (future)
 
-Prometheus-compatible metrics endpoint (`/metrics`) is deferred to post-v0.1. The health
-endpoint is sufficient for v0.1 deployment monitoring.
+A `/metrics` endpoint (Prometheus format) is deferred from v0.1. The `/status` endpoint
+provides human-readable summary statistics.
 
 ---
 
 ### 7.6 Testability
 
-- **All business logic in the Core SDK.** The transport layer (REST) and infrastructure
-  layer (storage adapters) are thin wrappers. Unit tests operate on the SDK directly.
-- **`InMemoryEntityStore`** — a test-only in-memory storage adapter is provided for unit
-  tests that don't need a real database. It implements the full `EntityStore` ABC.
-- **Config injection.** All components receive configuration via constructor injection.
-  Tests can supply minimal `HippoConfig` objects without config files.
-- **Write validators** are plain Python classes testable in isolation by constructing
-  `WriteOperation` objects directly.
-- **Reference loaders** can be tested against locally cached ontology files without network
-  access by passing `source="local"` to `loader.load()`.
+The SDK-first architecture makes Hippo highly testable in isolation:
+
+- All business logic is in `hippo/core/` with no I/O dependencies
+- `EntityStore` and other ABCs can be mocked via standard Python `unittest.mock`
+- `IngestionPipeline` accepts a `HippoClient` — test against an in-memory SQLite adapter
+- `WriteValidator` implementations are pure functions (input: `WriteOperation` + mock client)
+- CEL expressions can be tested without running the full Hippo server
+
+The test suite uses in-memory SQLite (`:memory:` path) for all integration tests. No external
+services are required to run the full test suite.
 
 ---
 
 ### 7.7 Compatibility
 
-- **Python:** ≥ 3.10 required (uses `match` statements, `X | Y` union types)
-- **SQLite:** ≥ 3.35 required (FTS5, WAL mode, partial indexes, `ALTER TABLE ADD COLUMN`)
-- **PostgreSQL:** ≥ 13 required (future adapter; uses `JSONB`, partial indexes, `ON CONFLICT`)
-- **API stability:** Pre-v1.0, minor version bumps may include breaking changes to ABCs and
-  REST endpoints with deprecation notices. v1.0 marks stable API commitment.
+#### Python version
+
+Minimum Python 3.10. Type hints, `match` statements, and `importlib.metadata` entry points
+are used throughout.
+
+#### Schema backwards compatibility
+
+Schema migrations are additive-only in v0.1 (see sec3 §3.8). Deployed schemas can be
+extended but not destructively modified. This provides strong backwards compatibility for
+clients built against a given schema version.
+
+#### API versioning
+
+The REST API is versioned at the URL level (`/api/v1`). v0.1 ships only v1. Breaking changes
+to the API will increment the version prefix.
 
 ---
