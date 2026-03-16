@@ -37,5 +37,5 @@
 ## 6. Documentation
 
 - [x] 6.1 Add API documentation for ValidationPipeline
-- [ ] 6.2 Add usage examples for custom validators
-- [ ] 6.3 Update README with validation pipeline setup
+- [x] 6.2 Add usage examples for custom validators
+- [x] 6.3 Update README with validation pipeline setup

@@ -1,18 +1,24 @@
-# Server Management Commands
+## Why
 
-## Goal
-Server Management Commands: Add commands to manage the Hippo server lifecycle including starting, stopping, and validating server operations.
+This change introduces server management commands to the Hippo CLI tool, allowing users to start, stop, and validate Hippo server operations. This provides essential lifecycle management capabilities for deploying and managing Hippo in various environments.
 
-## Acceptance Criteria
-- Given a user has installed Hippo and runs 'hippo serve', when they execute the serve command, then the Hippo server starts successfully on port 8080 with INFO level logging to stdout
-- Given a user has configured a custom log level and runs 'hippo serve', when they execute the serve command, then the Hippo server starts successfully with the specified log level configuration
-- Given a user runs 'hippo validate' with a valid configuration file, when they execute the validate command, then all system settings are checked for correctness and compatibility with exit code 0
-- Given a user runs 'hippo validate' with an invalid configuration file, when they execute the validate command, then validation fails with descriptive error messages and exit code 1
-- Given a user runs 'hippo serve --port 3000', when they specify a custom port, then the Hippo server starts successfully on port 3000 rather than default port 8080
-- Given a user runs 'hippo serve --port invalid-port', when they specify an invalid port value, then the Hippo server fails to start with clear error message and exit code 1
-- Given a user runs 'hippo serve' with no configuration, when they execute the serve command, then the Hippo server starts using default settings with appropriate warning logs
-- Given a user runs 'hippo serve --help', when they request help information, then the command displays usage instructions and available options without error
+## What Changes
 
-## Constraints
-- Depends on: feature-001
-- Complexity: medium
+- Introduce `hippo serve` command to start the Hippo server with default or custom configuration
+- Add `hippo validate` command to verify configuration files before starting the server
+- Implement command-line options for port specification and log level configuration
+- Add help functionality to display usage instructions
+
+## Capabilities
+
+### New Capabilities
+- `server-management`: Defines the contract for server lifecycle management commands including start, stop, and validation operations
+
+### Modified Capabilities
+- `cli-commands`: Extends the command line interface with new subcommands and options
+
+## Impact
+
+- Adds new CLI commands to hippo tool
+- Extends existing configuration and command parsing mechanisms
+- Requires updated documentation for new commands

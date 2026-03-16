@@ -3,7 +3,7 @@
 - [x] 1.1 Set up SQLite storage backend in hippo/core/
 - [x] 1.2 Implement entity table schema with id, is_available fields
 - [x] 1.3 Add version tracking to entity model
-- [ ] 1.4 Create schema validation utilities using LinkML
+- [x] 1.4 Create schema validation utilities using LinkML
 
 ## 2. Put Operation
 

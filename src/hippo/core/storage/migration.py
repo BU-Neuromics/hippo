@@ -8,6 +8,7 @@ from hippo.config.models import FieldDefinition, SchemaConfig
 from hippo.core.storage.ddl_generator import DDLGenerator, FTSMigrationPlanner
 from hippo.core.storage.fts import FTSTableMetadata
 from hippo.core.storage.schema_diff import SchemaDiff
+from hippo.core.storage.view_generator import SummaryViewGenerator
 
 
 @dataclass
@@ -121,6 +122,11 @@ class MigrationPlanner:
                 plan.ddl_statements.extend(table_ddl)
                 plan.new_tables.append(schema.name)
 
+                # Create summary views for new tables
+                view_generator = SummaryViewGenerator(cursor.connection)
+                view_ddl = view_generator.generate_all_summary_views([schema])
+                plan.ddl_statements.extend(view_ddl)
+
                 self._fts_planner.add_schema(schema)
                 fts_ddl = self._fts_planner.generate_fts_ddl()
                 plan.fts_ddl_statements.extend(fts_ddl)
@@ -216,9 +222,9 @@ class MigrationExecutor:
 
         try:
             for ddl in plan.ddl_statements:
+                cursor.execute(ddl)
                 table_name = self._extract_table_name(ddl)
                 if table_name:
-                    cursor.execute(ddl)
                     tables_created.append(table_name)
 
             for alter_stmt in plan.alter_table_statements:

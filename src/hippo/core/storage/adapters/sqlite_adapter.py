@@ -1370,3 +1370,43 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             A set containing "fts" to indicate FTS5 support.
         """
         return {"fts"}
+
+    def explain_query(
+        self, sql: str, params: Optional[list] = None
+    ) -> list[dict[str, Any]]:
+        """Explain the execution plan for a SQL query.
+
+        This method uses SQLite's EXPLAIN QUERY PLAN functionality to analyze
+        how a query will be executed, which helps determine if partial indexes
+        are being utilized effectively.
+
+        Args:
+            sql: The SQL query to explain.
+            params: Optional parameters for the query.
+
+        Returns:
+            List of dictionaries containing the execution plan details.
+        """
+        with self._transaction() as conn:
+            cursor = conn.cursor()
+
+            # Use EXPLAIN QUERY PLAN to analyze the plan
+            explain_sql = f"EXPLAIN QUERY PLAN {sql}"
+
+            if params:
+                cursor.execute(explain_sql, params)
+            else:
+                cursor.execute(explain_sql)
+
+            results = []
+            for row in cursor.fetchall():
+                results.append(
+                    {
+                        "selectid": row["selectid"],
+                        "order": row["order"],
+                        "from": row["from"],
+                        "detail": row["detail"],
+                    }
+                )
+
+            return results

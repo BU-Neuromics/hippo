@@ -123,11 +123,11 @@ class DDLGenerator:
                 table.unique_constraints.append([field_def.name])
 
             if field_def.index:
-                partial_where = "is_available = 1" if field_def.index_partial else None
+                # Create partial index for all indexed fields (WHERE is_available = true)
                 index = IndexDefinition(
                     name=f"idx_{schema.name}_{field_def.name}",
                     columns=[field_def.name],
-                    partial_where=partial_where,
+                    partial_where="is_available = 1",
                 )
                 table.indexes.append(index)
 

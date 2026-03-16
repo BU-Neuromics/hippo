@@ -214,49 +214,111 @@ def migrate(
 
 @app.command()
 def validate(
-    schema: str = typer.Argument(None),
+    schema: str = typer.Option(
+        None, "--schema", "-s", help="Path to schema file to validate"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed validation output"
+    ),
 ) -> None:
-    """Validate schemas."""
+    """Validate schemas against defined rules."""
     from pathlib import Path
+    import yaml
 
     typer.echo("Validating schemas...")
 
-    if schema:
-        schemas = [Path(schema)]
-    else:
+    if not schema:
         schemas_dir = Path("schemas")
         if not schemas_dir.exists():
             typer.echo("No schemas directory found")
             typer.echo("Validation skipped")
             return
-        schemas = list(schemas_dir.glob("*.yaml")) + list(schemas_dir.glob("*.yml"))
+        schema_files = list(schemas_dir.glob("*.yaml")) + list(
+            schemas_dir.glob("*.yml")
+        )
 
-    if not schemas:
-        typer.echo("No schema files found")
-        return
+        if not schema_files:
+            typer.echo("No schema files found in schemas directory")
+            return
+    else:
+        schema_files = [Path(schema)]
 
     errors = []
+    valid_count = 0
 
-    for schema_file in schemas:
+    for schema_file in schema_files:
         typer.echo(f"Validating {schema_file}...")
         try:
-            import yaml
-
             content = yaml.safe_load(schema_file.read_text())
-            if not isinstance(content, dict):
-                errors.append(f"{schema_file}: Invalid schema format")
-            else:
-                typer.echo(f"  OK")
-        except Exception as e:
-            errors.append(f"{schema_file}: {e}")
 
-    if errors:
+            # Basic validation checks
+            if not isinstance(content, dict):
+                errors.append(
+                    f"{schema_file}: Invalid schema format - expected a dictionary"
+                )
+                continue
+
+            # Check for required fields in the schema
+            required_fields = ["name"]
+            for field in required_fields:
+                if field not in content:
+                    errors.append(f"{schema_file}: Missing required field '{field}'")
+
+            # Specific schema validation based on Hippo DSL structure
+            if "entities" in content and isinstance(content["entities"], list):
+                for entity_idx, entity in enumerate(content["entities"]):
+                    if not isinstance(entity, dict):
+                        errors.append(
+                            f"{schema_file}: Entity at index {entity_idx} is not a dictionary"
+                        )
+                        continue
+
+                    if "name" not in entity:
+                        errors.append(
+                            f"{schema_file}: Entity at index {entity_idx} missing 'name' field"
+                        )
+
+                    # Validate properties if they exist
+                    if "properties" in entity and isinstance(
+                        entity["properties"], list
+                    ):
+                        for prop_idx, prop in enumerate(entity["properties"]):
+                            if not isinstance(prop, dict):
+                                errors.append(
+                                    f"{schema_file}: Property at index {prop_idx} in entity '{entity.get('name', 'unknown')}' is not a dictionary"
+                                )
+                                continue
+
+                            required_prop_fields = ["name", "type"]
+                            for field in required_prop_fields:
+                                if field not in prop:
+                                    errors.append(
+                                        f"{schema_file}: Property at index {prop_idx} in entity '{entity.get('name', 'unknown')}' missing required field '{field}'"
+                                    )
+
+            if not errors:
+                typer.echo(f"  OK - Schema is valid")
+                valid_count += 1
+            else:
+                for error in errors:
+                    typer.echo(f"  Error: {error}", err=True)
+
+        except yaml.YAMLError as e:
+            errors.append(f"{schema_file}: YAML parsing error - {e}")
+        except Exception as e:
+            errors.append(f"{schema_file}: Unexpected error during validation - {e}")
+
+    if schema_files and not errors:
+        typer.echo(
+            f"\nValidation passed for {valid_count}/{len(schema_files)} schema(s)"
+        )
+    elif errors:
         typer.echo(f"\nValidation failed with {len(errors)} error(s):", err=True)
         for error in errors:
             typer.echo(f"  - {error}", err=True)
         raise typer.Exit(1)
-
-    typer.echo(f"\nValidation passed for {len(schemas)} schema(s)")
+    else:
+        typer.echo("No schema files to validate")
 
 
 @app.command()
@@ -434,10 +496,21 @@ def compile_schema(
     input: str = typer.Argument(..., help="Input Hippo DSL file"),
     output: str = typer.Option(None, "--output", "-o"),
     validate: bool = typer.Option(True, "--validate/--no-validate"),
+    format: str = typer.Option(
+        "yaml", "--format", "-f", help="Output format (yaml/json)"
+    ),
 ) -> None:
     """Compile Hippo DSL to LinkML."""
     from pathlib import Path
     import yaml
+
+    # Import the compiler dynamically to avoid circular imports
+    try:
+        from hippo.core.storage.schema_compiler import compile_schema_to_linkml
+    except ImportError:
+        # Fallback for when the module is not available
+        typer.echo("Error: Schema compilation engine not available", err=True)
+        raise typer.Exit(1)
 
     input_path = Path(input)
     typer.echo(f"Compiling {input_path} to LinkML...")
@@ -447,12 +520,11 @@ def compile_schema(
         raise typer.Exit(1)
 
     try:
+        # Read and parse the input schema file
         schema_content = yaml.safe_load(input_path.read_text())
 
-        linkml_output = convert_to_linkml(schema_content)
-
-        if validate:
-            typer.echo("Validating LinkML output...")
+        # Compile to LinkML using the proper compiler function
+        linkml_output = compile_schema_to_linkml(schema_content, format=format)
 
         output_path = Path(output) if output else None
         if output_path:
@@ -468,57 +540,123 @@ def compile_schema(
         raise typer.Exit(1)
 
 
-def convert_to_linkml(schema: dict) -> str:
-    """Convert Hippo DSL schema to LinkML format."""
+@app.command()
+def schema_diff(
+    file1: str = typer.Argument(..., help="First schema file"),
+    file2: str = typer.Argument(..., help="Second schema file"),
+) -> None:
+    """Compare two schema files and show differences."""
+    from pathlib import Path
     import yaml
 
-    linkml = {
-        "id": f"https://example.org/{schema.get('name', 'schema')}",
-        "name": schema.get("name", "hippo_schema"),
-        "description": schema.get("description", "Compiled from Hippo DSL"),
-        "prefixes": {
-            "linkml": "https://w3id.org/linkml/",
-            "schema": "http://schema.org/",
-        },
-        "imports": ["linkml:types"],
-        "classes": {},
-    }
+    file1_path = Path(file1)
+    file2_path = Path(file2)
 
-    for entity in schema.get("entities", []):
-        class_def = {
-            "description": entity.get("description", ""),
-            "attributes": {},
-        }
+    if not file1_path.exists():
+        typer.echo(f"Error: First file {file1_path} not found", err=True)
+        raise typer.Exit(1)
 
-        for prop in entity.get("properties", []):
-            attr_name = prop.get("name")
-            attr_type = prop.get("type", "string")
+    if not file2_path.exists():
+        typer.echo(f"Error: Second file {file2_path} not found", err=True)
+        raise typer.Exit(1)
 
-            linkml_type = map_type_to_linkml(attr_type)
-            class_def["attributes"][attr_name] = {
-                "description": prop.get("description", ""),
-                "range": linkml_type,
-                "required": prop.get("required", False),
-            }
+    try:
+        schema1 = yaml.safe_load(file1_path.read_text())
+        schema2 = yaml.safe_load(file2_path.read_text())
 
-        linkml["classes"][entity["name"]] = class_def
+        # Create a more sophisticated diff
+        typer.echo(f"Comparing {file1_path} and {file2_path}")
+        typer.echo("=" * 60)
 
-    return yaml.dump(linkml, default_flow_style=False, sort_keys=False)
+        # Compare top-level schema structure
+        all_keys_1 = set(schema1.keys()) if schema1 else set()
+        all_keys_2 = set(schema2.keys()) if schema2 else set()
 
+        added_keys = all_keys_2 - all_keys_1
+        removed_keys = all_keys_1 - all_keys_2
+        common_keys = all_keys_1 & all_keys_2
 
-def map_type_to_linkml(hippo_type: str) -> str:
-    """Map Hippo types to LinkML types."""
-    type_map = {
-        "string": "string",
-        "integer": "integer",
-        "float": "float",
-        "boolean": "boolean",
-        "date": "date",
-        "datetime": "datetime",
-        "uri": "uri",
-        "enum": "string",
-    }
-    return type_map.get(hippo_type, "string")
+        if added_keys:
+            typer.echo("Added top-level keys:")
+            for key in sorted(added_keys):
+                typer.echo(f"  + {key}")
+
+        if removed_keys:
+            typer.echo("Removed top-level keys:")
+            for key in sorted(removed_keys):
+                typer.echo(f"  - {key}")
+
+        # Specific comparison of entities structure
+        if "entities" in schema1 and "entities" in schema2:
+            entities1 = {e["name"]: e for e in schema1["entities"]}
+            entities2 = {e["name"]: e for e in schema2["entities"]}
+
+            common_entities = set(entities1.keys()) & set(entities2.keys())
+            new_entities = set(entities2.keys()) - set(entities1.keys())
+            removed_entities = set(entities1.keys()) - set(entities2.keys())
+
+            if new_entities:
+                typer.echo("\nAdded entities:")
+                for entity in sorted(new_entities):
+                    typer.echo(f"  + {entity}")
+
+            if removed_entities:
+                typer.echo("\nRemoved entities:")
+                for entity in sorted(removed_entities):
+                    typer.echo(f"  - {entity}")
+
+            # Compare properties of common entities
+            for entity in sorted(common_entities):
+                props1 = {p["name"]: p for p in entities1[entity].get("properties", [])}
+                props2 = {p["name"]: p for p in entities2[entity].get("properties", [])}
+
+                # Create a more detailed diff of properties
+                common_props = set(props1.keys()) & set(props2.keys())
+                new_props = set(props2.keys()) - set(props1.keys())
+                removed_props = set(props1.keys()) - set(props2.keys())
+
+                if new_props or removed_props:
+                    typer.echo(f"\nEntity '{entity}' changes:")
+                    # Compare properties with more details
+                    for prop_name in sorted(new_props):
+                        prop = props2[prop_name]
+                        typer.echo(f"  Added property: {prop_name}")
+                        typer.echo(f"    Type: {prop.get('type', 'unknown')}")
+                        typer.echo(f"    Required: {prop.get('required', False)}")
+                        if prop.get("description"):
+                            typer.echo(f"    Description: {prop['description']}")
+                    for prop_name in sorted(removed_props):
+                        typer.echo(f"  Removed property: {prop_name}")
+
+                    # For common properties, we could add detailed comparison
+                    for prop_name in sorted(common_props):
+                        prop1 = props1[prop_name]
+                        prop2 = props2[prop_name]
+
+                        if prop1 != prop2:
+                            typer.echo(f"  Modified property: {prop_name}")
+                            # Show what changed exactly for each field
+                            for key in set(prop1.keys()) | set(prop2.keys()):
+                                if key not in prop1:
+                                    typer.echo(f"    Added {key}: {prop2[key]}")
+                                elif key not in prop2:
+                                    typer.echo(f"    Removed {key}: {prop1[key]}")
+                                elif prop1[key] != prop2[key]:
+                                    typer.echo(
+                                        f"    Changed {key}: {prop1[key]} -> {prop2[key]}"
+                                    )
+
+        elif "entities" in schema1 and not "entities" in schema2:
+            typer.echo("\nRemoved 'entities' section")
+        elif "entities" in schema2 and not "entities" in schema1:
+            typer.echo("\nAdded 'entities' section")
+
+        typer.echo("=" * 60)
+        typer.echo("Schema comparison complete")
+
+    except Exception as e:
+        typer.echo(f"Error during schema diff: {e}", err=True)
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":
