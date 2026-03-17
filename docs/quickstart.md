@@ -92,9 +92,11 @@ entities:
         type: string
         required: true
         unique: true
-      - name: donor_id
-        type: string
+      - name: donor
+        type: ref
         required: true
+        references:
+          entity_type: Donor
       - name: tissue_type
         type: string
         required: true
@@ -129,9 +131,11 @@ entities:
         type: string
         required: true
         unique: true
-      - name: sample_id
-        type: string
+      - name: sample
+        type: ref
         required: true
+        references:
+          entity_type: Sample
       - name: file_path
         type: string
         required: true
@@ -163,6 +167,17 @@ This schema defines three entity types:
 - **Donor**: Brain tissue donors with demographics and diagnosis
 - **Sample**: Brain tissue samples with collection details and RNA quality metrics
 - **DataFile**: Sequencing output files linked to samples
+
+### Entity Reference Fields
+
+The `donor` field on `Sample` and the `sample` field on `DataFile` use `type: ref` with a `references` declaration. These are **entity reference fields** — they are fundamentally different from a plain `type: string` field named `donor_id`:
+
+- **Semantic relationship** — `references: {entity_type: Donor}` declares that this field points to a `Donor` entity, not an arbitrary string. Hippo records and exposes this as a typed edge in the data model.
+- **Holds a Hippo internal ID** — the value stored in a `ref` field is the UUID assigned by Hippo when the entity was ingested (e.g. `"donor-1"`), not a user-facing identifier like `"AD-001"`. User-facing identifiers belong in a plain `string` field (such as `donor_id: string`) or as an ExternalID.
+- **Write-time validation** — when reference validation is enabled, Hippo checks at ingest time that the referenced entity UUID exists and is available. Writing a `Sample` with a `donor` value that points to a non-existent or unavailable `Donor` is rejected.
+- **Graph traversal** — `ref` fields connect to the Relationships API. Hippo can traverse from a `DataFile` to its `Sample` to its `Donor` using `client.relationships.traverse()` or the `/relationships` REST endpoint.
+
+> **`ref` value format:** Reference field values encode the target entity type and UUID as `"entity_type:uuid"` — for example, `"Donor:donor-1"`. The SDK accepts and normalizes both the bare UUID and the prefixed form.
 
 ## Step 3: Run Migrations
 
@@ -250,6 +265,8 @@ Save the returned entity `id` (e.g., `donor-1`) for use in subsequent operations
 
 ### Create a Brain Tissue Sample
 
+Use the `id` returned by the Donor ingest call (e.g. `donor-1`) as the value for the `donor` reference field.
+
 ```bash
 curl -s -X POST http://127.0.0.1:8000/ingest \
   -H "Authorization: Bearer dev-token" \
@@ -258,7 +275,7 @@ curl -s -X POST http://127.0.0.1:8000/ingest \
     "entity_type": "Sample",
     "data": {
       "sample_id": "SMPL-AD-001-HC",
-      "donor_id": "AD-001",
+      "donor": "donor-1",
       "tissue_type": "Brain Tissue",
       "brain_region": "Hippocampus",
       "collection_date": "2025-11-15",
@@ -270,6 +287,8 @@ curl -s -X POST http://127.0.0.1:8000/ingest \
 
 ### Create an RNA-seq Data File
 
+Use the `id` returned by the Sample ingest call (e.g. `sample-1`) as the value for the `sample` reference field.
+
 ```bash
 curl -s -X POST http://127.0.0.1:8000/ingest \
   -H "Authorization: Bearer dev-token" \
@@ -278,7 +297,7 @@ curl -s -X POST http://127.0.0.1:8000/ingest \
     "entity_type": "DataFile",
     "data": {
       "file_id": "RNASEQ-AD-001-HC-R1",
-      "sample_id": "SMPL-AD-001-HC",
+      "sample": "sample-1",
       "file_path": "/storage/alzheimer study/2025/AD-001/RNAseq/fastq/sample_R1_001.fastq.gz",
       "file_type": "FASTQ",
       "size_bytes": 15234000000,
@@ -463,9 +482,11 @@ entities:
       - name: sample_id
         type: string
         required: true
-      - name: donor_id
-        type: string
+      - name: donor
+        type: ref
         required: true
+        references:
+          entity_type: Donor
       - name: tissue_type
         type: string
         required: true
@@ -485,9 +506,11 @@ entities:
       - name: file_id
         type: string
         required: true
-      - name: sample_id
-        type: string
+      - name: sample
+        type: ref
         required: true
+        references:
+          entity_type: Sample
       - name: file_path
         type: string
         required: true
@@ -555,10 +578,10 @@ def main():
     print(f"Created donor: {donor['id']}")
     donor_id = donor['id']
 
-    # Create a sample
+    # Create a sample — donor field holds the Hippo internal ID returned above
     sample = client.create("Sample", {
         "sample_id": "SMPL-AD-002-FC",
-        "donor_id": "AD-002",
+        "donor": donor_id,
         "tissue_type": "Brain Tissue",
         "brain_region": "Frontal Cortex",
         "collection_date": "2025-12-01",
@@ -567,10 +590,10 @@ def main():
     print(f"Created sample: {sample['id']}")
     sample_id = sample['id']
 
-    # Create a data file
+    # Create a data file — sample field holds the Hippo internal ID returned above
     datafile = client.create("DataFile", {
         "file_id": "RNASEQ-AD-002-FC-R1",
-        "sample_id": "SMPL-AD-002-FC",
+        "sample": sample_id,
         "file_path": "/storage/alzheimer study/2025/AD-002/RNAseq/fastq/R1.fastq.gz",
         "file_type": "FASTQ",
         "size_bytes": 14890000000,
@@ -618,7 +641,7 @@ def main():
     print("\n--- Update sample with RIN score ---")
     updated_sample = client.update(sample_id, {
         "sample_id": "SMPL-AD-002-FC",
-        "donor_id": "AD-002",
+        "donor": donor_id,
         "tissue_type": "Brain Tissue",
         "brain_region": "Frontal Cortex",
         "collection_date": "2025-12-01",
@@ -631,7 +654,7 @@ def main():
     try:
         client.update(sample_id, {
             "sample_id": "SMPL-AD-002-FC",
-            "donor_id": "AD-002",
+            "donor": donor_id,
             "tissue_type": "Brain Tissue",
             "brain_region": "Frontal Cortex",
             "collection_date": "2025-12-01",
