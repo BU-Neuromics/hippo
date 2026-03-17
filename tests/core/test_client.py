@@ -139,17 +139,18 @@ class TestQueryOperation:
 
         results = client.query("Sample")
 
-        assert len(results) == 2
-        ids = {r["id"] for r in results}
+        assert len(results.items) == 2
+        ids = {r["id"] for r in results.items}
         assert ids == {"q1", "q2"}
 
     def test_query_returns_empty_list_for_no_matches(self, client: HippoClient) -> None:
-        """Test that query returns empty list when no entities match."""
+        """Test that query returns PaginatedResult with empty items when no entities match."""
         client.put("Sample", {"id": "q1", "name": "test"})
 
         results = client.query("NonExistent")
 
-        assert results == []
+        assert results.items == []
+        assert results.total == 0
 
     def test_query_sorts_by_created_at_ascending(self, client: HippoClient) -> None:
         """Test that query returns results sorted by created_at ascending."""
@@ -159,8 +160,8 @@ class TestQueryOperation:
 
         results = client.query("Sample")
 
-        assert len(results) == 3
-        created_at = [r["created_at"] for r in results]
+        assert len(results.items) == 3
+        created_at = [r["created_at"] for r in results.items]
         assert created_at == sorted(created_at)
 
     def test_query_filters_by_date_from(self, client: HippoClient) -> None:
@@ -170,7 +171,7 @@ class TestQueryOperation:
 
         results = client.query("Sample", date_from="2030-01-01")
 
-        assert len(results) == 0
+        assert len(results.items) == 0
 
     def test_query_filters_by_date_to(self, client: HippoClient) -> None:
         """Test that query filters entities by date_to."""
@@ -179,7 +180,7 @@ class TestQueryOperation:
 
         results = client.query("Sample", date_to="2020-01-01")
 
-        assert len(results) == 0
+        assert len(results.items) == 0
 
     def test_query_respects_limit(self, client: HippoClient) -> None:
         """Test that query respects the limit parameter."""
@@ -188,7 +189,7 @@ class TestQueryOperation:
 
         results = client.query("Sample", limit=3)
 
-        assert len(results) == 3
+        assert len(results.items) == 3
 
     def test_query_respects_offset(self, client: HippoClient) -> None:
         """Test that query respects the offset parameter."""
@@ -197,7 +198,7 @@ class TestQueryOperation:
 
         results = client.query("Sample", offset=3)
 
-        assert len(results) == 2
+        assert len(results.items) == 2
 
 
 class TestErrorCases:

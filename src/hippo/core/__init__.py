@@ -42,6 +42,7 @@ from hippo.core.client import HippoClient
 from hippo.core.exceptions import (
     AdapterError,
     ConfigError,
+    EntityAlreadySupersededError,
     EntityNotFoundError,
     HippoError,
     SchemaError,
@@ -84,6 +85,7 @@ __all__ = [
     "ValidationError",
     "ValidationFailure",
     "EntityNotFoundError",
+    "EntityAlreadySupersededError",
     "AdapterError",
     "ValidationPipeline",
     "RelationshipManager",

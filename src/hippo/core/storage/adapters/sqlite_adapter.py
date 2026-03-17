@@ -56,6 +56,7 @@ class SQLiteEntity:
         data: dict[str, Any],
         created_at: str,
         updated_at: Optional[str],
+        superseded_by: Optional[str] = None,
     ):
         self.id = id
         self.entity_type = entity_type
@@ -64,6 +65,7 @@ class SQLiteEntity:
         self.data = data
         self.created_at = created_at
         self.updated_at = updated_at
+        self.superseded_by = superseded_by
 
 
 class ProvenanceStore:
@@ -272,6 +274,39 @@ class ProvenanceStore:
         )
         row = cursor.fetchone()
         return row["timestamp"] if row else None
+
+    def get_provenance_timestamps(
+        self, entity_id: str
+    ) -> Optional[dict[str, Optional[str]]]:
+        """Get provenance-derived created_at and updated_at for an entity.
+
+        Derives:
+        - created_at: timestamp of the first provenance event (any type)
+        - updated_at: timestamp of the most recent non-SOFT_DELETE event
+
+        Args:
+            entity_id: The ID of the entity.
+
+        Returns:
+            Dict with 'created_at' and 'updated_at' strings, or None if no
+            provenance records exist for the entity.
+        """
+        cursor = self._conn.cursor()
+        cursor.execute(
+            """SELECT
+                   MIN(timestamp) AS created_at,
+                   MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at
+               FROM provenance
+               WHERE entity_id = ?""",
+            (entity_id,),
+        )
+        row = cursor.fetchone()
+        if row is None or row["created_at"] is None:
+            return None
+        return {
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
 
 
 class RelationshipRecord:
@@ -913,6 +948,26 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
 
             self._init_triggers(cursor)
 
+            # Create entity_provenance_summary view before entity-level migrations.
+            # This view is REQUIRED (not optional) for correct provenance-derived field
+            # derivation in client.query(). Columns:
+            #   entity_id   - the entity
+            #   created_at  - timestamp of first CREATE event
+            #   updated_at  - timestamp of most recent non-SOFT_DELETE event
+            #   schema_version - always NULL in v0.1 (field not stored on provenance table)
+            cursor.execute("""
+                CREATE VIEW IF NOT EXISTS entity_provenance_summary AS
+                SELECT
+                    entity_id,
+                    entity_type,
+                    MIN(timestamp) AS created_at,
+                    MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at,
+                    NULL AS schema_version
+                FROM provenance
+                WHERE entity_id IS NOT NULL
+                GROUP BY entity_id, entity_type
+            """)
+
             self._run_migrations(cursor)
 
     def _init_triggers(self, cursor: sqlite3.Cursor) -> None:
@@ -941,6 +996,13 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS idx_provenance_entity_timestamp ON provenance(entity_id, timestamp)"
             )
+
+        # System column: superseded_by (nullable, applied generically to entities table)
+        # This is analogous to is_available — a system field present on all entities.
+        cursor.execute("PRAGMA table_info(entities)")
+        entity_columns = {row[1] for row in cursor.fetchall()}
+        if "superseded_by" not in entity_columns:
+            cursor.execute("ALTER TABLE entities ADD COLUMN superseded_by TEXT")
 
     def _get_provenance_store(self, conn: sqlite3.Connection) -> ProvenanceStore:
         """Get or create a ProvenanceStore for the given connection."""
@@ -1131,12 +1193,30 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
         return entity
 
     def read(self, entity_id: str) -> Optional[SQLiteEntity]:
-        """Read an entity by its ID."""
+        """Read an entity by its ID (available entities only)."""
         with self._transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """SELECT id, entity_type, is_available, version, data, created_at, updated_at
+                """SELECT id, entity_type, is_available, version, data, created_at, updated_at, superseded_by
                    FROM entities WHERE id = ? AND is_available = 1""",
+                (entity_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return None
+
+            return self._row_to_entity(row)
+
+    def read_any(self, entity_id: str) -> Optional[SQLiteEntity]:
+        """Read an entity by its ID, regardless of availability.
+
+        This includes unavailable (soft-deleted, superseded) entities.
+        """
+        with self._transaction() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT id, entity_type, is_available, version, data, created_at, updated_at, superseded_by
+                   FROM entities WHERE id = ?""",
                 (entity_id,),
             )
             row = cursor.fetchone()
@@ -1198,7 +1278,7 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
         with self._transaction() as conn:
             cursor = conn.cursor()
 
-            sql = "SELECT id, entity_type, is_available, version, data, created_at, updated_at FROM entities WHERE is_available = 1"
+            sql = "SELECT id, entity_type, is_available, version, data, created_at, updated_at, superseded_by FROM entities WHERE is_available = 1"
             params = []
 
             if query.entity_type:
@@ -1234,6 +1314,11 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
 
     def _row_to_entity(self, row: sqlite3.Row) -> "SQLiteEntity":
         """Convert a database row to an entity."""
+        # superseded_by column may not exist in older deployments pre-migration.
+        try:
+            superseded_by = row["superseded_by"]
+        except IndexError:
+            superseded_by = None
         return SQLiteEntity(
             id=row["id"],
             entity_type=row["entity_type"],
@@ -1242,6 +1327,7 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             data=json.loads(row["data"]) if row["data"] else {},
             created_at=row["created_at"],
             updated_at=row["updated_at"],
+            superseded_by=superseded_by,
         )
 
     def track_creation(

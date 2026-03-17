@@ -89,6 +89,26 @@ class EntityNotFoundError(HippoError):
         super().__init__(message, **context)
 
 
+class EntityAlreadySupersededError(HippoError):
+    """Exception raised when supersede_entity() is called on an already-superseded entity.
+
+    Raised before any writes are performed, ensuring no state change occurs.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        entity_id: Optional[str] = None,
+        superseded_by: Optional[str] = None,
+        **context: Any,
+    ):
+        self.entity_id = entity_id
+        self.superseded_by = superseded_by
+        context["entity_id"] = entity_id
+        context["superseded_by"] = superseded_by
+        super().__init__(message, **context)
+
+
 class AdapterError(HippoError):
     """Exception raised for adapter-specific errors."""
 

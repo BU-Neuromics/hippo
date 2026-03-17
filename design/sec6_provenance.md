@@ -104,9 +104,17 @@ It is required when `current = false` and optional when `current = true` (re-act
 
 #### EntitySuperseded
 
-Fired on the *old* entity when it is superseded. A companion `EntityCreated` (or
-`EntityUpdated`) event is fired on the new entity in the same transaction. A `superseded_by`
-relationship edge is also created.
+Fired on the *old* entity when it is superseded via `client.supersede_entity()`. The
+`operation_type` value in the provenance record is `"EntitySuperseded"`.
+
+A companion `EntityUpdated` event is fired on the *replacement* entity in the **same
+transaction**, making the audit trail bidirectional: both the old and new entities carry
+a provenance record documenting the supersession event. A `superseded_by` relationship edge
+is also created from the old entity to the replacement entity in the same transaction.
+
+All five writes (availability change, `superseded_by` column update, `EntitySuperseded` event,
+relationship edge, `EntityUpdated` event on replacement) are atomic — they either all succeed
+or all roll back.
 
 ```json
 {
@@ -114,6 +122,18 @@ relationship edge is also created.
   "payload": {
     "superseded_by_id": "uuid-of-new-entity",
     "reason": "Corrected tissue region annotation"
+  }
+}
+```
+
+The companion event on the replacement entity:
+
+```json
+{
+  "event_type": "EntityUpdated",
+  "payload": {
+    "note": "Now the active replacement for superseded entity <old-entity-id>",
+    "supersedes": "<old-entity-id>"
   }
 }
 ```
@@ -356,25 +376,39 @@ The triggers use `CREATE TRIGGER IF NOT EXISTS` for idempotent initialization.
 Triggers fire at statement level (BEFORE), providing database-level enforcement
 complementary to any application-level checks.
 
-**Provenance summary view** (for efficient `updated_at` derivation on batch reads):
+**Provenance summary view** (REQUIRED — not optional):
+
+The `entity_provenance_summary` view is **required** for correct operation of `client.query()`
+with provenance-derived `created_at` and `updated_at` fields. `hippo migrate` creates this
+view before any entity table migrations so it is always available.
+
+Expected columns and derivation logic:
+
+| Column | Derivation |
+|---|---|
+| `entity_id` | The entity UUID |
+| `entity_type` | The entity type name |
+| `created_at` | `MIN(timestamp)` — timestamp of first provenance event (any `operation_type`) |
+| `updated_at` | `MAX(timestamp)` for non-`SOFT_DELETE` events — timestamp of most recent write |
+| `schema_version` | `NULL` in v0.1 (not stored on provenance records) |
 
 ```sql
-CREATE VIEW entity_provenance_summary AS
+CREATE VIEW IF NOT EXISTS entity_provenance_summary AS
 SELECT
     entity_id,
     entity_type,
     MIN(timestamp) AS created_at,
-    MAX(timestamp) AS updated_at,
-    (SELECT schema_version FROM provenance_events p2
-     WHERE p2.entity_id = p.entity_id
-     ORDER BY timestamp DESC LIMIT 1) AS schema_version
-FROM provenance_events p
+    MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at,
+    NULL AS schema_version
+FROM provenance
 WHERE entity_id IS NOT NULL
 GROUP BY entity_id, entity_type;
 ```
 
-The SDK's `query()` implementation may JOIN against this view to resolve `created_at`,
-`updated_at`, and `schema_version` in a single query rather than N+1 lookups.
+Note: the actual provenance table is named `provenance` (not `provenance_events`) in the v0.1
+SQLite implementation. The SDK's `query()` implementation JOINs against this view to resolve
+`created_at` and `updated_at` in a single query rather than N+1 provenance lookups. The
+`get()` implementation uses a direct provenance subquery for individual entity reads.
 
 ---
 

@@ -153,6 +153,17 @@ class DDLGenerator:
             )
         )
 
+        # System column: superseded_by (nullable, applied generically to all entity types)
+        # Listed alongside is_available as a system column — not per-schema-declaration.
+        table.columns.append(
+            ColumnDefinition(
+                name="superseded_by",
+                column_type="TEXT",
+                not_null=False,
+                default=None,
+            )
+        )
+
         if schema.unique_constraints:
             for constraint in schema.unique_constraints:
                 table.unique_constraints.append(constraint)

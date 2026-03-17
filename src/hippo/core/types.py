@@ -65,12 +65,17 @@ class PaginatedResult(BaseModel):
     """Paginated result type with metadata.
 
     Used for returning paged query results with pagination information.
+    Returned by client.query() instead of a bare list[dict].
     """
 
     items: list[Any] = Field(default_factory=list, description="The items on this page")
-    total: int = Field(description="Total number of items across all pages")
-    page: int = Field(description="Current page number (1-indexed)")
-    page_size: int = Field(description="Number of items per page")
+    total: int = Field(
+        description="Total number of matching items across all pages (ignoring limit/offset)"
+    )
+    limit: int = Field(
+        description="Maximum number of items per page (0 means no limit)"
+    )
+    offset: int = Field(default=0, description="Number of items skipped")
 
 
 class ScoredMatch(BaseModel):

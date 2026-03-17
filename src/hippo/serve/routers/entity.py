@@ -55,7 +55,7 @@ async def list_entities(
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     auth: dict = Depends(require_auth),
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """List entities with optional filtering and pagination.
 
     Args:
@@ -66,7 +66,7 @@ async def list_entities(
         auth: Authentication context.
 
     Returns:
-        List of entity objects.
+        Paginated response envelope with items, total, limit, and offset.
     """
     client = await get_client(request)
 
@@ -74,14 +74,19 @@ async def list_entities(
     if entity_type:
         filters.append({"field": "entity_type", "operator": "eq", "value": entity_type})
 
-    results = client.query(
+    paginated = client.query(
         entity_type=entity_type or "entity",
         filters=filters,
         limit=limit,
         offset=offset,
     )
 
-    return results
+    return {
+        "items": paginated.items,
+        "total": paginated.total,
+        "limit": paginated.limit,
+        "offset": paginated.offset,
+    }
 
 
 @router.get("/{entity_id}")

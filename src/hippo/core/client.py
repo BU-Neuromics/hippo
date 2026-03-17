@@ -8,6 +8,7 @@ from typing import Any, Optional
 from hippo.core.batch_fetcher import BatchFetcher
 from hippo.core.cycle_detector import CycleDetector, validate_no_cycle
 from hippo.core.exceptions import (
+    EntityAlreadySupersededError,
     EntityNotFoundError,
     ValidationFailure,
 )
@@ -185,6 +186,7 @@ class HippoClient:
                 # created yet (e.g. before `hippo migrate` has been run, or
                 # in test fixtures that don't set up FTS tables).
                 from hippo.core.storage.fts import fts_table_exists
+
                 if not fts_table_exists(conn.cursor(), table_name):
                     continue
 
@@ -440,7 +442,10 @@ class HippoClient:
                 entity_id=entity_id,
             )
 
+        # Try reading the entity; fall back to read_any() to include superseded entities.
         entity = self._storage.read(entity_id)
+        if entity is None and hasattr(self._storage, "read_any"):
+            entity = self._storage.read_any(entity_id)
 
         if entity is None or entity.entity_type != entity_type:
             raise EntityNotFoundError(
@@ -449,13 +454,33 @@ class HippoClient:
                 entity_id=entity_id,
             )
 
+        # Derive created_at / updated_at from provenance log (authoritative source).
+        # Fall back to entity table cache if provenance has no records yet or
+        # if the storage adapter does not support transactional provenance access.
+        created_at = entity.created_at
+        updated_at = entity.updated_at
+        try:
+            if hasattr(self._storage, "_transaction") and hasattr(
+                self._storage, "_get_provenance_store"
+            ):
+                with self._storage._transaction() as conn:
+                    prov_store = self._storage._get_provenance_store(conn)
+                    prov_ts = prov_store.get_provenance_timestamps(entity_id)
+                if prov_ts is not None:
+                    created_at = prov_ts["created_at"]
+                    updated_at = prov_ts["updated_at"] or entity.updated_at
+        except Exception:
+            # Fall back to entity table cache on any error (e.g. mocked storage).
+            pass
+
         result = {
             "id": entity.id,
             "entity_type": entity.entity_type,
             "data": entity.data,
             "version": entity.version,
-            "created_at": entity.created_at,
-            "updated_at": entity.updated_at,
+            "created_at": created_at,
+            "updated_at": updated_at,
+            "superseded_by": entity.superseded_by,
         }
 
         if expand:
@@ -493,7 +518,7 @@ class HippoClient:
         date_to: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> list[dict[str, Any]]:
+    ) -> "PaginatedResult":
         """Query entities with filter criteria.
 
         Args:
@@ -505,24 +530,44 @@ class HippoClient:
             offset: Number of results to skip (for pagination).
 
         Returns:
-            List of matching entities with metadata, sorted by created_at ascending.
-            Returns empty list if no matches.
+            PaginatedResult with items, total, limit, and offset.
+            total reflects count ignoring limit/offset.
         """
+        from hippo.core.types import PaginatedResult
+
         if self._storage is None:
-            return []
+            return PaginatedResult(
+                items=[],
+                total=0,
+                limit=limit or 0,
+                offset=offset or 0,
+            )
 
         query = Query(
             entity_type=entity_type,
             filters=filters or [],
         )
 
-        results = list(self._storage.find(query))
+        # Fetch all matching entities (before pagination) for count and date filtering.
+        all_results = list(self._storage.find(query))
+
+        # Derive provenance-based timestamps in batch via entity_provenance_summary view.
+        prov_map = self._get_provenance_summary_map(entity_type)
 
         filtered = []
-        for entity in results:
-            if date_from and entity.created_at < date_from:
+        for entity in all_results:
+            # Derive authoritative temporal fields from provenance.
+            prov = prov_map.get(entity.id)
+            if prov:
+                created_at = prov["created_at"]
+                updated_at = prov["updated_at"] or entity.updated_at
+            else:
+                created_at = entity.created_at
+                updated_at = entity.updated_at
+
+            if date_from and created_at and created_at < date_from:
                 continue
-            if date_to and entity.created_at > date_to:
+            if date_to and created_at and created_at > date_to:
                 continue
 
             filtered.append(
@@ -531,19 +576,63 @@ class HippoClient:
                     "entity_type": entity.entity_type,
                     "data": entity.data,
                     "version": entity.version,
-                    "created_at": entity.created_at,
-                    "updated_at": entity.updated_at,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                    "superseded_by": entity.superseded_by,
                 }
             )
 
-        filtered.sort(key=lambda x: x["created_at"])
+        filtered.sort(key=lambda x: x["created_at"] or "")
 
-        if offset:
-            filtered = filtered[offset:]
+        # total is the count BEFORE limit/offset.
+        total = len(filtered)
+
+        actual_offset = offset or 0
+        if actual_offset:
+            filtered = filtered[actual_offset:]
         if limit:
             filtered = filtered[:limit]
 
-        return filtered
+        return PaginatedResult(
+            items=filtered,
+            total=total,
+            limit=limit or 0,
+            offset=actual_offset,
+        )
+
+    def _get_provenance_summary_map(self, entity_type: str) -> dict[str, dict]:
+        """Get a map of entity_id → provenance timestamps for all entities of a type.
+
+        Uses the entity_provenance_summary view for efficient batch derivation.
+
+        Args:
+            entity_type: The entity type to query.
+
+        Returns:
+            Dict mapping entity_id to {'created_at': str, 'updated_at': str}.
+        """
+        if self._storage is None:
+            return {}
+
+        result = {}
+        try:
+            with self._storage._transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """SELECT entity_id, created_at, updated_at
+                       FROM entity_provenance_summary
+                       WHERE entity_type = ?""",
+                    (entity_type,),
+                )
+                for row in cursor.fetchall():
+                    result[row["entity_id"]] = {
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
+                    }
+        except Exception:
+            # If the view does not exist (e.g. very old deployment), fall through.
+            pass
+        return result
 
     def create(
         self,
@@ -791,6 +880,125 @@ class HippoClient:
             "superseded_at": record.superseded_at,
         }
 
+    def supersede_entity(
+        self,
+        entity_id: str,
+        replacement_id: str,
+        reason: Optional[str] = None,
+        actor: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Mark an entity as superseded by a replacement entity.
+
+        This is an atomic operation that:
+        1. Marks entity_id as unavailable (is_available = false).
+        2. Writes superseded_by = replacement_id to the entity table column.
+        3. Writes an EntitySuperseded provenance event on entity_id.
+        4. Writes a 'superseded_by' relationship edge from entity_id to replacement_id.
+        5. Writes an EntityUpdated provenance event on replacement_id.
+
+        All five writes are wrapped in a single transaction that rolls back on failure.
+
+        Args:
+            entity_id: The ID of the entity to supersede.
+            replacement_id: The ID of the replacement entity.
+            reason: Optional reason for the supersession.
+            actor: Optional actor identity (caller-supplied).
+
+        Returns:
+            Dict with supersession details.
+
+        Raises:
+            EntityNotFoundError: If either entity_id or replacement_id does not exist.
+            EntityAlreadySupersededError: If entity_id is already superseded.
+        """
+        if self._storage is None:
+            raise EntityNotFoundError(
+                message=f"Entity not found: {entity_id}",
+                entity_type="unknown",
+                entity_id=entity_id,
+            )
+
+        # Guard: verify both entities exist (use read_any to include unavailable entities).
+        read_fn = getattr(self._storage, "read_any", self._storage.read)
+        source_entity = read_fn(entity_id)
+        if source_entity is None:
+            raise EntityNotFoundError(
+                message=f"Source entity not found: {entity_id}",
+                entity_type="unknown",
+                entity_id=entity_id,
+            )
+
+        replacement_entity = self._storage.read(replacement_id)
+        if replacement_entity is None:
+            raise EntityNotFoundError(
+                message=f"Replacement entity not found: {replacement_id}",
+                entity_type="unknown",
+                entity_id=replacement_id,
+            )
+
+        # Guard: check source is not already superseded (before any writes).
+        if source_entity.superseded_by is not None:
+            raise EntityAlreadySupersededError(
+                message=f"Entity {entity_id} is already superseded by {source_entity.superseded_by}",
+                entity_id=entity_id,
+                superseded_by=source_entity.superseded_by,
+            )
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Atomic transaction: all 5 writes or none.
+        with self._storage._transaction() as conn:
+            cursor = conn.cursor()
+
+            # 1. Mark source entity unavailable and set superseded_by column.
+            cursor.execute(
+                """UPDATE entities SET is_available = 0, superseded_by = ?, updated_at = ?
+                   WHERE id = ?""",
+                (replacement_id, now, entity_id),
+            )
+
+            # 2. Write EntitySuperseded provenance event on source entity.
+            prov_store = self._storage._get_provenance_store(conn)
+            prov_payload: dict[str, Any] = {"superseded_by_id": replacement_id}
+            if reason is not None:
+                prov_payload["reason"] = reason
+            prov_store.record(
+                entity_id=entity_id,
+                entity_type=source_entity.entity_type,
+                operation_type="EntitySuperseded",
+                user_context=actor,
+                payload=prov_payload,
+            )
+
+            # 3. Write superseded_by relationship edge.
+            rel_store = self._storage._get_relationship_store(conn)
+            rel_store.create(
+                source_id=entity_id,
+                target_id=replacement_id,
+                relationship_type="superseded_by",
+                created_by=actor,
+                metadata={"reason": reason} if reason else None,
+            )
+
+            # 4. Write EntityUpdated provenance event on replacement entity.
+            prov_store.record(
+                entity_id=replacement_id,
+                entity_type=replacement_entity.entity_type,
+                operation_type="EntityUpdated",
+                user_context=actor,
+                payload={
+                    "note": f"Now the active replacement for superseded entity {entity_id}",
+                    "supersedes": entity_id,
+                },
+            )
+
+        return {
+            "entity_id": entity_id,
+            "replacement_id": replacement_id,
+            "superseded_at": now,
+            "reason": reason,
+        }
+
     def get_by_external_id(
         self, external_id: str, include_archived: bool = False
     ) -> dict[str, Any]:
@@ -831,7 +1039,7 @@ class HippoClient:
         if include_archived:
             cursor = self._storage._get_connection().cursor()
             cursor.execute(
-                "SELECT id, entity_type, is_available, version, data, created_at, updated_at FROM entities WHERE id = ?",
+                "SELECT id, entity_type, is_available, version, data, created_at, updated_at, superseded_by FROM entities WHERE id = ?",
                 (record.entity_id,),
             )
             row = cursor.fetchone()
@@ -844,6 +1052,10 @@ class HippoClient:
             import json
 
             entity_data = json.loads(row["data"]) if row["data"] else {}
+            try:
+                superseded_by_val = row["superseded_by"]
+            except (IndexError, KeyError):
+                superseded_by_val = None
             entity = type(
                 "Entity",
                 (),
@@ -855,6 +1067,7 @@ class HippoClient:
                     "data": entity_data,
                     "created_at": row["created_at"],
                     "updated_at": row["updated_at"],
+                    "superseded_by": superseded_by_val,
                 },
             )()
         else:
@@ -954,7 +1167,9 @@ class HippoClient:
                 entity_id=entity_id,
             )
 
-        entity = self._storage.read(entity_id)
+        # Use read_any() to include superseded (unavailable) entities in history queries.
+        read_fn = getattr(self._storage, "read_any", self._storage.read)
+        entity = read_fn(entity_id)
         if entity is None:
             raise EntityNotFoundError(
                 message=f"Entity not found: {entity_id}",
