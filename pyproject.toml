@@ -20,6 +20,10 @@ dependencies = [
 
 [project.optional-dependencies]
 rest = ["fastapi", "uvicorn[standard]"]
+tui = [
+    "textual>=0.50.0,<1.0",
+    "httpx>=0.27.0",
+]
 dev = [
     "pytest",
     "pytest-cov",

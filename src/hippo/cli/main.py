@@ -665,5 +665,57 @@ def schema_diff(
         raise typer.Exit(1)
 
 
+@app.command()
+def tui(
+    backend: str = typer.Option(
+        "sdk",
+        "--backend",
+        "-b",
+        help="Backend mode: 'sdk' (default) or 'rest'",
+    ),
+    url: str = typer.Option(
+        "http://127.0.0.1:8000",
+        "--url",
+        help="Base URL for REST backend (rest mode only)",
+    ),
+    token: Optional[str] = typer.Option(
+        None,
+        "--token",
+        help="Bearer token for REST backend (rest mode only; falls back to HIPPO_TUI_TOKEN env)",
+    ),
+    db: Optional[str] = typer.Option(
+        None,
+        "--db",
+        help="Path to SQLite database (sdk mode only; falls back to config.json then hippo.db)",
+    ),
+) -> None:
+    """Launch the interactive TUI browser (requires 'pip install hippo[tui]')."""
+    try:
+        from hippo.tui.app import HippoTUIApp
+    except ImportError:
+        raise typer.Exit(
+            typer.echo("Error: TUI requires 'pip install hippo[tui]'", err=True) or 1
+        )
+
+    from hippo.tui.backend import create_backend
+
+    kwargs: dict = {}
+    if backend == "sdk":
+        if db is not None:
+            kwargs["db_path"] = db
+    elif backend == "rest":
+        kwargs["url"] = url
+        if token is not None:
+            kwargs["token"] = token
+    else:
+        typer.echo(
+            f"Error: Unknown backend '{backend}'. Choose 'sdk' or 'rest'.", err=True
+        )
+        raise typer.Exit(1)
+
+    be = create_backend(backend, **kwargs)
+    HippoTUIApp(backend=be).run()
+
+
 if __name__ == "__main__":
     app()
