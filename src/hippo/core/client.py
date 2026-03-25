@@ -416,6 +416,7 @@ class HippoClient:
         entity_type: str,
         entity_id: str,
         expand: Optional[str] = None,
+        include_unavailable: bool = False,
     ) -> dict[str, Any]:
         """Get an entity by its ID.
 
@@ -424,13 +425,17 @@ class HippoClient:
             entity_id: The ID of the entity to retrieve.
             expand: Optional expand path for fetching related entities
                 (e.g., "user.profile.settings").
+            include_unavailable: If False (default), raises EntityNotFoundError
+                for deleted or superseded entities. Set to True for audit/
+                provenance queries that need to read unavailable entities.
 
         Returns:
             The entity data with metadata. If expand is specified,
             includes expanded related entities under the "_expanded" key.
 
         Raises:
-            EntityNotFoundError: If the entity doesn't exist.
+            EntityNotFoundError: If the entity doesn't exist, or if the entity
+                is deleted/superseded and include_unavailable is False.
             ParsingError: If the expand path is malformed.
             MaxSizeExceededError: If the expand path exceeds maximum size.
             CycleDetectionError: If the expand path contains a cycle.
@@ -442,10 +447,22 @@ class HippoClient:
                 entity_id=entity_id,
             )
 
-        # Try reading the entity; fall back to read_any() to include superseded entities.
-        entity = self._storage.read(entity_id)
-        if entity is None and hasattr(self._storage, "read_any"):
+        # When include_unavailable=True, use read_any() to fetch deleted/superseded entities.
+        # Otherwise use read() which only returns is_available=True entities, then
+        # raise explicitly if the entity exists but is unavailable.
+        if include_unavailable and hasattr(self._storage, "read_any"):
             entity = self._storage.read_any(entity_id)
+        else:
+            entity = self._storage.read(entity_id)
+            if entity is None and hasattr(self._storage, "read_any"):
+                # Check if entity exists but is unavailable (deleted/superseded)
+                any_entity = self._storage.read_any(entity_id)
+                if any_entity is not None and any_entity.entity_type == entity_type:
+                    raise EntityNotFoundError(
+                        message=f"Entity not found: {entity_id}",
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                    )
 
         if entity is None or entity.entity_type != entity_type:
             raise EntityNotFoundError(
@@ -674,8 +691,22 @@ class HippoClient:
             The updated entity data.
 
         Raises:
+            EntityNotFoundError: If the entity does not exist, or is deleted/superseded.
             ValidationFailure: If validation fails.
         """
+        # Verify the entity exists and is available before updating.
+        # This prevents silent upserts on nonexistent IDs and blocks
+        # mutation of soft-deleted or superseded entities.
+        if self._storage is not None and hasattr(self._storage, "read"):
+            existing = self._storage.read(entity_id)
+            if existing is None:
+                # Entity does not exist at all, or is deleted/superseded
+                raise EntityNotFoundError(
+                    message=f"Entity not found: {entity_id}",
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                )
+
         return self.put(entity_type, data, entity_id, bypass_validation)
 
     def delete(

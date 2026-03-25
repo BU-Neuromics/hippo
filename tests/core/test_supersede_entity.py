@@ -163,16 +163,31 @@ class TestSupersededEntity:
         with pytest.raises(EntityNotFoundError):
             client.supersede_entity("real-old", "does-not-exist")
 
-    def test_get_on_superseded_entity_returns_superseded_by_field(
+    def test_get_on_superseded_entity_raises_by_default(
         self, client: HippoClient
     ) -> None:
-        """client.get() on a superseded entity returns the entity with superseded_by set."""
+        """client.get() on a superseded entity raises EntityNotFoundError by default.
+
+        Use include_unavailable=True to access superseded entities for audit/provenance.
+        """
         client.put("Sample", {"id": "get-old", "name": "old"})
         client.put("Sample", {"id": "get-new", "name": "new"})
 
         client.supersede_entity("get-old", "get-new")
 
-        result = client.get("Sample", "get-old")
+        with pytest.raises(EntityNotFoundError):
+            client.get("Sample", "get-old")
+
+    def test_get_on_superseded_entity_with_include_unavailable_returns_superseded_by_field(
+        self, client: HippoClient
+    ) -> None:
+        """client.get(include_unavailable=True) returns superseded entity with superseded_by."""
+        client.put("Sample", {"id": "get-old", "name": "old"})
+        client.put("Sample", {"id": "get-new", "name": "new"})
+
+        client.supersede_entity("get-old", "get-new")
+
+        result = client.get("Sample", "get-old", include_unavailable=True)
 
         assert result["superseded_by"] == "get-new"
         assert result["id"] == "get-old"
