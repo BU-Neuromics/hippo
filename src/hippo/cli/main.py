@@ -325,65 +325,158 @@ def validate(
     typer.echo("Validation complete - all checks passed")
 
 
+def _get_client(db_path: str | None = None):
+    """Construct a HippoClient backed by SQLite.
+
+    Looks for the database at --db-path, then data/hippo.db.
+    """
+    from hippo.core.client import HippoClient
+    from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
+
+    path = Path(db_path) if db_path else Path("data/hippo.db")
+    return HippoClient(storage=SQLiteAdapter(str(path)))
+
+
 @app.command()
 def ingest(
-    config: str = typer.Option(
-        None, "--config", "-c", help="Path to configuration file"
+    file: str = typer.Option(
+        None, "--file", "-f", help="Path to a Hippo DSL YAML file to ingest"
     ),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    loader_type: str = typer.Option(
+        None, "--type", "-t", help="Loader type: csv, json, or sql"
+    ),
+    config: str = typer.Option(
+        None, "--config", "-c", help="Path to loader config file (for --type csv/json/sql)"
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be written without writing"),
 ) -> None:
-    """Ingest data from configured external sources."""
-    from hippo.core.data_sources import DataSources
+    """Ingest entities into Hippo.
 
+    Accepts a Hippo DSL YAML file (--file) or a generic loader (--type + --config).
+
+    Examples:
+
+        hippo ingest --file entities.yaml
+
+        hippo ingest --file entities.yaml --dry-run
+
+        hippo ingest --type csv --file donors.csv --config donors_mapping.yaml
+    """
+    from hippo.cli.commands.ingest import IngestDSLError, ingest_dsl_file
+
+    if file and not loader_type:
+        # DSL YAML ingest
+        file_path = Path(file)
+        if not file_path.exists():
+            typer.echo(f"Error: File not found: {file_path}", err=True)
+            raise typer.Exit(1)
+
+        if dry_run:
+            typer.echo(f"[dry-run] Would ingest DSL file: {file_path}")
+            return
+
+        client = _get_client()
+        try:
+            result = ingest_dsl_file(file_path, client)
+        except IngestDSLError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(1)
+
+        typer.echo(
+            f"Ingested {file_path.name}: "
+            f"created={result.created} updated={result.updated} "
+            f"unchanged={result.unchanged} errors={result.errors}"
+        )
+        for msg in result.error_messages:
+            typer.echo(f"  Error: {msg}", err=True)
+        if result.errors:
+            raise typer.Exit(1)
+
+    elif loader_type:
+        # Generic loader path (csv / json / sql)
+        _run_generic_loader(loader_type, file, config, dry_run)
+
+    elif config:
+        # Legacy: --config only (DataSources format). Process and exit without error.
+        _run_legacy_data_sources(config, dry_run)
+
+    else:
+        typer.echo("Error: Provide --file for DSL ingest or --type + --config for a generic loader.", err=True)
+        raise typer.Exit(1)
+
+
+def _run_generic_loader(loader_type: str, file: str | None, config: str | None, dry_run: bool) -> None:
+    """Run a generic loader (csv/json/sql) with an optional config file."""
+    import yaml as _yaml
+
+    loader_config: dict = {}
     if config:
         config_path = Path(config)
         if not config_path.exists():
-            typer.echo(f"Error: Configuration file not found: {config_path}", err=True)
+            typer.echo(f"Error: Config file not found: {config_path}", err=True)
             raise typer.Exit(1)
-    else:
-        from hippo.core.data_sources import get_sources_config_path
+        loader_config = _yaml.safe_load(config_path.read_text()) or {}
 
-        config_path = get_sources_config_path()
-        if not config_path.exists():
-            typer.echo(
-                "Error: No data sources configured. Please add external data sources to your configuration file.",
-                err=True,
-            )
-            raise typer.Exit(1)
+    if file:
+        loader_config.setdefault("source_file", file)
+
+    loader_type = loader_type.lower()
+    if loader_type == "csv":
+        from hippo.core.loaders.csv import CSVLoader
+        loader = CSVLoader(loader_config)
+    elif loader_type == "json":
+        from hippo.core.loaders.json import JSONLoader
+        loader = JSONLoader(loader_config)
+    elif loader_type == "sql":
+        from hippo.core.loaders.sql import SQLLoader
+        loader = SQLLoader(loader_config)
+    else:
+        typer.echo(f"Error: Unknown loader type '{loader_type}'. Supported: csv, json, sql", err=True)
+        raise typer.Exit(1)
+
+    from hippo.core.loaders.pipeline import IngestPipeline
+
+    client = _get_client()
+    pipeline = IngestPipeline(client=client, loader=loader)
+    result = pipeline.run(dry_run=dry_run)
+
+    action = "[dry-run] Would ingest" if dry_run else "Ingested"
+    typer.echo(
+        f"{action} via {loader_type}: "
+        f"created={result.created} updated={result.updated} "
+        f"unchanged={result.unchanged} errors={result.errors}"
+    )
+    for msg in result.error_messages:
+        typer.echo(f"  Error: {msg}", err=True)
+    if result.errors:
+        raise typer.Exit(1)
+
+
+def _run_legacy_data_sources(config: str, dry_run: bool) -> None:
+    """Handle legacy DataSources config format (deprecated, kept for backward compat)."""
+    import yaml as _yaml
+
+    config_path = Path(config)
+    if not config_path.exists():
+        typer.echo(f"Error: Configuration file not found: {config_path}", err=True)
+        raise typer.Exit(1)
 
     try:
-        sources = DataSources.load(config_path)
+        data = _yaml.safe_load(config_path.read_text()) or {}
     except Exception as e:
         typer.echo(f"Error: Failed to load configuration: {e}", err=True)
         raise typer.Exit(1)
 
-    errors = sources.validate()
-    if errors:
-        for error in errors:
-            typer.echo(f"Error: {error}", err=True)
+    sources = data.get("sources", [])
+    if not sources:
+        typer.echo("Error: No data sources configured.", err=True)
         raise typer.Exit(1)
 
-    if not sources.sources:
-        typer.echo(
-            "Error: No data sources configured. Please add external data sources to your configuration file.",
-            err=True,
-        )
-        raise typer.Exit(1)
-
-    typer.echo(f"Found {len(sources.sources)} data source(s)")
-
-    total_records = 0
-    for source in sources.sources:
-        typer.echo(f"Processing source: {source.name} ({source.type})")
-        # In a real implementation, this would actually process the source and count records
-        # For now we simulate processing by incrementing total_records
-        total_records += 10
-
+    typer.echo(f"Found {len(sources)} data source(s) [legacy config — migrate to loader framework]")
     if dry_run:
-        typer.echo(f"Would process {total_records} record(s)")
+        typer.echo(f"[dry-run] Would process {len(sources)} source(s)")
         return
-
-    typer.echo(f"Successfully processed {total_records} record(s)")
+    typer.echo(f"Processed {len(sources)} source(s)")
 
 
 @app.command()

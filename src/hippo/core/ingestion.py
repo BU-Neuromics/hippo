@@ -97,6 +97,13 @@ class IngestionPipeline:
 
     Provides methods to ingest data from various file formats with
     upsert-by-ExternalID functionality.
+
+    .. deprecated::
+        Use ``hippo.core.loaders.IngestPipeline`` together with a concrete
+        ``EntityLoader`` subclass (``CSVLoader``, ``JSONLoader``, etc.) instead.
+        ``IngestionPipeline`` will be removed in a future release.
+        The utility functions ``extract_fts_content`` and ``flatten_dict``
+        in this module are NOT deprecated and remain available.
     """
 
     def __init__(
