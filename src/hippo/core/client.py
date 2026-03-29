@@ -150,10 +150,13 @@ class HippoClient:
         Reads from the already-loaded schema (_schemas dict). Returns an empty
         list if schemas are not loaded or the entity_type is not found.
 
-        TODO: schema_references() requires fields to declare `references:
-        {entity_type: <name>}` in the schema YAML. If no references are
-        declared, this method returns []. Schema enhancement needed for full
-        Cappella collection-resolver support (dot-notation traversal).
+        Reads the `references:` key already supported in FieldDefinition.
+        Returns [] if schemas are not loaded or no fields declare references.
+        Schema YAML example:
+          fields:
+            - name: donor_id
+              type: string
+              references: {entity_type: Donor}
         """
         if not self._schemas or entity_type not in self._schemas:
             return []
