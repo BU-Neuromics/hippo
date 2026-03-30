@@ -1,0 +1,295 @@
+"""IngestionService - Entity write operations (create, update, upsert, delete) facade."""
+
+import json
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from hippo.core.exceptions import EntityNotFoundError, ValidationFailure
+from hippo.core.ingestion import extract_fts_content
+from hippo.core.schema_manager import SchemaManager
+from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter, SQLiteEntity
+from hippo.core.validation.validators import WriteOperation
+
+
+class IngestionService:
+    """Manages entity write operations: create, update, upsert (put), delete, FTS sync.
+
+    This facade owns all write logic extracted from HippoClient.
+    """
+
+    def __init__(
+        self,
+        storage: Optional[SQLiteAdapter] = None,
+        schema_manager: Optional[SchemaManager] = None,
+    ) -> None:
+        self._storage = storage
+        self._schema_manager = schema_manager
+
+    def _sync_entity_to_fts(
+        self,
+        entity_id: str,
+        entity_type: str,
+        data: dict[str, Any],
+        is_available: bool = True,
+    ) -> None:
+        """Sync an entity to its FTS tables."""
+        if self._storage is None:
+            return
+
+        if self._schema_manager is None:
+            return
+
+        fts_tables = self._schema_manager.get_fts_tables_for_entity_type(entity_type)
+        if not fts_tables:
+            return
+
+        with self._storage._transaction() as conn:
+            fts_store = self._storage._get_fts_store(conn)
+
+            for fts_meta in fts_tables:
+                table_name = fts_meta.table_name
+                fts_fields = fts_meta.get_fts_columns()
+
+                from hippo.core.storage.fts import fts_table_exists
+
+                if not fts_table_exists(conn.cursor(), table_name):
+                    continue
+
+                content = extract_fts_content(data, fts_fields)
+
+                if is_available and content:
+                    fts_store.sync_entity_to_fts(table_name, entity_id, content)
+                else:
+                    fts_store.remove_entity_from_fts(table_name, entity_id)
+
+    def put(
+        self,
+        entity_type: str,
+        data: dict[str, Any],
+        entity_id: Optional[str] = None,
+        bypass_validation: Optional[bool] = None,
+    ) -> dict[str, Any]:
+        """Create or update an entity (upsert)."""
+        if data is None or (isinstance(data, dict) and len(data) == 0):
+            raise ValidationFailure(
+                message="Entity data cannot be null or empty",
+                input_context=data,
+                entity_type=entity_type,
+                entity_id=entity_id,
+            )
+
+        should_bypass = bypass_validation if bypass_validation is not None else (
+            self._schema_manager.bypass_validation if self._schema_manager else False
+        )
+
+        if not should_bypass and self._schema_manager:
+            operation = WriteOperation(
+                operation="insert" if entity_id is None else "update",
+                entity_type=entity_type,
+                data=data,
+            )
+            result = self._schema_manager.validate(operation)
+            if not result.is_valid:
+                error_messages = [
+                    e.message if hasattr(e, "message") else str(e)
+                    for e in result.errors
+                ]
+                raise ValidationFailure(
+                    message="; ".join(error_messages),
+                    input_context=data,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                )
+
+        if entity_id is None and isinstance(data, dict) and "id" in data:
+            entity_id = data["id"]
+
+        return self._put_internal(entity_type, data, entity_id)
+
+    def _put_internal(
+        self,
+        entity_type: str,
+        data: dict[str, Any],
+        entity_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Internal put implementation."""
+        if self._storage is None:
+            final_id = entity_id or str(uuid.uuid4())
+            return {
+                "id": final_id,
+                "entity_type": entity_type,
+                "data": data,
+                "version": 1,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        if hasattr(self._storage, "read"):
+            return self._put_with_sqlite(entity_type, data, entity_id)
+
+        if (
+            entity_id
+            and hasattr(self._storage, "exists")
+            and self._storage.exists(entity_type, entity_id)
+        ):
+            return self._update_internal(entity_type, entity_id, data)
+        return self._create_internal(entity_type, data)
+
+    def _put_with_sqlite(
+        self,
+        entity_type: str,
+        data: dict[str, Any],
+        entity_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Internal put implementation for SQLite storage."""
+        final_id = entity_id or str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        existing = self._storage.read(final_id)
+
+        if existing is not None:
+            new_version = existing.version + 1
+            entity = SQLiteEntity(
+                id=final_id,
+                entity_type=entity_type,
+                is_available=True,
+                version=new_version,
+                data=data,
+                created_at=existing.created_at,
+                updated_at=now,
+            )
+            with self._storage._transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """UPDATE entities SET data = ?, version = ?, updated_at = ?
+                       WHERE id = ? AND is_available = 1""",
+                    (json.dumps(data), new_version, now, final_id),
+                )
+
+                provenance = self._storage._get_provenance_store(conn)
+                provenance.record(
+                    entity_id=final_id,
+                    entity_type=entity_type,
+                    operation_type="UPDATE",
+                    user_context=None,
+                    payload=data,
+                )
+
+                self._sync_entity_to_fts(final_id, entity_type, data, is_available=True)
+
+            return {
+                "id": final_id,
+                "entity_type": entity_type,
+                "data": data,
+                "version": new_version,
+                "created_at": existing.created_at,
+                "updated_at": now,
+            }
+        else:
+            entity = SQLiteEntity(
+                id=final_id,
+                entity_type=entity_type,
+                is_available=True,
+                version=1,
+                data=data,
+                created_at=now,
+                updated_at=now,
+            )
+            self._storage.create(entity)
+
+            self._sync_entity_to_fts(final_id, entity_type, data, is_available=True)
+
+            return {
+                "id": final_id,
+                "entity_type": entity_type,
+                "data": data,
+                "version": 1,
+                "created_at": now,
+                "updated_at": now,
+            }
+
+    def create(
+        self,
+        entity_type: str,
+        data: dict[str, Any],
+        bypass_validation: Optional[bool] = None,
+    ) -> dict[str, Any]:
+        """Create a new entity."""
+        return self.put(entity_type, data, bypass_validation=bypass_validation)
+
+    def update(
+        self,
+        entity_type: str,
+        entity_id: str,
+        data: dict[str, Any],
+        bypass_validation: Optional[bool] = None,
+    ) -> dict[str, Any]:
+        """Update an existing entity."""
+        if self._storage is not None and hasattr(self._storage, "read"):
+            existing = self._storage.read(entity_id)
+            if existing is None:
+                raise EntityNotFoundError(
+                    message=f"Entity not found: {entity_id}",
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                )
+
+        return self.put(entity_type, data, entity_id, bypass_validation)
+
+    def delete(
+        self,
+        entity_type: str,
+        entity_id: str,
+        bypass_validation: Optional[bool] = None,
+    ) -> bool:
+        """Delete an entity."""
+        should_bypass = bypass_validation if bypass_validation is not None else (
+            self._schema_manager.bypass_validation if self._schema_manager else False
+        )
+
+        if not should_bypass and self._schema_manager:
+            operation = WriteOperation(
+                operation="delete",
+                entity_type=entity_type,
+                data={"id": entity_id},
+            )
+            result = self._schema_manager.validate(operation)
+            if not result.is_valid:
+                raise ValidationFailure(
+                    message="; ".join(result.errors),
+                    input_context={"id": entity_id},
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                )
+
+        return self._delete_internal(entity_type, entity_id)
+
+    def _delete_internal(self, entity_type: str, entity_id: str) -> bool:
+        """Internal delete implementation."""
+        if self._storage is None:
+            return True
+
+        if hasattr(self._storage, "delete"):
+            entity = self._storage.read(entity_id)
+            data = entity.data if entity else {}
+
+            result = self._storage.delete(entity_id)
+
+            self._sync_entity_to_fts(entity_id, entity_type, data, is_available=False)
+
+            return result
+
+        return True
+
+    def _create_internal(
+        self, entity_type: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Internal create implementation (placeholder for non-sqlite storage)."""
+        return {"id": data.get("id"), "entity_type": entity_type, "data": data}
+
+    def _update_internal(
+        self, entity_type: str, entity_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Internal update implementation (placeholder for non-sqlite storage)."""
+        return {"id": entity_id, "entity_type": entity_type, "data": data}

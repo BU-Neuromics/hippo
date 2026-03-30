@@ -39,6 +39,10 @@ if not result.is_valid:
 """
 
 from hippo.core.client import HippoClient
+from hippo.core.ingestion_service import IngestionService
+from hippo.core.provenance_service import ProvenanceService
+from hippo.core.query_service import QueryService
+from hippo.core.schema_manager import SchemaManager
 from hippo.core.exceptions import (
     AdapterError,
     ConfigError,
@@ -79,6 +83,10 @@ from hippo.core.types import (
 
 __all__ = [
     "HippoClient",
+    "IngestionService",
+    "ProvenanceService",
+    "QueryService",
+    "SchemaManager",
     "HippoError",
     "ConfigError",
     "SchemaError",
