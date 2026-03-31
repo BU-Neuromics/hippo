@@ -218,9 +218,11 @@ Auto-generated docs available at `/docs` (Swagger UI) and `/redoc`. OpenAPI JSON
 |---|---|---|
 | `GET` | `/entities/{entity_type}` | Query entities (supports filter params, pagination) |
 | `POST` | `/entities/{entity_type}` | Create or update an entity (upsert) |
+| `PUT` | `/entities/{entity_type}/{entity_id}` | Update an existing entity (returns 404 if not found) |
 | `GET` | `/entities/{entity_type}/{entity_id}` | Fetch entity by UUID |
 | `GET` | `/entities/{entity_type}/{entity_id}/history` | Full provenance history |
-| `POST` | `/entities/{entity_type}/{entity_id}/availability` | Set availability |
+| `POST` | `/entities/{entity_type}/{entity_id}/availability` | Set availability (single entity) |
+| `POST` | `/entities/{entity_type}/bulk-availability` | Set availability for multiple entities |
 | `POST` | `/entities/{entity_type}/{entity_id}/supersede` | Supersede with another entity |
 | `GET` | `/entities/{entity_type}/{entity_id}/relationships` | List relationships |
 
@@ -265,6 +267,128 @@ Auto-generated docs available at `/docs` (Swagger UI) and `/redoc`. OpenAPI JSON
 |---|---|---|
 | `GET` | `/health` | Liveness check — returns `{"status": "ok"}` |
 | `GET` | `/status` | Adapter type, schema version, entity counts, plugin summary |
+
+#### `PUT /entities/{entity_type}/{entity_id}` — Explicit Update
+
+Unlike `POST /entities/{entity_type}` (upsert), this endpoint returns `404 Not Found` if the
+entity does not exist. Use it when the caller requires the entity to already exist — for
+example, when updating a sample record that was ingested by a separate pipeline.
+
+**Request body:**
+```json
+{
+  "data": { "tissue_type": "liver" }
+}
+```
+
+Partial update semantics: only the fields present in `data` are updated. Fields absent from
+the request body are left unchanged.
+
+**Response:** The updated entity (same shape as `POST`).
+
+**SDK equivalent:**
+```python
+entity = client.update(
+    entity_type="Sample",
+    entity_id="uuid-here",
+    data={"tissue_type": "liver"},
+    actor="pipeline-run-99",
+    provenance_context={"workflow_run_id": "wf-xyz"}
+)
+# Raises EntityNotFoundError if entity_id does not exist
+```
+
+---
+
+#### `POST /entities/{entity_type}/bulk-availability` — Bulk Availability Change
+
+Sets availability on a list of entities in a single call. All records are processed
+individually (per-record error isolation); the call does not abort on partial failure.
+
+**Request body:**
+```json
+{
+  "entity_ids": ["uuid-1", "uuid-2", "uuid-3"],
+  "available": false,
+  "reason": "Dataset archived — Q1 2026 cohort",
+  "actor": "data-team"
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "updated": 2,
+    "errors": [
+      { "entity_id": "uuid-3", "error": "EntityNotFoundError", "message": "uuid-3 not found" }
+    ]
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
+}
+```
+
+HTTP status codes:
+- `200 OK` — all entities updated successfully
+- `207 Multi-Status` — partial success (some entities updated, some errored)
+- `404 Not Found` — entity type not in schema
+
+**SDK equivalent:**
+```python
+result = client.set_availability_bulk(
+    entity_type="Sample",
+    entity_ids=["uuid-1", "uuid-2", "uuid-3"],
+    available=False,
+    reason="Dataset archived",
+    actor="data-team"
+)
+# result.updated: int
+# result.errors: list[BulkOperationError]
+```
+
+---
+
+#### Query Filtering — OR Composition
+
+By default, all query parameters are AND-combined. Phase 1 adds two mechanisms for OR
+composition:
+
+**Multi-value parameters (same-field OR):** Repeat a query parameter to match any of the
+given values (logical OR within the field, AND across fields).
+
+```
+GET /entities/Sample?tissue_type=brain&tissue_type=liver&is_available=true
+# Returns samples where tissue_type IN ('brain', 'liver') AND is_available = true
+```
+
+**`filter` parameter (cross-field CEL expression):** For more complex predicates, pass a
+URL-encoded CEL expression as the `filter` parameter. The expression is evaluated against
+each entity's `data` fields.
+
+```
+GET /entities/Sample?filter=data.age_at_collection%20%3E%2018%20%26%26%20data.tissue_type%20!%3D%20%22control%22
+# Returns samples where age_at_collection > 18 AND tissue_type != "control"
+```
+
+The `filter` CEL context has access to: `data` (the entity's data fields), `id` (UUID),
+`is_available` (bool), `created_at`, `updated_at` (ISO8601 strings).
+
+**SDK equivalent:**
+```python
+# Multi-value: pass a list
+results = client.query("Sample", tissue_type=["brain", "liver"], is_available=True)
+
+# CEL filter
+results = client.query("Sample", filter='data.age_at_collection > 18')
+```
+
+**Opinionated decision:** CEL evaluation for `filter` is done in the storage adapter. The
+SQLite adapter translates common patterns to SQL predicates; others fall back to in-memory
+evaluation. Complex `filter` expressions on large datasets should use
+`query_updated_since` + client-side filtering where possible.
+
+---
 
 #### Standard request/response conventions
 
@@ -314,13 +438,13 @@ HTTP status codes:
 
 ### 4.4 Pagination
 
-**Opinionated decision:** Hippo uses **offset-based pagination** for v0.1. Cursor-based
-pagination is deferred.
+Hippo supports two pagination modes: **offset-based** (v0.1, always available) and
+**cursor-based** (Phase 1, for stable iteration over large result sets).
 
-**Rationale:** Offset pagination is simpler to implement, universally understood, and
-sufficient for the expected v0.1 query volumes. The main limitation (page drift when new
-records are inserted during pagination) is acceptable for research workloads where callers
-typically retrieve complete result sets rather than paginating live feeds.
+**Opinionated decision (v0.1):** Offset pagination is the default and is always available.
+Cursor-based pagination is additive — callers opt in by passing `cursor` instead of
+`offset`. Both modes are supported concurrently. Do not mix `cursor` and `offset` in the
+same request; `cursor` takes precedence if both are present.
 
 #### SDK pagination
 
@@ -361,6 +485,63 @@ Response includes pagination metadata in `meta`:
 }
 ```
 
+#### Cursor-based pagination (Phase 1)
+
+Cursor pagination guarantees stable iteration: new records inserted during pagination do
+not shift subsequent pages. Use it when iterating large result sets where page drift is
+unacceptable — for example, background export jobs or incremental sync pipelines.
+
+**Request:** Pass `?cursor=<opaque-token>&limit=<n>` instead of `?offset=<n>`.
+
+```
+GET /entities/Sample?cursor=eyJpZCI6ImFiYyIsInRzIjoiMjAyNi0wMS0wMVQwMCJ9&limit=100
+```
+
+**Response:** `next_cursor` is included in `meta.pagination` when more pages exist. When
+the last page is reached, `next_cursor` is `null`.
+
+```json
+{
+  "data": [ ...entities... ],
+  "error": null,
+  "meta": {
+    "schema_version": "1.1",
+    "request_id": "uuid",
+    "pagination": {
+      "limit": 100,
+      "has_more": true,
+      "next_cursor": "eyJpZCI6Inl6eiIsInRzIjoiMjAyNi0wMS0wMVQwMCJ9"
+    }
+  }
+}
+```
+
+**Cursor encoding:** Cursors are opaque base64-encoded tokens. Callers must not parse or
+construct cursors manually — always use `next_cursor` from the previous response. Cursors
+encode the sort position of the last returned record and are tied to the query's `order_by`
+and `order_dir` parameters; changing these parameters invalidates a cursor.
+
+**Cursor lifetime:** Cursors are stateless (encoded position, not server-side session).
+They do not expire, but they may return fewer results than expected if records are deleted
+between pages.
+
+**Offset fallback:** Callers receiving a cursor response can convert to offset-mode by
+omitting `cursor` and computing `offset = page_number * limit`. Both modes return results
+in the same order for the same `order_by` / `order_dir`.
+
+**SDK equivalent:**
+```python
+# Manual cursor pagination
+page = client.query("Sample", tissue_type="brain", limit=100)
+while page.has_more:
+    page = client.query("Sample", tissue_type="brain", limit=100, cursor=page.next_cursor)
+    process(page.items)
+
+# Automatic cursor pagination (preferred)
+for sample in client.iter_query("Sample", tissue_type="brain", pagination="cursor"):
+    process(sample)
+```
+
 ---
 
 ### 4.5 `query_updated_since` — Polling Support
@@ -398,9 +579,13 @@ processed as their watermark for the next poll.
 
 | Question | Priority | Notes |
 |---|---|---|
-| Cursor-based pagination | Medium | For large result sets and live-feed pagination. Defer to post-v0.1. |
+| Cursor-based pagination | Medium | **Specced in §4.4 (Phase 1 / v0.5).** Implement when `iter_query` callers report page drift issues. |
+| OR filter composition | Medium | **Specced in §4.3 (Phase 1 / v0.5).** Multi-value params + `?filter=` CEL. SQLite adapter translates common patterns; complex expressions fall back to in-memory evaluation. |
+| `PUT /entities/{type}/{id}` explicit update | Medium | **Specced in §4.3 (Phase 1 / v0.5).** Returns 404 on missing. Partial update semantics. |
+| Bulk availability change | Medium | **Specced in §4.3 (Phase 1 / v0.5).** Per-record error isolation; 207 on partial success. |
 | GraphQL transport | Low | Reserved in `hippo/graphql/`. Defer to post-v0.1. |
 | Bulk relationship query | Medium | `client.relationships_bulk(entity_ids=[...])` — fetch relationships for many entities in one query. Useful for Cappella expand path engine. Omitted from v0.1 for simplicity; add when needed. |
 | Rate limiting | Low | Out of scope for v0.1 (no auth layer). Add with auth in a future version. |
+| `filter` CEL performance | Medium | Storage-adapter-dependent. Document adapter capability declaration at startup (similar to fuzzy search capability flag). Add a `capabilities.cel_filter` flag to the `/status` endpoint. |
 
 ---

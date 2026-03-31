@@ -85,14 +85,15 @@ out of scope for v0.1 and documented here for tracking.
 | Entity type remapping / namespace migration path (OQ1) | sec3 §3.12 | High | Open — no migration path exists for moving `Sample` (root) to `tissue.Sample`; must be resolved before any production namespace adoption of existing entities. Options: `hippo migrate --remap`, namespace aliasing, or out-of-band migration script |
 | Canonical form for root-namespace entities in storage (OQ2) | sec3 §3.11 | Low | Decided — store as `"Donor"` (unqualified); registry normalizes `root.*` to unqualified at load time; documented as a firm invariant |
 | Ingestion idempotency for live webhook integrations | sec5 | High | Deferred — ExternalID upsert is the stable foundation; webhook retry deduplication needs a dedicated design session when live integrations are scoped |
-| Bulk availability change endpoint | sec4 | Medium | Deferred — `POST /entities/{type}/bulk-availability` for dataset archival |
-| OR filter composition in query API | sec4 | Low | Deferred — AND-only v0.1; CEL expression filter endpoint is future |
+| Explicit update endpoint (PUT, 404-on-missing) | sec4 | Medium | **Planned v0.5 (Phase 1)** — `PUT /entities/{type}/{id}`; partial update semantics, 404 if entity absent; specced in sec4 §4.3 |
+| Bulk availability change endpoint | sec4 | Medium | **Planned v0.5 (Phase 1)** — `POST /entities/{type}/bulk-availability`; specced in sec4 §4.3 |
+| OR filter composition in query API | sec4 | Low | **Planned v0.5 (Phase 1)** — multi-value params (same-field OR) + `?filter=` CEL (cross-field); specced in sec4 §4.3 |
 | Per-validator timeout | sec2 | Low | Deferred — plugin validators should complete in <100ms; configurable timeout post-v0.1 |
 | `hippo_poll` efficiency at scale | sec3b/sec6 | Medium | Deferred — provenance timestamp index handles current workload; denormalised `updated_at` column if needed at scale |
 | Schema version check on writes (503 on mismatch) | sec7 | Medium | Planned for v0.2 — roadmap documented in sec7 §7.3 |
 | Dynamic schema reload via polling | sec7 | Medium | Planned for v0.3 — roadmap documented in sec7 §7.3 |
 | Expand-contract convention enforcement in `hippo migrate` | sec2/sec3 | Medium | Planned for v0.3+ — roadmap documented in sec7 §7.3 |
-| Cursor-based pagination | sec4 | Low | Deferred post-v0.1 |
+| Cursor-based pagination | sec4 | Low | **Planned v0.5 (Phase 1)** — cursor-based mode specced in sec4 §4.4; offset mode remains the default |
 | GraphQL transport | sec2 | Low | Reserved in `hippo/graphql/`; deferred post-v0.1 |
 | Provenance system vs. entity events table split | sec6 | Low | Open — `MigrationApplied` and `ReferenceDataInstalled` stored with `entity_id = null`; separate `system_events` table is an alternative |
 | Auth / RBAC | sec7 | High (post-v0.1) | Auth middleware stub in place; JWT/API key/RBAC design deferred |
