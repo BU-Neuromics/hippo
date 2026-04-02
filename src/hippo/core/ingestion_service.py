@@ -209,6 +209,109 @@ class IngestionService:
                 "updated_at": now,
             }
 
+    def replace(
+        self,
+        entity_type: str,
+        entity_id: str,
+        data: dict[str, Any],
+        bypass_validation: Optional[bool] = None,
+    ) -> dict[str, Any]:
+        """Full replacement of an existing entity (PUT semantics).
+
+        Unlike update/put which merge or upsert, replace requires the entity
+        to already exist and overwrites all fields. Records a 'replaced'
+        provenance event.
+
+        Raises:
+            EntityNotFoundError: If the entity does not exist.
+            ValidationFailure: If validation fails.
+        """
+        if data is None or (isinstance(data, dict) and len(data) == 0):
+            raise ValidationFailure(
+                message="Entity data cannot be null or empty",
+                input_context=data,
+                entity_type=entity_type,
+                entity_id=entity_id,
+            )
+
+        should_bypass = bypass_validation if bypass_validation is not None else (
+            self._schema_manager.bypass_validation if self._schema_manager else False
+        )
+
+        if not should_bypass and self._schema_manager:
+            operation = WriteOperation(
+                operation="update",
+                entity_type=entity_type,
+                data=data,
+            )
+            result = self._schema_manager.validate(operation)
+            if not result.is_valid:
+                error_messages = [
+                    e.message if hasattr(e, "message") else str(e)
+                    for e in result.errors
+                ]
+                raise ValidationFailure(
+                    message="; ".join(error_messages),
+                    input_context=data,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                )
+
+        return self._replace_with_sqlite(entity_type, entity_id, data)
+
+    def _replace_with_sqlite(
+        self,
+        entity_type: str,
+        entity_id: str,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Internal replace implementation for SQLite storage."""
+        if self._storage is None:
+            raise EntityNotFoundError(
+                message=f"Entity not found: {entity_id}",
+                entity_type=entity_type,
+                entity_id=entity_id,
+            )
+
+        existing = self._storage.read(entity_id)
+        if existing is None:
+            raise EntityNotFoundError(
+                message=f"Entity not found: {entity_id}",
+                entity_type=entity_type,
+                entity_id=entity_id,
+            )
+
+        now = datetime.now(timezone.utc).isoformat()
+        new_version = existing.version + 1
+
+        with self._storage._transaction() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """UPDATE entities SET data = ?, version = ?, updated_at = ?
+                   WHERE id = ? AND is_available = 1""",
+                (json.dumps(data), new_version, now, entity_id),
+            )
+
+            provenance = self._storage._get_provenance_store(conn)
+            provenance.record(
+                entity_id=entity_id,
+                entity_type=entity_type,
+                operation_type="REPLACED",
+                user_context=None,
+                payload=data,
+            )
+
+            self._sync_entity_to_fts(entity_id, entity_type, data, is_available=True)
+
+        return {
+            "id": entity_id,
+            "entity_type": entity_type,
+            "data": data,
+            "version": new_version,
+            "created_at": existing.created_at,
+            "updated_at": now,
+        }
+
     def create(
         self,
         entity_type: str,
@@ -264,6 +367,76 @@ class IngestionService:
                 )
 
         return self._delete_internal(entity_type, entity_id)
+
+    def set_availability_bulk(
+        self,
+        entity_type: str,
+        entity_ids: list[str],
+        is_available: bool,
+        reason: Optional[str] = None,
+        actor: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Change availability status for multiple entities at once.
+
+        Returns a summary with successes and failures. Records provenance
+        events for each changed entity.
+        """
+        successes = []
+        failures = []
+
+        for eid in entity_ids:
+            try:
+                if self._storage is None:
+                    raise EntityNotFoundError(
+                        message=f"Entity not found: {eid}",
+                        entity_type=entity_type,
+                        entity_id=eid,
+                    )
+
+                read_fn = getattr(self._storage, "read_any", self._storage.read)
+                existing = read_fn(eid)
+
+                if existing is None:
+                    failures.append({"id": eid, "error": f"Entity not found: {eid}"})
+                    continue
+
+                now = datetime.now(timezone.utc).isoformat()
+
+                with self._storage._transaction() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        """UPDATE entities SET is_available = ?, updated_at = ?
+                           WHERE id = ?""",
+                        (1 if is_available else 0, now, eid),
+                    )
+
+                    provenance = self._storage._get_provenance_store(conn)
+                    prov_payload: dict[str, Any] = {"is_available": is_available}
+                    if reason:
+                        prov_payload["reason"] = reason
+                    provenance.record(
+                        entity_id=eid,
+                        entity_type=entity_type,
+                        operation_type="AvailabilityChanged",
+                        user_context=actor,
+                        payload=prov_payload,
+                    )
+
+                data = existing.data if existing else {}
+                self._sync_entity_to_fts(eid, entity_type, data, is_available=is_available)
+
+                successes.append({"id": eid, "is_available": is_available})
+
+            except Exception as e:
+                failures.append({"id": eid, "error": str(e)})
+
+        return {
+            "total": len(entity_ids),
+            "succeeded": len(successes),
+            "failed": len(failures),
+            "successes": successes,
+            "failures": failures,
+        }
 
     def _delete_internal(self, entity_type: str, entity_id: str) -> bool:
         """Internal delete implementation."""

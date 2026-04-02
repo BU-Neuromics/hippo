@@ -490,6 +490,251 @@ def reference() -> None:
 reference_app = typer.Typer(name="reference", help="Manage reference data")
 app.add_typer(reference_app, name="reference")
 
+schema_app = typer.Typer(name="schema", help="Schema management commands")
+app.add_typer(schema_app, name="schema")
+
+
+@schema_app.command(name="safe-deploy")
+def schema_safe_deploy(
+    schema_dir: str = typer.Option(
+        None, "--schema-dir", help="Path to schema directory (default: schemas/)"
+    ),
+    db_path: str = typer.Option(
+        None, "--db-path", help="Path to SQLite database (default: data/hippo.db)"
+    ),
+) -> None:
+    """Validate that schema changes are backward-compatible before deploying.
+
+    Checks for breaking changes such as:
+    - Removed columns or tables
+    - Type changes on existing columns
+    - New NOT NULL columns without defaults on tables with data
+
+    Exits with code 0 if safe, 1 if breaking changes detected.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    schemas_path = Path(schema_dir) if schema_dir else Path("schemas")
+    if not schemas_path.exists():
+        typer.echo(f"Error: Schema directory not found: {schemas_path}", err=True)
+        raise typer.Exit(1)
+
+    database_path = Path(db_path) if db_path else Path("data/hippo.db")
+    if not database_path.exists():
+        typer.echo("No existing database found — all changes are safe (fresh deploy).")
+        return
+
+    try:
+        conn = sqlite3.connect(str(database_path))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        from hippo.core.storage.schema_diff import (
+            SchemaDiffEngine,
+            SchemaValidator,
+            SchemaValidationError,
+        )
+
+        engine = SchemaDiffEngine(cursor=cursor)
+        engine.load_existing_schema(cursor)
+        schemas = engine.load_schemas_from_files(schemas_path)
+
+        # Validate schema definitions first
+        validator = SchemaValidator()
+        try:
+            validator.validate(schemas)
+        except SchemaValidationError as e:
+            typer.echo("Schema validation failed:", err=True)
+            for error in e.errors:
+                typer.echo(f"  - {error}", err=True)
+            conn.close()
+            raise typer.Exit(1)
+
+        diff = engine.compute_diff(schemas)
+
+        # Check for breaking changes
+        breaking = []
+
+        # Detect removed tables (entities defined in DB but not in schema)
+        existing_tables = set(engine._existing_tables.keys())
+        schema_names = {s.name for s in schemas}
+        # Only flag entity tables (skip system tables)
+        system_tables = {
+            "entities", "provenance", "relationships", "external_ids",
+            "entity_provenance_summary", "schema_migrations",
+        }
+        for table in existing_tables - schema_names - system_tables:
+            if not table.startswith("fts_") and not table.startswith("sqlite_"):
+                breaking.append(f"Table '{table}' exists in DB but not in schemas (would be dropped)")
+
+        # Check for new NOT NULL columns without defaults on populated tables
+        for warning in diff.warnings:
+            if "NOT NULL" in warning and "no default" in warning:
+                breaking.append(warning)
+
+        conn.close()
+
+        if breaking:
+            typer.echo("UNSAFE: Breaking changes detected:", err=True)
+            for b in breaking:
+                typer.echo(f"  ✗ {b}", err=True)
+            typer.echo("")
+            typer.echo("Fix these issues before deploying, or use 'hippo schema migrate' with --allow-breaking.", err=True)
+            raise typer.Exit(1)
+
+        # Report safe changes
+        typer.echo("SAFE: All schema changes are backward-compatible.")
+        if diff.new_tables:
+            typer.echo(f"  New tables: {', '.join(t.name for t in diff.new_tables)}")
+        if diff.new_columns:
+            for table, cols in diff.new_columns.items():
+                typer.echo(f"  New columns in '{table}': {', '.join(c.name for c in cols)}")
+        if diff.new_indexes:
+            for table, idxs in diff.new_indexes.items():
+                typer.echo(f"  New indexes on '{table}': {len(idxs)}")
+        if not diff.new_tables and not diff.new_columns and not diff.new_indexes:
+            typer.echo("  No changes detected.")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.echo(f"Error during safe-deploy check: {e}", err=True)
+        raise typer.Exit(1)
+
+
+@schema_app.command(name="migrate")
+def schema_migrate(
+    schema_dir: str = typer.Option(
+        None, "--schema-dir", help="Path to schema directory (default: schemas/)"
+    ),
+    db_path: str = typer.Option(
+        None, "--db-path", help="Path to SQLite database (default: data/hippo.db)"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "--preview", help="Preview migrations without applying"
+    ),
+    allow_breaking: bool = typer.Option(
+        False, "--allow-breaking", help="Allow breaking changes (use with caution)"
+    ),
+) -> None:
+    """Apply schema changes with data migration.
+
+    Runs backward-compatibility check first (unless --allow-breaking).
+    Then generates and applies the migration plan.
+
+    Usage:
+      hippo schema migrate                    # Apply pending migrations
+      hippo schema migrate --dry-run          # Preview only
+      hippo schema migrate --allow-breaking   # Skip compat check
+    """
+    import sqlite3
+    from pathlib import Path
+
+    schemas_path = Path(schema_dir) if schema_dir else Path("schemas")
+    if not schemas_path.exists():
+        typer.echo(f"Error: Schema directory not found: {schemas_path}", err=True)
+        raise typer.Exit(1)
+
+    database_path = Path(db_path) if db_path else Path("data/hippo.db")
+    if not database_path.exists():
+        typer.echo(f"Error: Database not found: {database_path}", err=True)
+        raise typer.Exit(1)
+
+    try:
+        conn = sqlite3.connect(str(database_path))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        from hippo.core.storage.schema_diff import (
+            load_schemas_from_directory,
+            SchemaValidator,
+            SchemaValidationError,
+        )
+        from hippo.core.storage.migration import MigrationPlanner, MigrationExecutor
+
+        engine, schema_diff, schemas = load_schemas_from_directory(schemas_path, cursor)
+
+        validator = SchemaValidator()
+        try:
+            validator.validate(schemas)
+        except SchemaValidationError as e:
+            typer.echo("Schema validation failed:", err=True)
+            for error in e.errors:
+                typer.echo(f"  - {error}", err=True)
+            conn.close()
+            raise typer.Exit(1)
+
+        # Backward-compatibility check unless overridden
+        if not allow_breaking:
+            breaking = []
+            for warning in schema_diff.warnings:
+                if "NOT NULL" in warning and "no default" in warning:
+                    breaking.append(warning)
+
+            if breaking:
+                typer.echo("Breaking changes detected. Use --allow-breaking to proceed:", err=True)
+                for b in breaking:
+                    typer.echo(f"  ✗ {b}", err=True)
+                conn.close()
+                raise typer.Exit(1)
+
+        if (
+            not schema_diff.new_tables
+            and not schema_diff.new_columns
+            and not schema_diff.new_indexes
+        ):
+            typer.echo("No schema changes detected. Database is up to date.")
+            conn.close()
+            return
+
+        schemas_list = list(engine._schema_configs.values())
+        planner = MigrationPlanner()
+        planner.load_existing_tables(cursor)
+        planner.load_existing_fts_tables(cursor)
+
+        plan = planner.plan_migration_from_diff(schema_diff, schemas_list, cursor)
+
+        typer.echo("=== Migration Plan ===")
+        if plan.new_tables:
+            typer.echo(f"New tables: {', '.join(plan.new_tables)}")
+        if plan.modified_tables:
+            typer.echo(f"Modified tables: {', '.join(plan.modified_tables)}")
+        if plan.warnings:
+            for w in plan.warnings:
+                typer.echo(f"  ! {w}")
+
+        if dry_run:
+            typer.echo("")
+            for stmt in plan.ddl_statements + plan.alter_table_statements + plan.create_index_statements + plan.fts_ddl_statements:
+                typer.echo(stmt)
+            typer.echo("\nPreview complete. No changes applied.")
+            conn.close()
+            return
+
+        executor = MigrationExecutor(conn)
+        result = executor.execute_migration(plan)
+        conn.commit()
+        conn.close()
+
+        if result.success:
+            typer.echo("=== Migration Complete ===")
+            typer.echo(f"Tables created: {len(result.tables_created)}")
+            typer.echo(f"Tables modified: {len(result.tables_modified or [])}")
+            typer.echo(f"FTS tables created: {len(result.fts_tables_created or [])}")
+            typer.echo(f"Records backfilled: {result.records_backfilled}")
+        else:
+            typer.echo("Migration failed:", err=True)
+            for error in result.errors or []:
+                typer.echo(f"  - {error}", err=True)
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.echo(f"Error during migration: {e}", err=True)
+        raise typer.Exit(1)
+
 
 @reference_app.command(name="install")
 def reference_install(

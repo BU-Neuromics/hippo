@@ -123,8 +123,14 @@ class QueryService:
         date_to: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        filter_mode: str = "and",
     ) -> "PaginatedResult":
-        """Query entities with filter criteria."""
+        """Query entities with filter criteria.
+
+        Args:
+            filter_mode: How to combine filters — "and" (all must match,
+                default) or "or" (any may match).
+        """
         from hippo.core.types import PaginatedResult
 
         if self._storage is None:
@@ -138,6 +144,7 @@ class QueryService:
         query = Query(
             entity_type=entity_type,
             filters=filters or [],
+            filter_mode=filter_mode,
         )
 
         all_results = list(self._storage.find(query))

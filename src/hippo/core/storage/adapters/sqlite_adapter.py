@@ -1006,13 +1006,13 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
 
     def _get_provenance_store(self, conn: sqlite3.Connection) -> ProvenanceStore:
         """Get or create a ProvenanceStore for the given connection."""
-        if self._provenance_store is None:
+        if self._provenance_store is None or self._provenance_store._conn is not conn:
             self._provenance_store = ProvenanceStore(conn)
         return self._provenance_store
 
     def _get_relationship_store(self, conn: sqlite3.Connection) -> RelationshipStore:
         """Get or create a RelationshipStore for the given connection."""
-        if self._relationship_store is None:
+        if self._relationship_store is None or self._relationship_store._conn is not conn:
             self._relationship_store = RelationshipStore(conn)
         return self._relationship_store
 
@@ -1166,6 +1166,8 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
         with self._transaction() as conn:
             cursor = conn.cursor()
             now = datetime.now(timezone.utc).isoformat()
+            created_at = getattr(entity, "created_at", None) or now
+            updated_at = getattr(entity, "updated_at", None) or now
 
             cursor.execute(
                 """INSERT INTO entities (id, entity_type, is_available, version, data, created_at, updated_at)
@@ -1176,8 +1178,8 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
                     1,
                     entity.version if hasattr(entity, "version") else 1,
                     json.dumps(entity_data),
-                    now,
-                    now,
+                    created_at,
+                    updated_at,
                 ),
             )
 
@@ -1286,10 +1288,24 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
                 params.append(query.entity_type)
 
             if query.filters:
+                joiner = " OR " if getattr(query, "filter_mode", "and") == "or" else " AND "
+                filter_clauses = []
                 for f in query.filters:
-                    for key, value in f.items():
-                        sql += " AND data LIKE ?"
-                        params.append(f"%{key}%")
+                    if "field" in f and "value" in f:
+                        # Structured filter: {"field": "name", "operator": "eq", "value": "x"}
+                        field = f["field"]
+                        value = f["value"]
+                        filter_clauses.append("json_extract(data, ?) = ?")
+                        params.append(f"$.{field}")
+                        params.append(value)
+                    else:
+                        # Simple filter: {"name": "Alpha"}
+                        for key, value in f.items():
+                            filter_clauses.append("json_extract(data, ?) = ?")
+                            params.append(f"$.{key}")
+                            params.append(value)
+                if filter_clauses:
+                    sql += " AND (" + joiner.join(filter_clauses) + ")"
 
             if query.limit:
                 sql += f" LIMIT {query.limit}"

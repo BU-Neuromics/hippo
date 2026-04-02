@@ -37,6 +37,7 @@ async def search_entities(
     q: str = Query(..., description="Search query"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
     offset: int = Query(0, ge=0, description="Results to skip"),
+    filter_mode: str = Query("and", description="Filter composition: 'and' or 'or'"),
     auth: dict = Depends(require_auth),
 ) -> list[dict[str, Any]]:
     """Search entities using full-text search.

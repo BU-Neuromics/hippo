@@ -38,6 +38,14 @@ class AvailabilityRequest(BaseModel):
     is_available: bool
 
 
+class BulkAvailabilityRequest(BaseModel):
+    """Request body for bulk availability change."""
+
+    entity_ids: list[str]
+    is_available: bool
+    reason: Optional[str] = None
+
+
 @router.get("/{entity_id}/availability")
 async def get_entity_availability(
     entity_id: str,
@@ -104,3 +112,36 @@ async def set_entity_availability(
         }
     except EntityNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{entity_type}/bulk-availability")
+async def bulk_availability(
+    entity_type: str,
+    request: Request,
+    body: BulkAvailabilityRequest,
+    auth: dict = Depends(require_auth),
+) -> dict[str, Any]:
+    """Change availability status for multiple entities at once.
+
+    Args:
+        entity_type: The entity type.
+        request: FastAPI request object.
+        body: Bulk availability request with entity IDs and target status.
+        auth: Authentication context.
+
+    Returns:
+        Summary of successes and failures. Returns 207 on partial failure.
+    """
+    from starlette.responses import JSONResponse
+
+    client = await get_client(request)
+
+    result = client.set_availability_bulk(
+        entity_type=entity_type,
+        entity_ids=body.entity_ids,
+        is_available=body.is_available,
+        reason=body.reason,
+    )
+
+    status_code = 200 if result["failed"] == 0 else 207
+    return JSONResponse(content=result, status_code=status_code)

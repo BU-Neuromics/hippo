@@ -54,6 +54,7 @@ async def list_entities(
     entity_type: Optional[str] = Query(None, description="Filter by entity type"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
+    filter_mode: str = Query("and", description="Filter composition: 'and' (all match) or 'or' (any match)"),
     auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """List entities with optional filtering and pagination.
@@ -63,6 +64,7 @@ async def list_entities(
         entity_type: Optional entity type filter.
         limit: Maximum number of results to return.
         offset: Number of results to skip.
+        filter_mode: How to combine filters — "and" or "or".
         auth: Authentication context.
 
     Returns:
@@ -70,15 +72,12 @@ async def list_entities(
     """
     client = await get_client(request)
 
-    filters = []
-    if entity_type:
-        filters.append({"field": "entity_type", "operator": "eq", "value": entity_type})
-
     paginated = client.query(
         entity_type=entity_type or "entity",
-        filters=filters,
+        filters=[],
         limit=limit,
         offset=offset,
+        filter_mode=filter_mode,
     )
 
     return {
@@ -121,6 +120,48 @@ async def get_entity(
         return entity
     except EntityNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/{entity_type}/{entity_id}")
+async def replace_entity(
+    entity_type: str,
+    entity_id: str,
+    request: Request,
+    auth: dict = Depends(require_auth),
+) -> dict[str, Any]:
+    """Full replacement of an existing entity (PUT semantics).
+
+    All required fields must be present. Records a 'replaced' provenance
+    event. Returns 404 if the entity does not exist.
+
+    Args:
+        entity_type: The entity type.
+        entity_id: The ID of the entity to replace.
+        request: FastAPI request object.
+        auth: Authentication context.
+
+    Returns:
+        The replaced entity.
+
+    Raises:
+        HTTPException: 404 if entity not found, 422 if validation fails.
+    """
+    client = await get_client(request)
+    body = await request.json()
+
+    try:
+        result = client.replace(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            data=body,
+        )
+        return result
+    except EntityNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        if "validation" in str(type(e).__name__).lower():
+            raise HTTPException(status_code=422, detail=str(e))
+        raise
 
 
 @router.delete("/{entity_id}")

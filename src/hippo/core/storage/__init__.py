@@ -41,11 +41,13 @@ class Query:
         filters: Optional[list[dict[str, Any]]] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        filter_mode: str = "and",
     ):
         self.entity_type = entity_type
         self.filters = filters or []
         self.limit = limit
         self.offset = offset
+        self.filter_mode = filter_mode  # "and" or "or"
 
 
 class EntityStore(ABC, Generic[T]):

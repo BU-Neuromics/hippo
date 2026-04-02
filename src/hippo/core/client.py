@@ -255,6 +255,23 @@ class HippoClient:
 
         return True
 
+    def replace(
+        self,
+        entity_type: str,
+        entity_id: str,
+        data: dict[str, Any],
+        bypass_validation: Optional[bool] = None,
+    ) -> dict[str, Any]:
+        """Full replacement of an existing entity (PUT semantics).
+
+        Unlike update/put which merge or upsert, replace requires the entity
+        to already exist and overwrites all fields. Records a 'replaced'
+        provenance event. Returns 404 if entity does not exist.
+        """
+        return self._ingestion_service.replace(
+            entity_type, entity_id, data, bypass_validation
+        )
+
     def create(
         self,
         entity_type: str,
@@ -316,6 +333,23 @@ class HippoClient:
 
         return self._delete_internal(entity_type, entity_id)
 
+    def set_availability_bulk(
+        self,
+        entity_type: str,
+        entity_ids: list[str],
+        is_available: bool,
+        reason: Optional[str] = None,
+        actor: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Change availability status for multiple entities at once.
+
+        Returns a summary with per-entity successes and failures.
+        Records provenance events for each changed entity.
+        """
+        return self._ingestion_service.set_availability_bulk(
+            entity_type, entity_ids, is_available, reason, actor
+        )
+
     # -- QueryService delegations --
 
     def get(
@@ -338,10 +372,16 @@ class HippoClient:
         date_to: Optional[str] = None,
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        filter_mode: str = "and",
     ) -> "PaginatedResult":
-        """Query entities with filter criteria."""
+        """Query entities with filter criteria.
+
+        Args:
+            filter_mode: How to combine filters — "and" (all must match,
+                default) or "or" (any may match).
+        """
         return self._query_service.query(
-            entity_type, filters, date_from, date_to, limit, offset
+            entity_type, filters, date_from, date_to, limit, offset, filter_mode
         )
 
     def search(
