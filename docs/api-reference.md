@@ -85,7 +85,7 @@ client = HippoClient(
 | `validate(operation)` | Validate a write operation using the pipeline |
 | `add_validator(validator)` | Add a validator to the client's pipeline |
 | `create(entity_type, data, bypass_validation=None)` | Create an entity with validation |
-| `update(entity_type, entity_id, data, bypass_validation=None)` | Update an entity with validation |
+| `update(entity_type, entity_id, data, bypass_validation=None, actor=None, provenance_context=None)` | Update an entity with validation |
 | `delete(entity_type, entity_id, bypass_validation=None)` | Delete an entity with validation |
 
 **Usage Example:**
@@ -108,6 +108,14 @@ except ValidationFailure as e:
 
 # Update an entity
 entity = client.update("Sample", "123", {"name": "Updated"})
+
+# Update with actor and provenance context
+entity = client.update(
+    "Sample", "123",
+    {"name": "Updated"},
+    actor="pipeline-run-456",
+    provenance_context={"reason": "Corrected tissue annotation"}
+)
 
 # Delete an entity
 client.delete("Sample", "123")
@@ -285,6 +293,65 @@ Authorization: Bearer <token>
 
 Requests missing this header or using an invalid format receive a `401 Unauthorized` response.
 
+### Request Headers for Writes
+
+All write endpoints (`POST`, `PUT`, `DELETE`) accept the following optional headers for provenance tracking:
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-Hippo-Actor` | Required on writes | Identity of the actor performing the write. Defaults to `"anonymous"` in v0.1 if omitted |
+| `X-Hippo-Context` | Optional | JSON-encoded provenance context (e.g., `{"pipeline": "rnaseq-v2", "run_id": "abc"}`) |
+
+**Example:**
+
+```bash
+curl -X POST http://127.0.0.1:8000/ingest \
+  -H "Authorization: Bearer dev-token" \
+  -H "X-Hippo-Actor: pipeline-run-789" \
+  -H "X-Hippo-Context: {\"pipeline\": \"rnaseq-v2\", \"run_id\": \"abc\"}" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_type": "Sample", "data": {...}}'
+```
+
+### Response Envelope
+
+All REST endpoints return responses in a standard envelope format:
+
+```json
+{
+  "data": { ... },
+  "error": null,
+  "meta": {
+    "schema_version": "1.1",
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | `object \| array \| null` | The response payload. `null` when an error occurs |
+| `error` | `object \| null` | Error details when the request fails. `null` on success |
+| `meta` | `object` | Request metadata including `schema_version` and a unique `request_id` |
+
+Error responses use the same envelope with `data` set to `null`:
+
+```json
+{
+  "data": null,
+  "error": {
+    "code": 404,
+    "message": "Entity not found: sample-999"
+  },
+  "meta": {
+    "schema_version": "1.1",
+    "request_id": "550e8400-e29b-41d4-a716-446655440001"
+  }
+}
+```
+
+---
+
 ### Health
 
 | Method | Path | Description |
@@ -299,8 +366,12 @@ Returns health status of the service.
 *Response:*
 ```json
 {
-  "status": "healthy",
-  "service": "hippo"
+  "data": {
+    "status": "healthy",
+    "service": "hippo"
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -311,9 +382,13 @@ Returns API information.
 *Response:*
 ```json
 {
-  "service": "Hippo API",
-  "version": "0.1.0",
-  "docs": "/docs"
+  "data": {
+    "service": "Hippo API",
+    "version": "0.5.0",
+    "docs": "/docs"
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -327,6 +402,7 @@ Returns API information.
 |--------|------|-------------|
 | GET | `/entities` | List entities with filtering |
 | GET | `/entities/{entity_id}` | Get entity by ID |
+| PUT | `/entities/{entity_type}/{entity_id}` | Update an existing entity |
 | DELETE | `/entities/{entity_id}` | Soft delete an entity |
 
 **GET /entities**
@@ -339,14 +415,65 @@ List entities with optional filtering and pagination.
 | `entity_type` | string | Filter by entity type |
 | `limit` | int | Max results (1-1000, default: 100) |
 | `offset` | int | Results to skip (default: 0) |
+| `tissue_type` | string | Filter by field value (repeat for OR: `?tissue_type=brain&tissue_type=liver`) |
+| `filter` | string | CEL filter expression (URL-encoded). Example: `?filter=data.age_at_collection%20%3E%2018` |
+
+*Multi-value parameters (OR within a field):*
+
+Repeat a query parameter to match any of the provided values (OR logic):
+
+```
+GET /entities?entity_type=Sample&tissue_type=brain&tissue_type=liver
+```
+
+This returns samples where `tissue_type` is `"brain"` OR `"liver"`.
+
+*CEL filter parameter:*
+
+Use the `filter` parameter for advanced filtering with CEL (Common Expression Language) expressions:
+
+```
+GET /entities?entity_type=Sample&filter=data.age_at_collection%20%3E%2018
+```
+
+The CEL expression context provides the following variables:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `data` | object | The entity's user-defined data fields |
+| `id` | string | The entity's internal ID |
+| `is_available` | bool | The entity's availability status |
+| `created_at` | timestamp | When the entity was created |
+| `updated_at` | timestamp | When the entity was last modified |
+
+*SDK equivalents:*
+
+```python
+# Multi-value OR filter
+results = client.query("Sample", tissue_type=["brain", "liver"])
+
+# CEL filter
+results = client.query("Sample", filter='data.age_at_collection > 18')
+
+# Combined
+results = client.query(
+    "Sample",
+    tissue_type=["brain", "liver"],
+    filter='data.rin_score >= 7.0'
+)
+```
 
 *Response:*
 ```json
 {
-  "items": [],
-  "total": 0,
-  "limit": 100,
-  "offset": 0
+  "data": {
+    "items": [],
+    "total": 0,
+    "limit": 100,
+    "offset": 0
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -368,6 +495,73 @@ Get an entity by ID.
 
 *Error Codes:* `404` - Entity not found
 
+**PUT /entities/{entity_type}/{entity_id}**
+
+Explicit update of an existing entity. Unlike the `POST /ingest` upsert endpoint, this requires the entity to already exist and returns `404` if it does not. Supports partial update semantics — only the fields included in the request body are modified.
+
+*Path Parameters:*
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `entity_type` | string | Entity type (e.g., `Sample`, `Donor`) |
+| `entity_id` | string | Entity ID |
+
+*Request Headers:*
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-Hippo-Actor` | Required | Identity of the actor performing the update |
+| `X-Hippo-Context` | Optional | JSON-encoded provenance context |
+
+*Request Body:*
+```json
+{
+  "data": {
+    "brain_region": "Temporal Cortex",
+    "notes": "Updated region annotation"
+  }
+}
+```
+
+*Response:*
+```json
+{
+  "data": {
+    "id": "donor-1",
+    "entity_type": "Donor",
+    "data": {
+      "donor_id": "AD-001",
+      "name": "Subject AD-001",
+      "age": 78,
+      "sex": "M",
+      "diagnosis": "Alzheimer's Disease",
+      "brain_region": "Temporal Cortex",
+      "notes": "Updated region annotation"
+    },
+    "version": 2,
+    "created_at": "2026-03-17T10:30:00Z",
+    "updated_at": "2026-03-17T11:15:00Z",
+    "is_available": true
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
+}
+```
+
+*Error Codes:*
+- `404` - Entity not found (entity must already exist)
+- `422` - Validation failure
+
+*SDK Equivalent:*
+
+```python
+# Update an existing entity
+entity = client.update(
+    "Donor", "donor-1",
+    {"brain_region": "Temporal Cortex", "notes": "Updated region annotation"},
+    actor="user@example.com",
+    provenance_context={"reason": "Corrected region annotation"}
+)
+```
+
 **DELETE /entities/{entity_id}**
 
 Soft delete an entity (sets `is_available` to false).
@@ -380,8 +574,12 @@ Soft delete an entity (sets `is_available` to false).
 *Response:*
 ```json
 {
-  "status": "deleted",
-  "entity_id": "entity-123"
+  "data": {
+    "status": "deleted",
+    "entity_id": "entity-123"
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -473,10 +671,14 @@ Create a relationship between two entities.
 *Response:*
 ```json
 {
-  "id": "entity-123->entity-456:contains",
-  "source_entity_id": "entity-123",
-  "target_entity_id": "entity-456",
-  "relationship_type": "contains"
+  "data": {
+    "id": "entity-123->entity-456:contains",
+    "source_entity_id": "entity-123",
+    "target_entity_id": "entity-456",
+    "relationship_type": "contains"
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -495,8 +697,12 @@ Delete a relationship by its ID.
 *Response:*
 ```json
 {
-  "status": "deleted",
-  "relationship_id": "entity-123->entity-456:contains"
+  "data": {
+    "status": "deleted",
+    "relationship_id": "entity-123->entity-456:contains"
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -506,11 +712,11 @@ Delete a relationship by its ID.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/ingest` | Create a new entity |
+| POST | `/ingest` | Create or upsert an entity |
 
 **POST /ingest**
 
-Create a new entity via the ingestion endpoint.
+Create a new entity via the ingestion endpoint. If an entity with the same ID already exists, this performs an upsert.
 
 *Request Body:*
 ```json
@@ -578,9 +784,13 @@ Create a new schema.
 *Response:*
 ```json
 {
-  "name": "Sample",
-  "version": "1.0",
-  "status": "created"
+  "data": {
+    "name": "Sample",
+    "version": "1.0",
+    "status": "created"
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -710,8 +920,12 @@ Get the availability status of an entity.
 *Response:*
 ```json
 {
-  "entity_id": "entity-123",
-  "is_available": true
+  "data": {
+    "entity_id": "entity-123",
+    "is_available": true
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -736,8 +950,12 @@ Set the availability status of an entity.
 *Response:*
 ```json
 {
-  "entity_id": "entity-123",
-  "is_available": false
+  "data": {
+    "entity_id": "entity-123",
+    "is_available": false
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
 }
 ```
 
@@ -745,10 +963,97 @@ Set the availability status of an entity.
 
 ---
 
+### Bulk Availability
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/entities/{entity_type}/bulk-availability` | Set availability on multiple entities |
+
+**POST /entities/{entity_type}/bulk-availability**
+
+Set the availability status on multiple entities of the same type in a single request. Errors are isolated per record — a failure on one entity does not prevent others from being updated.
+
+*Path Parameters:*
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `entity_type` | string | Entity type (e.g., `Sample`, `Donor`) |
+
+*Request Headers:*
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-Hippo-Actor` | Required | Identity of the actor performing the operation |
+| `X-Hippo-Context` | Optional | JSON-encoded provenance context |
+
+*Request Body:*
+```json
+{
+  "entity_ids": ["sample-1", "sample-2", "sample-3"],
+  "available": false,
+  "reason": "Batch archived after QC failure",
+  "actor": "qc-pipeline-v3"
+}
+```
+
+*Response (all succeeded):*
+```json
+{
+  "data": {
+    "updated": 3,
+    "errors": []
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
+}
+```
+
+*Response (partial failure):*
+```json
+{
+  "data": {
+    "updated": 2,
+    "errors": [
+      {
+        "entity_id": "sample-3",
+        "code": 404,
+        "message": "Entity not found: sample-3"
+      }
+    ]
+  },
+  "error": null,
+  "meta": { "schema_version": "1.1", "request_id": "uuid" }
+}
+```
+
+*Error Codes:*
+- `200` - All entities updated successfully
+- `207` - Partial success (some entities failed; see `errors` array)
+- `404` - Unknown entity type
+
+*SDK Equivalent:*
+
+```python
+# Set availability on multiple entities
+result = client.set_availability_bulk(
+    entity_type="Sample",
+    entity_ids=["sample-1", "sample-2", "sample-3"],
+    available=False,
+    reason="Batch archived after QC failure",
+    actor="qc-pipeline-v3"
+)
+
+print(f"Updated: {result['updated']}")
+for err in result['errors']:
+    print(f"  Failed: {err['entity_id']} — {err['message']}")
+```
+
+---
+
 ### Error Codes Summary
 
 | Code | Description |
 |------|-------------|
+| `200` | OK - Request succeeded |
+| `207` | Multi-Status - Partial success (bulk operations) |
 | `400` | Bad Request - Invalid JSON format |
 | `401` | Unauthorized - Missing or invalid Bearer token |
 | `404` | Not Found - Entity/Schema not found |
