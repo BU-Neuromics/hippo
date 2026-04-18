@@ -1,0 +1,113 @@
+id: https://w3id.org/hippo/hippo_ext
+name: hippo_ext
+title: Hippo Annotation Extension Vocabulary
+description: >-
+  Formal declaration of the hippo_* annotations consumed by Hippo's schema
+  pipeline, DDL generators, validators, and typed client. This schema owns
+  no classes, slots, or enums of its own — only annotation declarations.
+  Every hippo_* annotation used in any Hippo-managed schema MUST be declared
+  here. See sec9 §9.4 of the Hippo design spec for the design rationale.
+
+license: https://creativecommons.org/publicdomain/zero/1.0/
+version: 0.1.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  hippo: https://w3id.org/hippo/
+  xsd: http://www.w3.org/2001/XMLSchema#
+
+default_prefix: hippo
+default_range: string
+
+imports:
+  - linkml:types
+
+#
+# Annotation declarations
+#
+# LinkML's annotation metamodel lets us declare each hippo_* key as an
+# AnnotationDefinition with a declared value_type, applies_to target kind,
+# and cardinality. SchemaRegistry uses this declaration to validate every
+# hippo_* use at load time.
+#
+# The declarations below are authoritative — if an annotation is used in
+# any Hippo-managed schema but not declared here, schema load fails.
+#
+annotations:
+
+  hippo_unique:
+    description: >-
+      Emit a single-column UNIQUE constraint for this slot at the storage
+      layer. For composite uniqueness across multiple slots, use LinkML's
+      native `unique_keys` on the class instead.
+    range: boolean
+    ifabsent: "false"
+    applies_to: [slot]
+
+  hippo_index:
+    description: >-
+      Emit a single-column index for this slot. Adapters honor this
+      annotation via their DDL shim; see sec9 §9.10.
+    range: boolean
+    ifabsent: "false"
+    applies_to: [slot]
+
+  hippo_index_partial:
+    description: >-
+      When `hippo_index: true`, emit the index as partial with
+      `WHERE is_available = 1`. Has no effect unless `hippo_index` is true
+      on the same slot. Used to keep index size small for slots on
+      large tables where only active entities need fast lookup.
+    range: boolean
+    ifabsent: "false"
+    applies_to: [slot]
+
+  hippo_search:
+    description: >-
+      Include this slot in a full-text search index of the declared mode.
+      Current supported mode: `fts5` (SQLite). Adapters that do not
+      support the requested mode fail at startup with a clear error.
+    range: hippo_search_mode
+    applies_to: [slot]
+
+  hippo_append_only:
+    description: >-
+      Storage adapter MUST reject updates and deletes on rows of this
+      class. Used by `ProvenanceRecord` and any caller-declared log-shaped
+      entity. Enforcement is runtime in the adapter — LinkML annotations
+      declare intent; the adapter honors. See sec9 §9.6.
+    range: boolean
+    ifabsent: "false"
+    applies_to: [class]
+
+  hippo_summary_view:
+    description: >-
+      Emit a summary view of the named shape alongside the entity table.
+      Value is the shape name (e.g., `count`, `aggregate`). Adapter-specific
+      implementation. Reserved for explicit opt-in when the current
+      "views for every non-abstract class" behavior (see view_generator.py)
+      is narrowed to annotation-driven opt-in.
+    range: string
+    applies_to: [class]
+
+  hippo_accessor:
+    description: >-
+      Override the derived typed-client accessor name for this class.
+      The default derivation is `snake_case(ClassName) + "s"`; this
+      annotation overrides it. Optional escape hatch used only when the
+      default produces a collision or when a deployment prefers a
+      non-default name. See sec9 §9.8.
+    range: string
+    applies_to: [class]
+
+#
+# Enum range for hippo_search
+#
+enums:
+  hippo_search_mode:
+    description: Supported full-text search modes.
+    permissible_values:
+      fts5:
+        description: >-
+          SQLite FTS5 full-text index. The only currently-supported mode.
+          Additional modes will be added as adapters gain support.

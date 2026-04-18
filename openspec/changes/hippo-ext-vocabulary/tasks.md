@@ -46,6 +46,17 @@
 - [ ] 6.2 Audit Python code for hardcoded `hippo_*` annotation reading that bypasses `SchemaRegistry` — eliminate in favor of the registry path.
 - [ ] 6.3 Run the full test suite against the new load-time validation to catch any previously-silent mistakes.
 
+## 6b. Retire `hippo_default` (prerequisite for the declaration)
+
+- [ ] 6b.1 Grep every user-schema YAML for `hippo_default` and migrate each usage to LinkML's `ifabsent`. Literal value → `ifabsent: "<literal>"`; for non-literal defaults like UUIDs or timestamps, use `ifabsent: uuid()` / `datetime(now)` / `int(0)` as appropriate.
+- [ ] 6b.2 Remove `HIPPO_DEFAULT` constant from `src/hippo/linkml_bridge.py`.
+- [ ] 6b.3 Update `src/hippo/core/storage/ddl_generator.py` to read `slot.ifabsent` instead of `annotation_value(slot, HIPPO_DEFAULT)`.
+- [ ] 6b.4 Same update for `src/hippo/core/storage/pg_ddl_generator.py`.
+- [ ] 6b.5 Same update for `src/hippo/core/storage/migration.py` and `src/hippo/core/storage/pg_migration.py`.
+- [ ] 6b.6 Same update for `src/hippo/core/storage/schema_diff.py` (which reads the string literal `"hippo_default"` — replace with `slot.ifabsent`).
+- [ ] 6b.7 Run the existing tests for DDL generation, migration, and schema_diff; ensure `ifabsent` produces equivalent DDL to what `hippo_default` produced.
+- [ ] 6b.8 Confirm: after this sub-task, declaring `hippo_ext.yaml` without `hippo_default` is safe (no schema or code uses it).
+
 ## 7. Acceptance check
 
 - [ ] 7.1 `SchemaRegistry` fails to load a schema with an undeclared `hippo_*` annotation and the error names the offending element.

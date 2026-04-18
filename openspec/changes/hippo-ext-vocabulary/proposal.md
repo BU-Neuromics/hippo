@@ -70,6 +70,19 @@ Missing annotations fall back to their declared default. Annotations without a d
 
 - `hippo-data-model` — documents that every `hippo_*` annotation has a formal declaration in `hippo_ext`.
 
+## Migration: retire `hippo_default`
+
+`hippo_default` is currently read by the SQLite and PostgreSQL DDL generators, the migration module, and schema_diff (see `src/hippo/core/storage/{ddl_generator,pg_ddl_generator,migration,pg_migration,schema_diff}.py` and the `HIPPO_DEFAULT` constant in `src/hippo/linkml_bridge.py`). sec9 §9.4 *removes* `hippo_default` in favor of LinkML's native `ifabsent`.
+
+Declaring `hippo_ext.yaml` without `hippo_default` would break any user schema that currently uses it. To keep this change self-contained:
+
+- Audit existing user schemas for `hippo_default` usage. Migrate each to `ifabsent` (literal value → quoted string; `uuid()`, `datetime(now)`, `int(0)` for the constructor forms where applicable).
+- Delete the `HIPPO_DEFAULT` constant from `linkml_bridge.py`.
+- Update the DDL generators (both adapters) and migration/diff paths to consume `slot.ifabsent` instead of the `hippo_default` annotation. LinkML's `SlotDefinition` already exposes `ifabsent`; the DDL shim simply reads that instead.
+- After the migration, declaring `hippo_ext.yaml` without `hippo_default` is safe — no schema uses the removed annotation.
+
+This migration is part of this change, not a separate OpenSpec. The proposal's scope stays "formalize the vocabulary" with the retire-`hippo_default` work as a prerequisite handled within.
+
 ## Open Questions
 
 None for this change — all design questions are resolved in sec9 §9.4.
