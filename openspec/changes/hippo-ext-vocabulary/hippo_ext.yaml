@@ -70,25 +70,11 @@ annotations:
     range: hippo_search_mode
     applies_to: [slot]
 
-  hippo_append_only:
-    description: >-
-      Storage adapter MUST reject updates and deletes on rows of this
-      class. Used by `ProvenanceRecord` and any caller-declared log-shaped
-      entity. Enforcement is runtime in the adapter — LinkML annotations
-      declare intent; the adapter honors. See sec9 §9.6.
-    range: boolean
-    ifabsent: "false"
-    applies_to: [class]
-
-  hippo_accessor:
-    description: >-
-      Override the derived typed-client accessor name for this class.
-      The default derivation is `snake_case(ClassName) + "s"`; this
-      annotation overrides it. Optional escape hatch used only when the
-      default produces a collision or when a deployment prefers a
-      non-default name. See sec9 §9.8.
-    range: string
-    applies_to: [class]
+  # hippo_append_only and hippo_accessor are declared by later changes
+  # alongside their consumers:
+  #   - hippo_append_only: introduced by `provenance-as-linkml-class` (Wave 2)
+  #   - hippo_accessor:    introduced by `typed-client` (Wave 3)
+  # See sec9 §9.12 for the schedule.
 
 #
 # Enum range for hippo_search

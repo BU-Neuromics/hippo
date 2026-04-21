@@ -2,11 +2,11 @@
 
 ## Why
 
-Hippo's `hippo_*` annotations (`hippo_unique`, `hippo_index`, `hippo_index_partial`, `hippo_search`, `hippo_append_only`, `hippo_accessor`) currently live as stringly-typed keys inside LinkML `annotations:` blocks on user schemas. There is no formal declaration, no typed values, no `applies_to` constraint, and no versioning. Adding a new annotation is a convention, not a contract; misspelling an annotation silently does nothing.
+Hippo's `hippo_*` annotations (`hippo_unique`, `hippo_index`, `hippo_index_partial`, `hippo_search`) currently live as stringly-typed keys inside LinkML `annotations:` blocks on user schemas. There is no formal declaration, no typed values, no `applies_to` constraint, and no versioning. Adding a new annotation is a convention, not a contract; misspelling an annotation silently does nothing.
 
 sec9 §9.4 formalizes the vocabulary as a shipped-with-Hippo LinkML schema (`hippo_ext.yaml`) that every `hippo_*` annotation must be declared in. Every use is validated at `SchemaRegistry` load time against this declaration.
 
-This change is Wave 1 change #1 per sec9 §9.12 — foundation, no other changes depend on LinkML primitives yet. No observable SDK behavior changes; this is strictly a load-time validation improvement.
+This change is Wave 1 change #1 per sec9 §9.12 — foundation, no other changes depend on LinkML primitives yet. It establishes the vocabulary *system* and declares the four annotations with existing consumers today. Later changes that introduce new consumers (`provenance-as-linkml-class` adds `hippo_append_only`; `typed-client` adds `hippo_accessor`) extend `hippo_ext` alongside their consumer code, bumping the schema's minor version each time per sec9 §9.4's extensibility process. No observable SDK behavior changes; this is strictly a load-time validation improvement.
 
 ## What Changes
 
@@ -27,14 +27,14 @@ Each declared annotation carries:
 
 ### Initial vocabulary
 
+The initial vocabulary declares the four annotations that have live consumers today. Two further annotations (`hippo_append_only`, `hippo_accessor`) join `hippo_ext` in later waves — each declared by the change that introduces its consumer, per sec9 §9.4's add-an-annotation process.
+
 | Annotation | Applies to | Value type | Default | Purpose |
 |---|---|---|---|---|
 | `hippo_unique` | slot | boolean | `false` | Single-column `UNIQUE` constraint. |
 | `hippo_index` | slot | boolean | `false` | Single-column index. |
 | `hippo_index_partial` | slot | boolean | `false` | Makes `hippo_index` a partial index with `WHERE is_available = 1`. No effect unless `hippo_index: true`. |
 | `hippo_search` | slot | enum (`fts5`) | *(none)* | Include in a full-text index of the declared mode. |
-| `hippo_append_only` | class | boolean | `false` | Storage adapter MUST reject updates and deletes on rows of this class. |
-| `hippo_accessor` | class | string | *(derived)* | Override the typed-client accessor name (see 9.8). Optional escape hatch. |
 
 ### New reference doc: `design/reference_hippo_ext.md`
 

@@ -49,6 +49,15 @@ Review this file before sec9 is considered approved. If any decision is unwelcom
 - **Actions landed:** Deleted `src/hippo/core/storage/view_generator.py`; removed the `generate_summary_views` call and import from `src/hippo/core/storage/migration.py`; removed `TestSummaryViews` from `tests/integration/test_partial_indexes_and_views.py` (partial-index tests retained, module docstring updated); removed the annotation from the sec9 §9.3 ASCII diagram, the sec9 §9.4 vocabulary table, and the sec9 §9.10 DDL-shim list; removed it from the `hippo-ext-vocabulary` proposal / tasks / draft `hippo_ext.yaml`; removed it from the `reference_hippo_ext.md` annotation list in `INDEX.md`.
 - **Revert:** `view_generator.py` remains in git history (reachable from any commit before this one). To resurrect, restore the file, reinstate the call in `migration.py`, re-declare the annotation with a chosen option (A/B/C). The design-doc changes revert mechanically via `git revert`.
 
+### Decision 9.4.B — Declare each annotation alongside its consumer; Wave 1 declares only annotations with live consumers [NEW 2026-04-19]
+
+- **Finding (from the 2026-04-18 autonomous session):** `hippo_append_only` and `hippo_accessor` were drafted into `hippo_ext.yaml` during the Wave 1 `hippo-ext-vocabulary` change even though their consumers don't land until Wave 2 (`provenance-as-linkml-class`) and Wave 3 (`typed-client`) respectively. This leaves two annotations documented-but-inert for the duration between their declaration and their consumer.
+- **Alternatives considered:** (A) declare all annotations up front in `hippo-ext-vocabulary`, with consumer wiring following in later waves; (B) declare each annotation with its consumer, bumping `hippo_ext`'s minor version in each change that adds one.
+- **Chosen:** (B). Each OpenSpec change carrying both its annotation declaration and its consumer is more atomic. An agent reading `hippo_ext.yaml` at any point in time sees only live annotations, matching 9.2's principle that schema reflects actual behavior.
+- **Consequences:** Wave 1 `hippo-ext-vocabulary` declares four annotations (`hippo_unique`, `hippo_index`, `hippo_index_partial`, `hippo_search`). Wave 2 `provenance-as-linkml-class` extends `hippo_ext` with `hippo_append_only`. Wave 3 `typed-client` extends with `hippo_accessor`. Each extension follows sec9 §9.4's four-step process (declare, implement, document, bump minor).
+- **Actions landed:** Removed `hippo_append_only` and `hippo_accessor` from the Wave 1 draft `hippo_ext.yaml` (with a comment pointer to their owning changes). Updated the `hippo-ext-vocabulary` proposal's "Why" line, initial-vocabulary table, and tasks.md §1.2 to reflect four initial annotations. Updated sec9 §9.12's scope/deliverables/acceptance columns for `provenance-as-linkml-class` and `typed-client` to include their respective `hippo_ext` extension.
+- **Revert:** Declare both annotations up front in Wave 1 (option A). Update the three Wave 1 files and the two §9.12 rows. Low blast radius.
+
 ---
 
 ## 9.8 Typed Client

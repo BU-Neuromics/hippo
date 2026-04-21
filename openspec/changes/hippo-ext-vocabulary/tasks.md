@@ -3,7 +3,7 @@
 ## 1. Design the `hippo_ext.yaml` schema
 
 - [ ] 1.1 Locate the ship-with-Hippo schema directory (or create `src/hippo/schemas/` if not present) and decide the canonical install path for `hippo_ext.yaml`.
-- [ ] 1.2 Author `hippo_ext.yaml` as a LinkML schema declaring the six initial annotations as `Annotation` instances per LinkML's metamodel: `hippo_unique`, `hippo_index`, `hippo_index_partial`, `hippo_search`, `hippo_append_only`, `hippo_accessor`.
+- [ ] 1.2 Author `hippo_ext.yaml` as a LinkML schema declaring the four initial annotations as `Annotation` instances per LinkML's metamodel: `hippo_unique`, `hippo_index`, `hippo_index_partial`, `hippo_search`. `hippo_append_only` and `hippo_accessor` are declared by later changes alongside their consumers (see sec9 §9.12).
 - [ ] 1.3 For each annotation, set: `value_type`, `applies_to`, `cardinality` (singleton), `default` (where applicable), and a `description` sourced from sec9 §9.4.
 - [ ] 1.4 Declare `hippo_search` with an enumerated `value_type` (initially `fts5`; extensible).
 - [ ] 1.5 Add an `id:` URI and a `version:` attribute to `hippo_ext.yaml`; version starts at `0.1.0` (minor-bump discipline per sec9 §9.3).
