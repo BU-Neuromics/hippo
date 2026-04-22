@@ -16,6 +16,11 @@ from hippo.core.validation.validators import (
     WriteValidator,
 )
 from hippo.linkml_bridge import SchemaRegistry
+from hippo.core.typed_client import (
+    Namespace,
+    build_typed_surface,
+    generate_pydantic_models,
+)
 
 
 class HippoClient:
@@ -90,6 +95,40 @@ class HippoClient:
         self._bypass_validation = bypass_validation
         self._registry = registry
         self._fts_table_metadata = self._schema_manager.fts_table_metadata
+
+        # sec9 §9.8 typed-client surface. Generated at load time when a
+        # registry is available. Pydantic class generation is best-
+        # effort — failures yield empty models and the accessor tree
+        # still works against plain dicts.
+        self._typed_root: Optional[Namespace] = None
+        self._models: dict[str, type] = {}
+        if registry is not None:
+            self._models = generate_pydantic_models(registry)
+            self._typed_root = build_typed_surface(
+                self, registry, models=self._models
+            )
+            self._install_typed_accessors()
+
+    def _install_typed_accessors(self) -> None:
+        """Expose typed accessors on ``self`` for flat root access, plus
+        the explicit ``self.root`` alias. Non-root namespaces land as
+        nested attributes (``self.tissue.samples.create(...)``).
+        """
+        if self._typed_root is None:
+            return
+        root = self._typed_root
+        # Flat root-namespace access
+        for name, accessor in root._accessors.items():
+            setattr(self, name, accessor)
+        for name, sub in root._subnamespaces.items():
+            setattr(self, name, sub)
+        # Explicit `client.root` alias for root-namespace classes only —
+        # presents the same accessors without the sub-namespaces.
+        root_alias = Namespace("root")
+        for name, accessor in root._accessors.items():
+            root_alias._accessors[name] = accessor
+            setattr(root_alias, name, accessor)
+        self.root = root_alias  # type: ignore[attr-defined]
 
     # -- Property accessors (backwards compatibility) --
 

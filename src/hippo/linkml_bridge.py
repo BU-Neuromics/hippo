@@ -31,6 +31,8 @@ HIPPO_INDEX = "hippo_index"
 HIPPO_INDEX_PARTIAL = "hippo_index_partial"
 HIPPO_UNIQUE = "hippo_unique"
 HIPPO_APPEND_ONLY = "hippo_append_only"
+HIPPO_ACCESSOR = "hippo_accessor"
+HIPPO_NAMESPACE = "hippo_namespace"
 
 HIPPO_ANNOTATION_PREFIX = "hippo_"
 _CLASS_ANNOTATION_SUBSET = "class_annotation"

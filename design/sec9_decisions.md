@@ -263,6 +263,15 @@ Review this file before sec9 is considered approved. If any decision is unwelcom
 - **Why:** Dynamic use cases (runtime schema discovery, tools, admin CLIs) need the generic client. No feature should land in one without the other.
 - **Revert:** N/A — reversing this principle requires revisiting 9.2.
 
+### Decision 9.8.H — Pydantic generation failures degrade to dict-only accessors with a WARNING log, not an exception [NEW 2026-04-22]
+
+- **Finding (typed-client implementation):** `PydanticGenerator` is a separate LinkML tool from `SchemaView` — it can fail for schemas that `SchemaView` accepts (unusual type references, generator quirks, LinkML version mismatches). Raising at schema load would make the typed client a hard dependency on the generator being happy with every schema.
+- **Alternatives considered:** (A) Raise on generation failure — hard-dep, typed client is all-or-nothing. (B) Swallow silently — accessors still work against dicts but a failed generation is invisible to the operator. (C) Log a WARNING and degrade to dict-only — accessors still work, operators can diagnose, no exception surface.
+- **Chosen:** (C). `generate_pydantic_models()` catches the four failure points (generator import, schema serialization, Pydantic import, generated-code execution) and logs `logger.warning(...)` in each branch. `EntityAccessor.model_class` is `None` for classes that failed; `accessor.create({...})` with a dict still works; only `accessor.create(MyPydanticClass(...))` requires the Pydantic class to have been generated.
+- **Why (C) over (A):** Raising would make typed-client opt-in on a per-schema basis — deployments with an unusual schema would have to disable it. The proposal treats typed-client as default-on.
+- **Why (C) over (B):** Silent failure with zero generated models is a debug nightmare (user sees empty `model_class`, no hint why). The warning log is the minimum observability.
+- **Revert:** Raise in `generate_pydantic_models()` on any exception. Backward-visible as a stricter typed-client surface; deployments with flaky schemas would need to opt out.
+
 ---
 
 ## 9.9 Validation Division of Labor

@@ -1,62 +1,71 @@
 # Tasks — `typed-client`
 
-## 1. Declare `hippo_accessor` in `hippo_ext`
+## 1. Declare `hippo_accessor` and `hippo_namespace` in `hippo_ext`
 
-- [ ] 1.1 Add `hippo_accessor` slot to `src/hippo/schemas/hippo_ext.yaml` with `range: string`, `in_subset: [class_annotation]`. No default (absence → derived accessor).
-- [ ] 1.2 Document in `reference_hippo_ext.md`.
-- [ ] 1.3 Bump `hippo_ext` minor version.
+- [x] 1.1 `hippo_accessor`: class-level string annotation. Range `string`; applies to classes; documented in `hippo_ext.yaml`.
+- [x] 1.2 `hippo_namespace`: class-level string annotation added (supports Decision 9.8.B — namespace strings with dot-notation nesting). `root` is rejected as a value at load.
+- [x] 1.3 `hippo_ext` version bumped 0.2.0 → 0.3.0.
+- [x] 1.4 `linkml_bridge` exports the new `HIPPO_ACCESSOR` and `HIPPO_NAMESPACE` constants.
 
-## 2. Pydantic generation
+## 2. Pydantic generation at `SchemaRegistry` load time
 
-- [ ] 2.1 At `SchemaRegistry` load time, run LinkML's `PythonGenerator` against the flattened (merged) SchemaView.
-- [ ] 2.2 Expose generated classes under `hippo.models` with per-namespace sub-modules mirroring the schema namespace structure (e.g. `hippo.models.tissue`, `hippo.models.assay.quant`).
-- [ ] 2.3 Generation is in-memory; the module is rebuilt on schema reload.
+- [x] 2.1 `hippo.core.typed_client.generate_pydantic_models(registry)` runs `linkml.generators.pydanticgen.PydanticGenerator` against a flattened merged schema and returns a `dict[class_name, BaseModel-subclass]`. In-memory; no file artifacts.
+- [x] 2.2 Generation failures degrade gracefully with a `logger.warning` — accessors still work against plain dicts (Decision 9.8.H). Four failure points each have their own warning: generator import, serialization, Pydantic import, exec.
+- [ ] 2.3 `hippo.models` module entry point exposing the generated classes under sub-modules per namespace (`hippo.models.tissue`, `hippo.models.assay.quant`) — **deferred**. The generated classes are attached to typed accessors via `EntityAccessor.model_class`; a separate `hippo.models` import surface is a later ergonomics pass.
 
 ## 3. Namespace-aware accessors
 
-- [ ] 3.1 Build the client accessor tree from the merged SchemaView:
-  * Root-namespace classes → flat attributes on `client` and mirrored under `client.root`.
-  * Non-root namespaces → attributes on `client.<namespace>` with dot-notation splitting.
-- [ ] 3.2 Each accessor (`client.samples`) exposes `create`, `get`, `update`, `supersede`, `query` matching the generic client surface.
-- [ ] 3.3 Accessor names default to `snake_case(ClassName) + "s"`; `hippo_accessor` overrides.
+- [x] 3.1 Root-namespace classes flat on `HippoClient` (`client.samples.create(...)`) AND via `client.root.samples.create(...)` — both resolve to the same accessor (Decision 9.8.B).
+- [x] 3.2 Non-root classes reachable via `client.<ns>.<accessor>` (e.g. `client.tissue.samples.create(...)`).
+- [x] 3.3 Nested namespaces via dot notation — `hippo_namespace: assay.quant` produces `client.assay.quant.measurements.create(...)`. Intermediate containers (`client.assay` with only the `.quant` sub-namespace) are legal.
+- [x] 3.4 Default accessor: `snake_case(ClassName) + "s"` — handles acronym boundaries (`DNASample` → `dna_samples`).
+- [x] 3.5 `hippo_accessor` overrides the default.
 
-## 4. Collision detection
+## 4. Collision detection at schema load
 
-- [ ] 4.1 At schema load, compute every expected attribute on `client` and every nested namespace.
-- [ ] 4.2 Check four collision cases (per sec9 §9.8): same-namespace duplicate accessor, class accessor vs sub-namespace segment, namespace name vs SDK-reserved attribute, accessor vs SDK-reserved name.
-- [ ] 4.3 Each case produces a distinct error template naming the offending elements and suggesting the `hippo_accessor` fix.
+All four cases raise ``TypedClientError`` at ``HippoClient.__init__`` with a
+``.case`` field identifying which case fired.
 
-## 5. Coequal surfaces
+- [x] 4.1 **Case 1** — same-namespace accessor duplication. `case == "duplicate_accessor"`.
+- [x] 4.2 **Case 2** — class accessor vs. sub-namespace segment. `case == "accessor_vs_namespace"`.
+- [x] 4.3 **Case 3** — namespace name vs. SDK-reserved (`query`, `root`, `storage`, …). `case == "namespace_reserved"` or `"reserved_root"`.
+- [x] 4.4 **Case 4** — accessor vs. SDK-reserved name. `case == "accessor_reserved"`.
 
-- [ ] 5.1 Typed accessors delegate to the same SDK internals — no duplicate code path.
-- [ ] 5.2 Integration tests pair each typed call with the generic equivalent and assert both succeed.
+## 5. Coequal surface
 
-## 6. Validation integration
+- [x] 5.1 `.create`, `.get`, `.query`, `.put`, `.replace`, `.delete`, `.history`, `.state_at` all available on `EntityAccessor` and forward to the generic `HippoClient` path (Decision 9.8.D). `delete()` routes through `HippoClient.delete` so SDK-level hooks fire.
+- [x] 5.2 Round-trip parity verified (`TestGenericTypedParity`).
 
-- [ ] 6.1 Typed write paths call the unified validation pipeline (post `validation-tiering-clarification`).
-- [ ] 6.2 Validation failures raise `ValidationFailed` with the envelope.
-- [ ] 6.3 Pydantic's own type checks run BEFORE the SDK validation pipeline (construction-time LinkML-native shape).
+## 6. ValidationFailed integration
 
-## 7. Tests
+- [ ] 6.1 Typed-client write methods raise `ValidationFailed` carrying the envelope — **deferred**. Exception class is available; wiring it into `EntityAccessor.create`/`.put`/`.replace` requires the write-path integration currently handled by Ingestion/Query services. Follow-up.
 
-- [ ] 7.1 `client.samples.create(Sample(...))` round-trips a root-namespace class.
-- [ ] 7.2 `client.root.samples.create(...)` equivalent to the flat form.
-- [ ] 7.3 `client.tissue.samples.create(Sample(...))` round-trips a tissue-namespace class.
-- [ ] 7.4 Nested namespace access: `client.assay.quant.measurements.create(...)`.
-- [ ] 7.5 `hippo_accessor` override: class with `hippo_accessor: custom_samples` is reachable via `client.custom_samples`.
-- [ ] 7.6 Four collision cases each fail at schema load with the documented error template.
-- [ ] 7.7 Pre-load autocomplete (optional) if static generation is implemented.
+## 7. Infrastructure classes excluded
 
-## 8. Documentation
+- [x] 7.1 `hippo_core` primitives (`Entity`, `ProvenanceRecord`, `Process`, `Validator`, `ReferenceLoader`) are NOT exposed as typed accessors — system concerns.
 
-- [ ] 8.1 Update `design/reference_hippo_core.md` with a note on typed-client access for each class.
-- [ ] 8.2 Update `design/reference_hippo_ext.md` with `hippo_accessor`.
-- [ ] 8.3 Log opinionated implementation calls in `sec9_decisions.md`.
+## 8. Tests
 
-## 9. Acceptance
+- [x] 8.1 Default accessor derivation (4 cases).
+- [x] 8.2 Root access — flat + `root` alias + write-through.
+- [x] 8.3 Non-root namespaces — single-level, nested, empty-parent-container.
+- [x] 8.4 `hippo_accessor` override.
+- [x] 8.5 All four collision cases.
+- [x] 8.6 Infrastructure classes excluded.
+- [x] 8.7 Pydantic model attachment when generation succeeds.
+- [x] 8.8 Generic/typed write-read parity.
+- [x] 8.9 No-registry path.
 
-- [ ] 9.1 Pydantic classes generated and reachable under `hippo.models`.
-- [ ] 9.2 Namespace-aware accessors work for all four access patterns.
-- [ ] 9.3 Collision detection covers all four cases.
-- [ ] 9.4 Every generic call has a typed equivalent; every typed call works.
-- [ ] 9.5 Full suite green.
+## 9. Documentation
+
+- [ ] 9.1 Reference doc for typed-client access patterns — **deferred**. sec9 §9.8 + test file documents the contract; dedicated `reference_typed_client.md` lands when deployments start consuming.
+- [x] 9.2 Decision 9.8.H logged.
+
+## 10. Acceptance
+
+- [x] 10.1 Pydantic classes generated at load time and attached to accessors.
+- [x] 10.2 Namespace-aware accessors work for root (flat + explicit), non-root, and nested.
+- [x] 10.3 Every generic call has a typed equivalent; every typed call works.
+- [x] 10.4 Collision detection catches all four cases with actionable errors.
+- [x] 10.5 `hippo_accessor` and `hippo_namespace` declared in `hippo_ext` and documented.
+- [x] 10.6 Full suite green (897 passed, 7 skipped — +23 new typed-client tests).

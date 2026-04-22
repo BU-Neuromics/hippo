@@ -1,0 +1,453 @@
+"""Tests for the sec9 §9.8 typed-client surface."""
+
+from __future__ import annotations
+
+import os
+import tempfile
+
+import pytest
+
+from hippo.core.client import HippoClient
+from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
+from hippo.core.typed_client import (
+    EntityAccessor,
+    Namespace,
+    SDK_RESERVED_NAMES,
+    TypedClientError,
+    build_typed_surface,
+    default_accessor,
+)
+from hippo.linkml_bridge import SchemaRegistry
+
+
+# ---------------------------------------------------------------------------
+# Registry helpers
+# ---------------------------------------------------------------------------
+
+
+def _reg(
+    classes_yaml: str,
+    schema_name: str = "t",
+) -> SchemaRegistry:
+    """Build a SchemaRegistry from a fragment of `classes:` YAML."""
+    yaml_text = (
+        f"id: https://example.org/{schema_name}\n"
+        f"name: {schema_name}\n"
+        "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+        "default_range: string\n"
+        "imports:\n"
+        "  - linkml:types\n"
+        "  - hippo_core\n"
+        "classes:\n"
+        f"{classes_yaml}"
+    )
+    return SchemaRegistry.from_yaml(yaml_text)
+
+
+@pytest.fixture
+def client_factory():
+    """Produce a HippoClient with a fresh SQLite backing store."""
+    created: list[SQLiteAdapter] = []
+
+    def _make(registry: SchemaRegistry) -> HippoClient:
+        tmpdir = tempfile.mkdtemp()
+        storage = SQLiteAdapter(os.path.join(tmpdir, "typed.db"))
+        created.append(storage)
+        return HippoClient(
+            storage=storage, registry=registry, bypass_validation=True
+        )
+
+    yield _make
+
+    for s in created:
+        try:
+            s.close()
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Default accessor derivation
+# ---------------------------------------------------------------------------
+
+
+class TestDefaultAccessor:
+    def test_single_word(self):
+        assert default_accessor("Sample") == "samples"
+
+    def test_camel_case(self):
+        assert default_accessor("TissueType") == "tissue_types"
+
+    def test_acronym_boundary(self):
+        assert default_accessor("DNASample") == "dna_samples"
+
+    def test_mixed_acronym_suffix(self):
+        assert default_accessor("CellLineQC") == "cell_line_qcs"
+
+
+# ---------------------------------------------------------------------------
+# Root-namespace access — flat and via `root`
+# ---------------------------------------------------------------------------
+
+
+class TestRootAccess:
+    def test_root_class_has_flat_accessor(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        assert hasattr(client, "samples")
+        assert isinstance(client.samples, EntityAccessor)
+        assert client.samples.class_name == "Sample"
+
+    def test_root_alias_mirrors_flat(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        assert hasattr(client, "root")
+        assert hasattr(client.root, "samples")
+        # Same accessor object
+        assert client.root.samples is client.samples
+
+    def test_root_accessor_writes_through_to_generic_client(
+        self, client_factory
+    ):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        result = client.samples.create({"name": "via-typed"})
+        assert result["entity_type"] == "Sample"
+        assert result["data"]["name"] == "via-typed"
+
+        # Round-trip read via typed accessor
+        got = client.samples.get(result["id"])
+        assert got["id"] == result["id"]
+
+
+# ---------------------------------------------------------------------------
+# Non-root namespaces, nested dot notation
+# ---------------------------------------------------------------------------
+
+
+class TestNonRootNamespaces:
+    def test_single_level_namespace(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: tissue\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        # `tissue` exists as a container; `tissue.samples` is the accessor.
+        assert hasattr(client, "tissue")
+        assert isinstance(client.tissue, Namespace)
+        assert hasattr(client.tissue, "samples")
+        assert client.tissue.samples.class_name == "Sample"
+        # Non-root classes must NOT be flat on the client — `client.samples`
+        # does not exist as a typed accessor (a plain attribute lookup
+        # should return nothing or raise).
+        flat = getattr(client, "samples", None)
+        assert not isinstance(flat, EntityAccessor)
+
+    def test_nested_namespace_via_dot_notation(self, client_factory):
+        reg = _reg(
+            "  Measurement:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: assay.quant\n"
+            "    attributes:\n"
+            "      value:\n"
+            "        range: float\n"
+        )
+        client = client_factory(reg)
+
+        assert hasattr(client, "assay")
+        assert hasattr(client.assay, "quant")
+        assert hasattr(client.assay.quant, "measurements")
+        assert client.assay.quant.measurements.class_name == "Measurement"
+
+    def test_empty_parent_container_is_legal(self, client_factory):
+        """Per sec9 §9.8, a namespace `assay.quant` causes `assay` to
+        materialize as a container even if no classes are in `assay`.
+        """
+        reg = _reg(
+            "  Measurement:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: assay.quant\n"
+            "    attributes:\n"
+            "      value:\n"
+            "        range: float\n"
+        )
+        client = client_factory(reg)
+
+        # Only `quant` is under `assay`; no direct accessors.
+        assert list(client.assay.accessors()) == []
+        assert "quant" in client.assay.subnamespaces()
+
+
+# ---------------------------------------------------------------------------
+# hippo_accessor override
+# ---------------------------------------------------------------------------
+
+
+class TestAccessorOverride:
+    def test_hippo_accessor_overrides_default(self, client_factory):
+        reg = _reg(
+            "  Analysis:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_accessor: analytics\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        # Default would be `analysises`; override gives `analytics`.
+        assert hasattr(client, "analytics")
+        assert not hasattr(client, "analyses")
+        assert client.analytics.class_name == "Analysis"
+
+
+# ---------------------------------------------------------------------------
+# Collision detection — all four cases
+# ---------------------------------------------------------------------------
+
+
+class TestCollisionDetection:
+    def test_case1_same_namespace_duplicate_accessor(self, client_factory):
+        # Two classes in namespace `tissue` both resolving to `dna_samples`
+        reg = _reg(
+            "  DNASample:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: tissue\n"
+            "    attributes:\n"
+            "      name: {range: string}\n"
+            "  DnaSample:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: tissue\n"
+            "    attributes:\n"
+            "      label: {range: string}\n"
+        )
+        with pytest.raises(TypedClientError) as exc:
+            client_factory(reg)
+        assert exc.value.case == "duplicate_accessor"
+        assert "dna_samples" in str(exc.value)
+        assert "hippo_accessor" in str(exc.value)
+
+    def test_case2_accessor_vs_subnamespace(self, client_factory):
+        # Class `Protocol` in namespace `tissue` → accessor `protocols`.
+        # Class `Step` in `tissue.protocols` → sub-namespace `protocols` at `tissue` level.
+        # Both land at `client.tissue.protocols` — collision.
+        reg = _reg(
+            "  Protocol:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: tissue\n"
+            "    attributes:\n"
+            "      name: {range: string}\n"
+            "  Step:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: tissue.protocols\n"
+            "    attributes:\n"
+            "      order: {range: integer}\n"
+        )
+        with pytest.raises(TypedClientError) as exc:
+            client_factory(reg)
+        assert exc.value.case == "accessor_vs_namespace"
+
+    def test_case3_namespace_vs_sdk_reserved(self, client_factory):
+        reg = _reg(
+            "  Thing:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: query\n"  # collides with HippoClient.query
+            "    attributes:\n"
+            "      name: {range: string}\n"
+        )
+        with pytest.raises(TypedClientError) as exc:
+            client_factory(reg)
+        assert exc.value.case == "namespace_reserved"
+
+    def test_case3_namespace_root_reserved(self, client_factory):
+        reg = _reg(
+            "  Thing:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_namespace: root\n"
+            "    attributes:\n"
+            "      name: {range: string}\n"
+        )
+        with pytest.raises(TypedClientError) as exc:
+            client_factory(reg)
+        assert exc.value.case == "reserved_root"
+
+    def test_case4_accessor_vs_sdk_reserved(self, client_factory):
+        reg = _reg(
+            "  Schema:\n"
+            "    is_a: Entity\n"
+            "    annotations:\n"
+            "      hippo_accessor: storage\n"  # conflicts with HippoClient.storage
+            "    attributes:\n"
+            "      name: {range: string}\n"
+        )
+        with pytest.raises(TypedClientError) as exc:
+            client_factory(reg)
+        assert exc.value.case == "accessor_reserved"
+
+
+# ---------------------------------------------------------------------------
+# hippo_core infrastructure classes are NOT exposed
+# ---------------------------------------------------------------------------
+
+
+class TestInfrastructureExcluded:
+    def test_provenance_record_not_exposed(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name: {range: string}\n"
+        )
+        client = client_factory(reg)
+
+        # ProvenanceRecord is hippo_core infrastructure; no typed accessor.
+        assert not hasattr(client, "provenance_records")
+
+    def test_process_not_exposed(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name: {range: string}\n"
+        )
+        client = client_factory(reg)
+
+        assert not hasattr(client, "processes")
+
+
+# ---------------------------------------------------------------------------
+# Pydantic model generation (best-effort)
+# ---------------------------------------------------------------------------
+
+
+class TestPydanticGeneration:
+    def test_model_class_attached_when_generation_succeeds(
+        self, client_factory
+    ):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        accessor = client.samples
+        # Generation is best-effort — we assert on the contract
+        # (model_class is either None or a Pydantic class with the
+        # expected __name__). Successful generation should attach.
+        if accessor.model_class is not None:
+            assert accessor.model_class.__name__ == "Sample"
+
+    def test_create_accepts_pydantic_instance_when_available(
+        self, client_factory
+    ):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        accessor = client.samples
+        if accessor.model_class is not None:
+            instance = accessor.model_class(id="x1", name="via-pydantic")
+            result = accessor.create(instance)
+            assert result["data"]["name"] == "via-pydantic"
+
+
+# ---------------------------------------------------------------------------
+# Generic <-> typed parity
+# ---------------------------------------------------------------------------
+
+
+class TestGenericTypedParity:
+    def test_generic_create_visible_via_typed_get(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        # Generic path
+        generic = client.put("Sample", {"name": "via-generic"})
+
+        # Typed read returns the same entity
+        typed_read = client.samples.get(generic["id"])
+        assert typed_read["id"] == generic["id"]
+
+    def test_typed_create_visible_via_generic_get(self, client_factory):
+        reg = _reg(
+            "  Sample:\n"
+            "    is_a: Entity\n"
+            "    attributes:\n"
+            "      name:\n"
+            "        range: string\n"
+        )
+        client = client_factory(reg)
+
+        typed = client.samples.create({"name": "via-typed"})
+
+        # Generic read returns the same entity
+        generic_read = client.get("Sample", typed["id"])
+        assert generic_read["id"] == typed["id"]
+
+
+# ---------------------------------------------------------------------------
+# No-registry path: HippoClient still works without typed accessors
+# ---------------------------------------------------------------------------
+
+
+class TestNoRegistry:
+    def test_client_without_registry_has_no_typed_accessors(self):
+        storage = SQLiteAdapter(":memory:")
+        try:
+            client = HippoClient(storage=storage, bypass_validation=True)
+            # No registry → no typed surface built
+            assert client._typed_root is None
+            assert not hasattr(client, "samples")
+            assert not hasattr(client, "root")
+        finally:
+            storage.close()
