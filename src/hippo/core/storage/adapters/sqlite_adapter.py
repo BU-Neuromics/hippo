@@ -1209,6 +1209,40 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
 
             return self._row_to_entity(row)
 
+    def resolve_type(self, entity_id: str) -> Optional[str]:
+        """Return the entity_type for a given UUID, or None if unknown.
+
+        Looks up the `entities` table's type discriminator. Includes entities
+        regardless of availability — the type is still meaningful for
+        archived / superseded rows. Per sec9 §9.5's identity model, this is
+        the relational adapter's implementation of UUID → type resolution.
+        """
+        with self._transaction() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT entity_type FROM entities WHERE id = ?",
+                (entity_id,),
+            )
+            row = cursor.fetchone()
+            return row["entity_type"] if row else None
+
+    def resolve_types(self, entity_ids: list[str]) -> dict[str, str]:
+        """Batch variant of ``resolve_type``. Returns a dict keyed by id.
+
+        Unknown UUIDs are absent from the returned dict (not raised). One
+        SQL round-trip regardless of input size.
+        """
+        if not entity_ids:
+            return {}
+        with self._transaction() as conn:
+            cursor = conn.cursor()
+            placeholders = ",".join("?" for _ in entity_ids)
+            cursor.execute(
+                f"SELECT id, entity_type FROM entities WHERE id IN ({placeholders})",
+                tuple(entity_ids),
+            )
+            return {row["id"]: row["entity_type"] for row in cursor.fetchall()}
+
     def read_any(self, entity_id: str) -> Optional[SQLiteEntity]:
         """Read an entity by its ID, regardless of availability.
 

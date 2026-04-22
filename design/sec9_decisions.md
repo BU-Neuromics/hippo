@@ -94,6 +94,15 @@ Review this file before sec9 is considered approved. If any decision is unwelcom
 - **Consequences:** `Validator` works regardless of where `hippo_core` lives on disk. Flattening runs once per `SchemaRegistry` construction (schema load is already a slow path; the extra round-trip is negligible). No behavior change visible to callers.
 - **Revert:** Pass `sv.schema` directly to `Validator` again. Would break any setup where bundled schemas are imported, so not a practical revert.
 
+### Decision 9.5.D — id-registry scope narrowed: existing `entities` table IS the registry [NEW 2026-04-21]
+
+- **Finding (during id-registry-and-uuid-strategy implementation):** sec9 §9.5 and the `id-registry-and-uuid-strategy` proposal scope a new `_entity_registry` table with `(id, entity_type, created_at)`, populated transactionally on every entity create. Reality: the current SQLite and PostgreSQL adapters already store all entities in a single `entities` table with `id`, `entity_type`, `data` (JSON), and friends. The type discriminator `entity_type` is already maintained, already indexed (via primary key on id), and already populated transactionally with entity writes. A separate `_entity_registry` would be redundant against this design.
+- **Alternatives considered:** (A) add `_entity_registry` anyway, keeping it in sync with the `entities` table (duplicate data + extra write); (B) use the `entities` table as the registry and expose SDK helpers (`resolve_type`, `resolve_types`) that wrap it; (C) defer the whole id-registry change until the storage model is consolidated (per-type-table vs. single-entities-table).
+- **Chosen:** (B). The existing `entities` table serves the exact purpose a `_entity_registry` would — id → entity_type lookup — without duplicate data. SDK helpers wrap the existing query so callers use the sec9 API surface (`client.resolve_type(uuid)`); if the storage model later migrates to per-type tables, the helpers become the stable seam and the registry implementation switches underneath without callers noticing.
+- **Consequences:** `SQLiteAdapter.resolve_type` / `resolve_types` and `PostgresAdapter.resolve_type` / `resolve_types` added. `HippoClient.resolve_type(uuid)` and `HippoClient.resolve_types(uuids)` added. No new table, no backfill migration, no write-path changes. Performance-benchmark task from the proposal is obsolete (the lookup path hasn't changed — it's the same SELECT the adapter already uses for read).
+- **Deferred parts of the proposal:** UUID pattern on `Entity.id` (would break existing test fixtures using ids like "s1"; postpone until a test-fixture cleanup pass); `client.get(uuid)` overload without `entity_type` (requires deeper restructuring of `QueryService` which routes by entity_type today); one-time backfill migration (unnecessary — the `entities` table always had the type column).
+- **Revert:** Remove the four methods (two adapters × {single, batch}) and two client methods. Low blast radius.
+
 ---
 
 ## 9.8 Typed Client

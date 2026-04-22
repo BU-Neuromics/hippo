@@ -359,6 +359,34 @@ class HippoClient:
             entity_type, entity_id, expand, include_unavailable
         )
 
+    def resolve_type(self, entity_id: str) -> Optional[str]:
+        """Resolve a UUID to its entity_type via the storage adapter.
+
+        Per sec9 §9.5's identity model — given only a UUID, return the entity
+        class (FQN in the merged schema). Returns None when the UUID is not
+        known to the storage. The concrete resolution mechanism is
+        adapter-specific; relational adapters query the `entities` table's
+        type discriminator, future graph adapters use labels.
+        """
+        if self._storage is None or not hasattr(self._storage, "resolve_type"):
+            return None
+        return self._storage.resolve_type(entity_id)
+
+    def resolve_types(self, entity_ids: list[str]) -> dict[str, str]:
+        """Batch variant of ``resolve_type``; one round-trip to the adapter.
+
+        Returns a dict mapping id → entity_type for every known id. Unknown
+        ids are absent from the result; callers can compute the missing set
+        by diffing the input list against the returned keys.
+        """
+        if (
+            self._storage is None
+            or not hasattr(self._storage, "resolve_types")
+            or not entity_ids
+        ):
+            return {}
+        return self._storage.resolve_types(entity_ids)
+
     def query(
         self,
         entity_type: str,

@@ -1129,6 +1129,37 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
 
             return self._row_to_entity(row)
 
+    def resolve_type(self, entity_id: str) -> Optional[str]:
+        """Return the entity_type for a given UUID, or None if unknown.
+
+        Per sec9 §9.5's identity model — UUID → type resolution. Uses the
+        existing `entities` table's type discriminator.
+        """
+        with self._transaction() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT entity_type FROM entities WHERE id = %s",
+                (entity_id,),
+            )
+            row = cur.fetchone()
+            return row["entity_type"] if row else None
+
+    def resolve_types(self, entity_ids: list[str]) -> dict[str, str]:
+        """Batch variant of ``resolve_type``. Returns a dict keyed by id.
+
+        Unknown UUIDs are absent from the returned dict. One SQL round-trip
+        regardless of input size.
+        """
+        if not entity_ids:
+            return {}
+        with self._transaction() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, entity_type FROM entities WHERE id = ANY(%s)",
+                (list(entity_ids),),
+            )
+            return {row["id"]: row["entity_type"] for row in cur.fetchall()}
+
     def update(self, entity: PostgresEntity) -> PostgresEntity:
         """Update an existing entity."""
         with self._transaction() as conn:

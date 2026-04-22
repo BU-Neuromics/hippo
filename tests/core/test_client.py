@@ -331,3 +331,58 @@ class TestFTSIntegration:
         assert isinstance(project_meta, FTSTableMetadata)
         assert sample_meta.fields[0].field_name == "notes"
         assert project_meta.fields[0].field_name == "description"
+
+
+class TestTypeResolution:
+    """Tests for HippoClient.resolve_type / resolve_types per sec9 §9.5."""
+
+    @pytest.fixture
+    def db_path(self) -> str:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield os.path.join(tmpdir, "test_resolve.db")
+
+    @pytest.fixture
+    def client(self, db_path: str) -> HippoClient:
+        storage = SQLiteAdapter(db_path)
+        return HippoClient(storage=storage, bypass_validation=True)
+
+    def test_resolve_type_returns_entity_type_for_known_uuid(
+        self, client: HippoClient
+    ) -> None:
+        result = client.put("Sample", {"name": "s1"})
+        uuid = result["id"]
+
+        assert client.resolve_type(uuid) == "Sample"
+
+    def test_resolve_type_returns_none_for_unknown_uuid(
+        self, client: HippoClient
+    ) -> None:
+        assert client.resolve_type("nonexistent-uuid") is None
+
+    def test_resolve_types_batch(self, client: HippoClient) -> None:
+        r1 = client.put("Sample", {"name": "s1"})
+        r2 = client.put("Project", {"name": "p1"})
+        r3 = client.put("Sample", {"name": "s2"})
+
+        ids = [r1["id"], r2["id"], r3["id"], "unknown-uuid"]
+        resolved = client.resolve_types(ids)
+
+        assert resolved[r1["id"]] == "Sample"
+        assert resolved[r2["id"]] == "Project"
+        assert resolved[r3["id"]] == "Sample"
+        # Unknown uuid is absent, not raised
+        assert "unknown-uuid" not in resolved
+
+    def test_resolve_types_empty_input_returns_empty(
+        self, client: HippoClient
+    ) -> None:
+        assert client.resolve_types([]) == {}
+
+    def test_resolve_type_after_delete_still_works(self, client: HippoClient) -> None:
+        # Per sec9 §9.5, type resolution must work regardless of availability
+        # (archived / deleted entities still have a knowable type).
+        result = client.put("Sample", {"name": "s1"})
+        uuid = result["id"]
+        client.delete("Sample", uuid)
+
+        assert client.resolve_type(uuid) == "Sample"
