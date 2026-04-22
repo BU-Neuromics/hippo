@@ -91,16 +91,14 @@ multiple granularities uniformly.
 `operation`, `timestamp`, `process_id`. Wave 2 `computed-temporal-fields`
 adds composite indexes as needed for the read-time aggregation paths.
 
-**Scope note (Decision 9.6.A).** This declaration lands with Wave 2's
-`provenance-as-linkml-class`. The actual storage migration — moving
-the legacy `provenance` table and `ProvenanceStore` implementation onto
-this shape — is scoped as a separate `provenance-migration` OpenSpec
-change. Until that change lands, the legacy `provenance` table (with its
-`operation_type` / `previous_state_hash` / `state_snapshot` columns)
-continues to back the existing `ProvenanceStore` API; the LinkML-declared
-`ProvenanceRecord` shape is authoritative for introspection and
-downstream uses (typed-client generation, REST surface, `hippo_core`
-consumers).
+**Status.** Active. Wave 2's `provenance-migration` landed the storage
+migration: the `ProvenanceRecord` table replaces the legacy `provenance`
+table, `ProvenanceStore` writes the sec9 §9.6 shape, and the SQLite /
+Postgres adapters enforce `hippo_append_only` via BEFORE UPDATE /
+BEFORE DELETE triggers (Decision 9.6.C). Two known transition gaps
+remain — the `actor_id = "unknown"` fallback for unmigrated callers,
+and `schema_version = ""` until `SchemaRegistry` is plumbed through
+adapter construction; both tracked under Decision 9.6.F.
 
 ---
 
@@ -266,9 +264,10 @@ adding the concept to `hippo_core` ad-hoc.
 
 | Concept | Owning change |
 |---|---|
-| `ProvenanceRecord` adapter-side write-guard + `ProvenanceStore` migration onto the LinkML-declared shape | `provenance-migration` (Wave 2, follow-up to `provenance-as-linkml-class` per Decision 9.6.A) |
-| `superseded_by` as a proper provenance-derived relationship | `provenance-migration` (Wave 2) |
+| `superseded_by` as a proper provenance-derived relationship | Future follow-up (derive from `ProvenanceRecord.derived_from_id` instead of the hand-coded column) |
 | Computed temporal fields on entity reads | `computed-temporal-fields` (Wave 2) |
+| `actor_id` UUID resolution through an identity-model service layer | Follow-up to `provenance-migration` (see Decision 9.6.F) |
+| `schema_version` populated from `SchemaRegistry` at write time | Follow-up to `provenance-migration` (see Decision 9.6.F) |
 | Final `Validator` slot inventory | Later OpenSpec change; deferred pending `validators.yaml` reconciliation |
 | Final `ReferenceLoader` slot inventory | `reference-loader-shape` (Wave 3) |
 | Typed client Pydantic generation | `typed-client` (Wave 3) |

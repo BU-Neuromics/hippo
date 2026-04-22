@@ -150,19 +150,21 @@ classes:
 | Applies to | class |
 | Value type | boolean |
 | Default | `false` |
-| Consumer | Storage adapter write-guard |
+| Consumer | Storage adapter (SQL triggers for relational adapters) |
 
 Classes annotated `hippo_append_only: true` are append-only: the storage
 adapter MUST reject `UPDATE` and `DELETE` against rows of the class. Only
-`INSERT` is permitted. Enforcement is a runtime check in the adapter;
-LinkML annotations declare intent, adapters honor it. Applied in
-`hippo_core` to `ProvenanceRecord` (see `reference_hippo_core.md`).
+`INSERT` is permitted. Applied in `hippo_core` to `ProvenanceRecord`
+(see `reference_hippo_core.md`).
 
-Scope note: this annotation was introduced in Wave 2's
-`provenance-as-linkml-class` as a declaration. The concrete adapter-side
-enforcement (rejecting `UPDATE` / `DELETE` on `ProvenanceRecord`'s
-backing table) lands with the subsequent `provenance-migration` change
-per Decision 9.6.A.
+**Enforcement.** SQLite and Postgres adapters emit `BEFORE UPDATE` and
+`BEFORE DELETE` triggers on the backing table that raise at the SQL
+level (`RAISE ABORT` on SQLite; `RAISE EXCEPTION` on Postgres). This
+survives direct-SQL bypass of the Python SDK — Python-level adapter
+checks would not. See sec9 Decision 9.6.C for the rationale.
+`SchemaRegistry.append_only_classes()` returns the set of annotated
+class names for adapters that can't use triggers (Neo4j, future
+DDL-generator-driven emission paths, etc.).
 
 **Example.**
 ```yaml
