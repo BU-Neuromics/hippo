@@ -601,3 +601,71 @@ class TestHippoAppendOnlyAnnotation:
         msg = str(exc.value)
         assert "hippo_append_only" in msg
         assert "slot" in msg.lower() or "class_annotation" in msg
+
+
+class TestAppendOnlyClassesHelper:
+    """SchemaRegistry.append_only_classes() — consulted by adapters to
+    reject UPDATE/DELETE against append-only tables (sec9 §9.4 / §9.6).
+    """
+
+    def _schema_with_classes(self, annotated: dict[str, bool]) -> str:
+        """Build a schema where each class is optionally hippo_append_only."""
+        lines = [
+            "id: https://example.org/t",
+            "name: t",
+            "prefixes: {linkml: 'https://w3id.org/linkml/'}",
+            "default_range: string",
+            "imports: [linkml:types]",
+            "classes:",
+        ]
+        for name, is_append_only in annotated.items():
+            lines.append(f"  {name}:")
+            if is_append_only:
+                lines.append("    annotations:")
+                lines.append("      hippo_append_only: true")
+            lines.append("    attributes:")
+            lines.append("      id: {identifier: true}")
+        return "\n".join(lines) + "\n"
+
+    def test_empty_when_no_classes_annotated(self):
+        reg = SchemaRegistry.from_yaml(
+            self._schema_with_classes({"A": False, "B": False})
+        )
+        assert reg.append_only_classes() == set()
+
+    def test_includes_annotated_class(self):
+        reg = SchemaRegistry.from_yaml(
+            self._schema_with_classes({"A": True, "B": False})
+        )
+        assert reg.append_only_classes() == {"A"}
+
+    def test_includes_provenance_record_from_hippo_core(self):
+        reg = SchemaRegistry.from_yaml(
+            "id: https://example.org/t\n"
+            "name: t\n"
+            "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+            "default_range: string\n"
+            "imports: [linkml:types, hippo_core]\n"
+            "classes: {}\n"
+        )
+        assert "ProvenanceRecord" in reg.append_only_classes()
+
+    def test_excludes_abstract_classes(self):
+        # A hippo_append_only annotation on an abstract class is declarative
+        # only; adapters don't need it in the enforcement set because there
+        # is no backing table.
+        reg = SchemaRegistry.from_yaml(
+            "id: https://example.org/t\n"
+            "name: t\n"
+            "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+            "default_range: string\n"
+            "imports: [linkml:types]\n"
+            "classes:\n"
+            "  AbstractLog:\n"
+            "    abstract: true\n"
+            "    annotations:\n"
+            "      hippo_append_only: true\n"
+            "    attributes:\n"
+            "      id: {identifier: true}\n"
+        )
+        assert "AbstractLog" not in reg.append_only_classes()

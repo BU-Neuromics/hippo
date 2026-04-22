@@ -30,6 +30,7 @@ HIPPO_SEARCH = "hippo_search"
 HIPPO_INDEX = "hippo_index"
 HIPPO_INDEX_PARTIAL = "hippo_index_partial"
 HIPPO_UNIQUE = "hippo_unique"
+HIPPO_APPEND_ONLY = "hippo_append_only"
 
 HIPPO_ANNOTATION_PREFIX = "hippo_"
 _CLASS_ANNOTATION_SUBSET = "class_annotation"
@@ -405,6 +406,25 @@ class SchemaRegistry:
             for s in self.induced_slots(class_name)
             if annotation_value(s, HIPPO_UNIQUE)
         ]
+
+    def append_only_classes(self) -> set[str]:
+        """Names of classes annotated ``hippo_append_only: true``.
+
+        Adapters consult this set to reject UPDATE and DELETE against the
+        corresponding tables per sec9 §9.4 / reference_hippo_ext.md. Only
+        concrete (non-abstract) classes are returned — an abstract class
+        with the annotation is purely declarative. Per sec9 §9.6 this set
+        currently contains ``{"ProvenanceRecord"}``; domain schemas may
+        mark additional append-only classes.
+        """
+        out: set[str] = set()
+        for name in self.class_names():
+            cls = self._sv.get_class(name)
+            if cls is None or cls.abstract:
+                continue
+            if annotation_value(cls, HIPPO_APPEND_ONLY):
+                out.add(name)
+        return out
 
     def validate(self, instance: dict, target_class: str) -> list[str]:
         """Validate an instance dict; return a list of error messages (empty=valid)."""

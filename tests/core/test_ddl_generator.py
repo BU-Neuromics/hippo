@@ -3,6 +3,7 @@
 import pytest
 
 from hippo.core.storage.ddl_generator import DDLGenerator
+from hippo.linkml_bridge import SchemaRegistry
 from tests.support.linkml_schemas import build_registry
 
 
@@ -310,3 +311,93 @@ class TestMultiClass:
         assert "UNIQUE" in full
         assert "CREATE INDEX" in full
         assert "FOREIGN KEY" in full
+
+
+class TestHippoCoreProvenanceRecordDDL:
+    """DDL emitted for the ProvenanceRecord class declared in hippo_core.
+
+    The `provenance-migration` change (sec9 §9.6 / Decision 9.6.A) replaces
+    the legacy hand-coded `provenance` table with a DDL-generated
+    `ProvenanceRecord` table. This test class verifies the generator emits
+    the expected shape *before* legacy DDL is removed.
+    """
+
+    @pytest.fixture
+    def registry(self) -> SchemaRegistry:
+        # User schema importing hippo_core. The registry's class_names()
+        # includes every class in hippo_core (Entity, ProvenanceRecord,
+        # Process, Validator, ReferenceLoader) — the generator iterates
+        # all of them.
+        yaml_text = (
+            "id: https://example.org/test\n"
+            "name: test\n"
+            "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+            "default_range: string\n"
+            "imports:\n"
+            "  - linkml:types\n"
+            "  - hippo_core\n"
+            "classes: {}\n"
+        )
+        return SchemaRegistry.from_yaml(yaml_text)
+
+    @pytest.fixture
+    def ddl(self, registry: SchemaRegistry) -> list[str]:
+        return DDLGenerator().generate(registry)
+
+    @pytest.fixture
+    def prov_table(self, ddl: list[str]) -> str:
+        matches = [s for s in ddl if 'CREATE TABLE "ProvenanceRecord"' in s]
+        assert matches, "ProvenanceRecord CREATE TABLE not emitted"
+        return matches[0]
+
+    def test_provenance_record_table_exists(self, ddl: list[str]):
+        assert any('CREATE TABLE "ProvenanceRecord"' in s for s in ddl)
+
+    def test_provenance_record_has_all_sec9_columns(self, prov_table: str):
+        # sec9 §9.6 defines the slot inventory. Each slot must map to a column.
+        for col in [
+            "id",
+            "entity_id",
+            "entity_type",
+            "operation",
+            "actor_id",
+            "timestamp",
+            "schema_version",
+            "derived_from_id",
+            "process_id",
+            "patch",
+            "context",
+        ]:
+            assert f'"{col}"' in prov_table, f"column {col!r} missing from DDL"
+
+    def test_provenance_record_inherits_is_available_and_superseded_by(
+        self, prov_table: str
+    ):
+        # Inherited from Entity (is_available) or appended by the generator.
+        assert '"is_available"' in prov_table
+        assert '"superseded_by"' in prov_table
+
+    def test_provenance_record_id_is_primary_key(self, prov_table: str):
+        assert '"id" TEXT PRIMARY KEY' in prov_table
+
+    def test_provenance_record_required_slots_are_not_null(self, prov_table: str):
+        # required=true slots per hippo_core.yaml: operation, actor_id,
+        # timestamp, schema_version.
+        for col in ("operation", "actor_id", "timestamp", "schema_version"):
+            assert f'"{col}" TEXT NOT NULL' in prov_table, (
+                f"column {col!r} should be NOT NULL"
+            )
+
+    def test_provenance_record_indexes_on_annotated_slots(self, ddl: list[str]):
+        # sec9 §9.6 annotates entity_id, operation, timestamp, process_id
+        # with hippo_index.
+        full = "\n".join(ddl)
+        for slot in ("entity_id", "operation", "timestamp", "process_id"):
+            assert f'idx_ProvenanceRecord_{slot}' in full, (
+                f"index on ProvenanceRecord.{slot} missing"
+            )
+
+    def test_process_fk_from_provenance_record(self, prov_table: str):
+        # process_id has range Process (another class in hippo_core) — should
+        # become a foreign key constraint.
+        assert 'FOREIGN KEY ("process_id") REFERENCES "Process"' in prov_table
