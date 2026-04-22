@@ -155,9 +155,9 @@ class RelationshipManager:
             provenance.record(
                 entity_id=source_id,
                 entity_type="relationship",
-                operation_type="RELATE",
-                user_context=self._user_context,
-                payload={
+                operation="relationship_add",
+                actor_id=self._user_context,
+                patch={
                     "source_id": source_id,
                     "target_id": target_id,
                     "relationship_type": relationship_type,
@@ -226,9 +226,9 @@ class RelationshipManager:
             provenance.record(
                 entity_id=source_id,
                 entity_type="relationship",
-                operation_type="UNRELATE",
-                user_context=self._user_context,
-                payload={
+                operation="relationship_remove",
+                actor_id=self._user_context,
+                patch={
                     "source_id": source_id,
                     "target_id": target_id,
                     "relationship_type": relationship_type,

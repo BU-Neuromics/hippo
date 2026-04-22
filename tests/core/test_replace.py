@@ -47,13 +47,15 @@ class TestReplaceOperation:
             client.replace("Sample", "r2", {})
 
     def test_replace_records_provenance(self, client: HippoClient) -> None:
-        """Replace records a REPLACED provenance event."""
+        """Replace records an 'update' provenance event (Decision 9.6.B)."""
         client.put("Sample", {"id": "r3", "name": "original"})
         client.replace("Sample", "r3", {"name": "replaced"})
 
         history = client.history("r3")
         op_types = [h["operation_type"] for h in history]
-        assert "REPLACED" in op_types
+        # Legacy "REPLACED" → update per Decision 9.6.B.
+        # put() emits one 'create' event; replace() adds one 'update'.
+        assert op_types.count("update") >= 1
 
     def test_replace_increments_version(self, client: HippoClient) -> None:
         """Replace increments the entity version."""

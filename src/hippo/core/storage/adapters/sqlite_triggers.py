@@ -1,52 +1,36 @@
-"""SQL trigger definitions for provenance immutability."""
+"""SQL trigger definitions for ProvenanceRecord immutability.
 
-PROVENANCE_TABLE = "provenance"
+Enforces ``hippo_append_only: true`` (sec9 §9.6 / Decision 9.6.C) at the
+SQL level — UPDATE and DELETE against the ``ProvenanceRecord`` table are
+rejected by SQLite itself, not just by the Python adapter. Direct-SQL
+access (e.g., raw ``sqlite3`` CLI) bypasses Python-level checks but not
+triggers, so this is the preferred enforcement mechanism.
 
-TRIGGER_PREVENT_PK_UPDATE = """
-CREATE TRIGGER IF NOT EXISTS prevent_provenance_pk_update
-BEFORE UPDATE OF entity_id ON provenance
-BEGIN
-    SELECT RAISE(ABORT, 'Cannot update primary key of provenance record');
-END;
+The single ``BEFORE UPDATE`` trigger (without a column list) fires on
+any column change and replaces the earlier per-column triggers, which
+were brittle when slot names evolved.
 """
 
-TRIGGER_PREVENT_TIMESTAMP_UPDATE = """
-CREATE TRIGGER IF NOT EXISTS prevent_provenance_timestamp_update
-BEFORE UPDATE OF timestamp ON provenance
-BEGIN
-    SELECT RAISE(ABORT, 'Cannot update timestamp of provenance record');
-END;
-"""
+PROVENANCE_TABLE = "ProvenanceRecord"
 
-TRIGGER_PREVENT_METADATA_UPDATE = """
-CREATE TRIGGER IF NOT EXISTS prevent_provenance_metadata_update
-BEFORE UPDATE OF user_context ON provenance
+TRIGGER_PREVENT_UPDATE = """
+CREATE TRIGGER IF NOT EXISTS prevent_provenance_update
+BEFORE UPDATE ON "ProvenanceRecord"
 BEGIN
-    SELECT RAISE(ABORT, 'Cannot update user_context field of provenance record');
-END;
-"""
-
-TRIGGER_PREVENT_CONTENT_UPDATE = """
-CREATE TRIGGER IF NOT EXISTS prevent_provenance_content_update
-BEFORE UPDATE OF payload ON provenance
-BEGIN
-    SELECT RAISE(ABORT, 'Cannot update payload field of provenance record');
+    SELECT RAISE(ABORT, 'Cannot update ProvenanceRecord: hippo_append_only class');
 END;
 """
 
 TRIGGER_PREVENT_DELETE = """
 CREATE TRIGGER IF NOT EXISTS prevent_provenance_delete
-BEFORE DELETE ON provenance
+BEFORE DELETE ON "ProvenanceRecord"
 BEGIN
-    SELECT RAISE(ABORT, 'Cannot delete provenance record');
+    SELECT RAISE(ABORT, 'Cannot delete ProvenanceRecord: hippo_append_only class');
 END;
 """
 
 ALL_TRIGGERS = [
-    TRIGGER_PREVENT_PK_UPDATE,
-    TRIGGER_PREVENT_TIMESTAMP_UPDATE,
-    TRIGGER_PREVENT_METADATA_UPDATE,
-    TRIGGER_PREVENT_CONTENT_UPDATE,
+    TRIGGER_PREVENT_UPDATE,
     TRIGGER_PREVENT_DELETE,
 ]
 

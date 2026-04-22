@@ -2,21 +2,18 @@
 
 The SQLite adapter provides:
 - WAL mode for improved concurrency
-- Automatic trigger creation for provenance immutability
+- Automatic trigger creation for ProvenanceRecord immutability
 - Thread-safe connection management
 
-## Provenance Immutability Triggers
+## ProvenanceRecord Immutability Triggers
 
-The adapter automatically creates BEFORE triggers on the provenance table to enforce
-immutability at the database level:
+Enforces ``hippo_append_only: true`` on the ``ProvenanceRecord`` table
+(sec9 §9.6 / Decision 9.6.C) at the SQL level:
 
-- `prevent_provenance_pk_update`: Blocks updates to entity_id (primary key)
-- `prevent_provenance_timestamp_update`: Blocks updates to timestamp field
-- `prevent_provenance_metadata_update`: Blocks updates to user_context field
-- `prevent_provenance_content_update`: Blocks updates to payload field
-- `prevent_provenance_delete`: Blocks DELETE operations on provenance records
+- ``prevent_provenance_update``: rejects any UPDATE on ProvenanceRecord
+- ``prevent_provenance_delete``: rejects any DELETE on ProvenanceRecord
 
-Triggers use `CREATE TRIGGER IF NOT EXISTS` for idempotent initialization.
+Triggers use ``CREATE TRIGGER IF NOT EXISTS`` for idempotent initialization.
 """
 
 import json
@@ -68,172 +65,215 @@ class SQLiteEntity:
         self.superseded_by = superseded_by
 
 
+# Legacy operation-string → Operation enum mapping (Decision 9.6.B).
+# Resolved per-site via reading the surrounding code at write time;
+# preserved here as a compatibility shim so callers not yet migrated to
+# pass Operation enum values continue to work during the transition.
+_LEGACY_OPERATION_MAP: dict[str, str] = {
+    "CREATE": "create",
+    "UPDATE": "update",
+    "EntityUpdated": "update",
+    "REPLACED": "update",
+    "EntitySuperseded": "supersede",
+    "SUPERSEDE": "supersede",
+    "AvailabilityChanged": "availability_change",
+    "AVAILABILITY_CHANGE": "availability_change",
+    "SOFT_DELETE": "availability_change",
+    "RELATE": "relationship_add",
+    "UNRELATE": "relationship_remove",
+}
+
+
+def _normalize_operation(op: Any) -> str:
+    """Accept an Operation enum value or legacy string; return the enum value.
+
+    Used by ``ProvenanceStore.record()`` and its Postgres sibling to
+    absorb legacy operation strings (``"CREATE"``, ``"SOFT_DELETE"``, etc.)
+    during the migration to sec9 §9.6's ``Operation`` enum. See
+    Decision 9.6.B for the per-site mapping rationale.
+    """
+    if hasattr(op, "value"):
+        return op.value
+    s = str(op)
+    return _LEGACY_OPERATION_MAP.get(s, s)
+
+
 class ProvenanceStore:
-    """Store for provenance records in SQLite."""
+    """Store for ``ProvenanceRecord`` rows (sec9 §9.6).
 
-    def __init__(self, connection: sqlite3.Connection):
+    Writes the table generated from the ``hippo_core.ProvenanceRecord``
+    LinkML declaration; the DDL is emitted by the shared DDL generator.
+    The adapter's SQL triggers enforce append-only semantics at the DB
+    level (Decision 9.6.C).
+    """
+
+    def __init__(
+        self,
+        connection: sqlite3.Connection,
+        schema_version: Optional[str] = None,
+    ):
         self._conn = connection
-
-    @staticmethod
-    def compute_state_hash(data: dict[str, Any]) -> str:
-        """Compute SHA-256 hash of entity state.
-
-        Args:
-            data: The entity data to hash.
-
-        Returns:
-            Hexadecimal string representation of the SHA-256 hash.
-        """
-        import hashlib
-
-        serialized = json.dumps(data, sort_keys=True, default=str)
-        return hashlib.sha256(serialized.encode()).hexdigest()
-
-    @staticmethod
-    def generate_operation_id() -> str:
-        """Generate a unique operation ID.
-
-        Returns:
-            UUID string for the operation.
-        """
-        import uuid
-
-        return str(uuid.uuid4())
+        self._schema_version = schema_version or ""
 
     def record(
         self,
-        entity_id: str,
-        entity_type: str,
-        operation_type: str,
-        user_context: Optional[str],
-        payload: dict[str, Any],
-        operation_id: Optional[str] = None,
-        previous_state_hash: Optional[str] = None,
-        state_snapshot: Optional[dict[str, Any]] = None,
+        entity_id: Optional[str],
+        entity_type: Optional[str],
+        # Preferred (sec9 §9.6) parameters
+        operation: Any = None,
+        actor_id: Optional[str] = None,
+        patch: Optional[dict[str, Any]] = None,
+        context: Optional[dict[str, Any]] = None,
+        derived_from_id: Optional[str] = None,
+        process_id: Optional[str] = None,
+        schema_version: Optional[str] = None,
+        # Legacy parameters — accepted during the transition and mapped
+        # to the sec9 shape (Decision 9.6.B).
+        operation_type: Any = None,
+        user_context: Optional[str] = None,
+        payload: Optional[dict[str, Any]] = None,
+        # Legacy fields that no longer exist in sec9 — accepted and
+        # discarded so old callers don't raise TypeError.
+        operation_id: Optional[str] = None,  # noqa: ARG002
+        previous_state_hash: Optional[str] = None,  # noqa: ARG002
+        state_snapshot: Optional[dict[str, Any]] = None,  # noqa: ARG002
     ) -> ProvenanceRecordType:
-        """Record a provenance event."""
-        from hippo.core.types import ProvenanceRecord
+        """Record a provenance event. Accepts either sec9 kwargs or legacy kwargs."""
+        import uuid
+        from hippo.core.types import ProvenanceRecord as _ProvRec
+
+        op_source = operation if operation is not None else operation_type
+        if op_source is None:
+            raise ValueError("operation (or legacy operation_type) is required")
+        op_value = _normalize_operation(op_source)
+
+        # actor_id is required in sec9 §9.5's identity model. During the
+        # transition, callers that haven't been migrated pass None via the
+        # legacy user_context kwarg; default to a sentinel so the NOT NULL
+        # DDL constraint holds. Real deployments pass an agent UUID.
+        effective_actor = actor_id if actor_id is not None else user_context
+        if effective_actor is None:
+            effective_actor = "unknown"
+        effective_patch = patch if patch is not None else payload
 
         now = datetime.now(timezone.utc)
-
-        if operation_id is None:
-            operation_id = self.generate_operation_id()
-
-        if previous_state_hash is None and payload:
-            previous_state_hash = self.compute_state_hash(payload)
-
-        if state_snapshot is None:
-            state_snapshot = payload
-
-        record = ProvenanceRecord(
-            source="sqlite_adapter",
-            timestamp=now,
-            operation=operation_type,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            user_context=user_context,
-            payload=payload,
-        )
+        record_id = str(uuid.uuid4())
+        sv = schema_version if schema_version is not None else self._schema_version
 
         cursor = self._conn.cursor()
         cursor.execute(
-            """INSERT INTO provenance (entity_id, entity_type, operation_type, timestamp, user_context, payload, operation_id, previous_state_hash, state_snapshot)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO "ProvenanceRecord"
+               (id, entity_id, entity_type, operation, actor_id, timestamp,
+                schema_version, derived_from_id, process_id, patch, context,
+                is_available)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
             (
+                record_id,
                 entity_id,
                 entity_type,
-                operation_type,
+                op_value,
+                effective_actor,
                 now.isoformat(),
-                user_context,
-                json.dumps(payload),
-                operation_id,
-                previous_state_hash,
-                json.dumps(state_snapshot) if state_snapshot else None,
+                sv,
+                derived_from_id,
+                process_id,
+                json.dumps(effective_patch) if effective_patch is not None else None,
+                json.dumps(context) if context is not None else None,
             ),
         )
 
-        return record
+        return _ProvRec(
+            id=record_id,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            operation=op_value,
+            actor_id=effective_actor,
+            timestamp=now,
+            schema_version=sv,
+            derived_from_id=derived_from_id,
+            process_id=process_id,
+            patch=effective_patch,
+            context=context,
+        )
 
     def find_by_entity(
-        self, entity_id: str, operation_type: Optional[str] = None
+        self,
+        entity_id: str,
+        operation: Any = None,
+        operation_type: Any = None,  # legacy alias
     ) -> Iterator[ProvenanceRecordType]:
         """Find provenance records for an entity."""
+        from hippo.core.types import ProvenanceRecord as _ProvRec
+
+        op_filter = operation if operation is not None else operation_type
         cursor = self._conn.cursor()
+        sql = 'SELECT * FROM "ProvenanceRecord" WHERE entity_id = ?'
+        params: list[Any] = [entity_id]
 
-        sql = "SELECT * FROM provenance WHERE entity_id = ?"
-        params = [entity_id]
-
-        if operation_type:
-            sql += " AND operation_type = ?"
-            params.append(operation_type)
+        if op_filter is not None:
+            sql += " AND operation = ?"
+            params.append(_normalize_operation(op_filter))
 
         sql += " ORDER BY timestamp DESC"
 
         cursor.execute(sql, params)
         for row in cursor.fetchall():
-            yield ProvenanceRecordType(
-                source=row["source"],
-                timestamp=datetime.fromisoformat(row["timestamp"]),
-                operation=row["operation_type"],
-                entity_type=row["entity_type"],
+            yield _ProvRec(
+                id=row["id"],
                 entity_id=row["entity_id"],
-                user_context=row["user_context"],
-                payload=json.loads(row["payload"]) if row["payload"] else {},
+                entity_type=row["entity_type"],
+                operation=row["operation"],
+                actor_id=row["actor_id"] or "",
+                timestamp=datetime.fromisoformat(row["timestamp"]),
+                schema_version=row["schema_version"] or "",
+                derived_from_id=row["derived_from_id"],
+                process_id=row["process_id"],
+                patch=json.loads(row["patch"]) if row["patch"] else None,
+                context=json.loads(row["context"]) if row["context"] else None,
             )
 
     def get_history(self, entity_id: str) -> list[dict[str, Any]]:
-        """Get the complete change history for an entity.
+        """Get the complete change history for an entity (oldest first).
 
-        Args:
-            entity_id: The ID of the entity.
-
-        Returns:
-            List of provenance records in chronological order (oldest first).
+        Returns dicts shaped for legacy callers: legacy keys
+        (``operation_type``, ``user_id``, ``state_snapshot``) are preserved
+        by mapping onto the corresponding sec9 fields — ``state_snapshot``
+        draws from ``patch``, ``user_id`` from ``actor_id``. ``previous_state_hash``
+        is no longer tracked (sec9 §9.6) and is returned as ``None``.
         """
         cursor = self._conn.cursor()
         cursor.execute(
-            """SELECT operation_id, entity_id, entity_type, operation_type, timestamp, 
-                      user_context, previous_state_hash, state_snapshot
-               FROM provenance 
-               WHERE entity_id = ? 
+            """SELECT id, entity_id, entity_type, operation, timestamp,
+                      actor_id, patch
+               FROM "ProvenanceRecord"
+               WHERE entity_id = ?
                ORDER BY timestamp ASC""",
             (entity_id,),
         )
 
         results = []
         for row in cursor.fetchall():
+            patch = json.loads(row["patch"]) if row["patch"] else None
             results.append(
                 {
-                    "operation_id": row["operation_id"],
+                    "operation_id": row["id"],
                     "entity_id": row["entity_id"],
                     "entity_type": row["entity_type"],
-                    "operation_type": row["operation_type"],
+                    "operation_type": row["operation"],
                     "timestamp": row["timestamp"],
-                    "user_id": row["user_context"],
-                    "previous_state_hash": row["previous_state_hash"],
-                    "state_snapshot": json.loads(row["state_snapshot"])
-                    if row["state_snapshot"]
-                    else None,
+                    "user_id": row["actor_id"],
+                    "previous_state_hash": None,
+                    "state_snapshot": patch,
                 }
             )
-
         return results
 
     def get_state_at(self, entity_id: str, timestamp: str) -> Optional[dict[str, Any]]:
-        """Get the entity state at a specific point in time.
-
-        Args:
-            entity_id: The ID of the entity.
-            timestamp: ISO format timestamp to query.
-
-        Returns:
-            The entity state at that time, or None if entity didn't exist yet.
-        """
+        """Get the entity state at a specific point in time."""
         cursor = self._conn.cursor()
-
         cursor.execute(
-            """SELECT state_snapshot, timestamp, operation_type
-               FROM provenance 
+            """SELECT patch, timestamp, operation
+               FROM "ProvenanceRecord"
                WHERE entity_id = ? AND timestamp <= ?
                ORDER BY timestamp DESC
                LIMIT 1""",
@@ -244,30 +284,28 @@ class ProvenanceStore:
         if row is None:
             return None
 
-        if row["operation_type"] == "SOFT_DELETE":
-            return None
+        # availability_change with status=deleted supersedes the old
+        # SOFT_DELETE operation (Decision 9.6.B) — treat as unavailable.
+        if row["operation"] == "availability_change":
+            patch_obj = json.loads(row["patch"]) if row["patch"] else {}
+            if (
+                patch_obj.get("status") == "deleted"
+                or patch_obj.get("is_available") is False
+            ):
+                return None
 
         return {
             "entity_id": entity_id,
-            "state": json.loads(row["state_snapshot"])
-            if row["state_snapshot"]
-            else None,
+            "state": json.loads(row["patch"]) if row["patch"] else None,
             "timestamp": row["timestamp"],
         }
 
     def get_entity_creation_time(self, entity_id: str) -> Optional[str]:
-        """Get the creation timestamp of an entity.
-
-        Args:
-            entity_id: The ID of the entity.
-
-        Returns:
-            ISO format timestamp of entity creation, or None if not found.
-        """
+        """Get the creation timestamp of an entity."""
         cursor = self._conn.cursor()
         cursor.execute(
-            """SELECT timestamp FROM provenance 
-               WHERE entity_id = ? AND operation_type = 'CREATE'
+            """SELECT timestamp FROM "ProvenanceRecord"
+               WHERE entity_id = ? AND operation = 'create'
                ORDER BY timestamp ASC
                LIMIT 1""",
             (entity_id,),
@@ -278,25 +316,26 @@ class ProvenanceStore:
     def get_provenance_timestamps(
         self, entity_id: str
     ) -> Optional[dict[str, Optional[str]]]:
-        """Get provenance-derived created_at and updated_at for an entity.
+        """Derive created_at and updated_at for an entity from ProvenanceRecord.
 
         Derives:
-        - created_at: timestamp of the first provenance event (any type)
-        - updated_at: timestamp of the most recent non-SOFT_DELETE event
-
-        Args:
-            entity_id: The ID of the entity.
-
-        Returns:
-            Dict with 'created_at' and 'updated_at' strings, or None if no
-            provenance records exist for the entity.
+        - created_at: timestamp of the earliest record (any operation)
+        - updated_at: timestamp of the most recent non-availability-deletion event
         """
         cursor = self._conn.cursor()
+        # Mirror the legacy SOFT_DELETE-exclusion logic: records that flip the
+        # entity to unavailable aren't "updates" for updated_at purposes.
         cursor.execute(
             """SELECT
                    MIN(timestamp) AS created_at,
-                   MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at
-               FROM provenance
+                   MAX(CASE
+                       WHEN operation = 'availability_change'
+                            AND (json_extract(patch, '$.status') = 'deleted'
+                                 OR json_extract(patch, '$.is_available') = 0)
+                           THEN NULL
+                       ELSE timestamp
+                   END) AS updated_at
+               FROM "ProvenanceRecord"
                WHERE entity_id = ?""",
             (entity_id,),
         )
@@ -866,37 +905,47 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
                 ON entities(is_available)
             """)
 
+            # ProvenanceRecord — shape stamped inline here to match what the
+            # LinkML DDL generator produces from hippo_core.ProvenanceRecord
+            # (verified by tests/core/test_ddl_generator.py::
+            # TestHippoCoreProvenanceRecordDDL). Per Decision 9.6.D, this
+            # table replaces the legacy hand-coded `provenance` table.
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS provenance (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    entity_id TEXT NOT NULL,
-                    entity_type TEXT NOT NULL,
-                    operation_type TEXT NOT NULL,
+                CREATE TABLE IF NOT EXISTS "ProvenanceRecord" (
+                    id TEXT PRIMARY KEY,
+                    entity_id TEXT,
+                    entity_type TEXT,
+                    operation TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
                     timestamp TEXT NOT NULL,
-                    user_context TEXT,
-                    payload TEXT,
-                    operation_id TEXT,
-                    previous_state_hash TEXT,
-                    state_snapshot TEXT
+                    schema_version TEXT NOT NULL,
+                    derived_from_id TEXT,
+                    process_id TEXT,
+                    patch TEXT,
+                    context TEXT,
+                    is_available INTEGER NOT NULL DEFAULT 1,
+                    superseded_by TEXT
                 )
             """)
-
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_entity_id
-                ON provenance(entity_id)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_entity_id
+                ON "ProvenanceRecord"(entity_id)
             """)
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_operation_type
-                ON provenance(operation_type)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_operation
+                ON "ProvenanceRecord"(operation)
             """)
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_timestamp
-                ON provenance(timestamp)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_timestamp
+                ON "ProvenanceRecord"(timestamp)
             """)
-
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_entity_timestamp
-                ON provenance(entity_id, timestamp)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_process_id
+                ON "ProvenanceRecord"(process_id)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_entity_timestamp
+                ON "ProvenanceRecord"(entity_id, timestamp)
             """)
 
             cursor.execute("""
@@ -951,19 +1000,32 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             # Create entity_provenance_summary view before entity-level migrations.
             # This view is REQUIRED (not optional) for correct provenance-derived field
             # derivation in client.query(). Columns:
-            #   entity_id   - the entity
-            #   created_at  - timestamp of first CREATE event
-            #   updated_at  - timestamp of most recent non-SOFT_DELETE event
-            #   schema_version - always NULL in v0.1 (field not stored on provenance table)
+            #   entity_id       - the entity
+            #   created_at      - timestamp of earliest record for the entity
+            #   updated_at      - timestamp of most recent non-deletion record
+            #   schema_version  - schema_version from the latest record (sec9 §9.7)
+            # Post-migration (sec9 §9.6 / Decision 9.6.D) this reads from
+            # the ProvenanceRecord table with the new column shape. The
+            # availability-change exclusion mirrors the earlier SOFT_DELETE
+            # exclusion: patch.status == 'deleted' or is_available == 0 is
+            # not an update for updated_at purposes.
             cursor.execute("""
                 CREATE VIEW IF NOT EXISTS entity_provenance_summary AS
                 SELECT
                     entity_id,
                     entity_type,
                     MIN(timestamp) AS created_at,
-                    MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at,
-                    NULL AS schema_version
-                FROM provenance
+                    MAX(CASE
+                        WHEN operation = 'availability_change'
+                             AND (json_extract(patch, '$.status') = 'deleted'
+                                  OR json_extract(patch, '$.is_available') = 0)
+                            THEN NULL
+                        ELSE timestamp
+                    END) AS updated_at,
+                    (SELECT schema_version FROM "ProvenanceRecord" p2
+                     WHERE p2.entity_id = p1.entity_id
+                     ORDER BY timestamp DESC LIMIT 1) AS schema_version
+                FROM "ProvenanceRecord" p1
                 WHERE entity_id IS NOT NULL
                 GROUP BY entity_id, entity_type
             """)
@@ -976,26 +1038,23 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             cursor.execute(trigger_sql)
 
     def _run_migrations(self, cursor: sqlite3.Cursor) -> None:
-        """Run database migrations for schema updates."""
-        cursor.execute("PRAGMA table_info(provenance)")
-        columns = {row[1] for row in cursor.fetchall()}
+        """Run database migrations for schema updates.
 
-        if "operation_id" not in columns:
-            cursor.execute("ALTER TABLE provenance ADD COLUMN operation_id TEXT")
-
-        if "previous_state_hash" not in columns:
-            cursor.execute("ALTER TABLE provenance ADD COLUMN previous_state_hash TEXT")
-
-        if "state_snapshot" not in columns:
-            cursor.execute("ALTER TABLE provenance ADD COLUMN state_snapshot TEXT")
-
+        Post-sec9 §9.6 migration, the legacy ``provenance`` table is
+        replaced by ``ProvenanceRecord`` (created in ``_init_database``).
+        Legacy column-level ADD COLUMN migrations are no longer needed;
+        any dev database that still contains a legacy ``provenance``
+        table should be dropped and recreated (no production deployments
+        per earlier user directive).
+        """
+        # Drop the legacy provenance table if it exists; data migration
+        # from legacy to ProvenanceRecord is not supported (dev-only
+        # deployments).
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_provenance_entity_timestamp'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='provenance'"
         )
-        if cursor.fetchone() is None:
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_provenance_entity_timestamp ON provenance(entity_id, timestamp)"
-            )
+        if cursor.fetchone() is not None:
+            cursor.execute("DROP TABLE IF EXISTS provenance")
 
         # System column: superseded_by (nullable, applied generically to entities table)
         # This is analogous to is_available — a system field present on all entities.
@@ -1187,9 +1246,9 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             provenance.record(
                 entity_id=entity_id,
                 entity_type=entity_type,
-                operation_type="CREATE",
-                user_context=user_context,
-                payload=entity_data,
+                operation="create",
+                actor_id=user_context,
+                patch=entity_data,
             )
 
         return entity
@@ -1302,9 +1361,9 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
             provenance.record(
                 entity_id=entity_id,
                 entity_type=entity_type,
-                operation_type="SOFT_DELETE",
-                user_context=user_context,
-                payload=original_data,
+                operation="availability_change",
+                actor_id=user_context,
+                patch={"status": "deleted", "is_available": False, "data": original_data},
             )
 
             return True
@@ -1383,47 +1442,44 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
     def track_creation(
         self, entity: SQLiteEntity, metadata: Dict[str, Any]
     ) -> ProvenanceRecordType:
-        """Track the creation of an entity."""
-        record = ProvenanceRecordType(
-            source="sqlite_adapter",
+        """Track the creation of an entity (in-memory record, no DB write)."""
+        return ProvenanceRecordType(
             timestamp=datetime.now(timezone.utc),
             operation="create",
             entity_type=type(entity).__name__,
             entity_id=entity.id,
-            user_context=None,
-            payload=metadata,
+            actor_id="",
+            schema_version="",
+            patch=metadata,
         )
-        return record
 
     def track_update(
         self, entity: SQLiteEntity, metadata: Dict[str, Any]
     ) -> ProvenanceRecordType:
-        """Track the update of an entity."""
-        record = ProvenanceRecordType(
-            source="sqlite_adapter",
+        """Track the update of an entity (in-memory record, no DB write)."""
+        return ProvenanceRecordType(
             timestamp=datetime.now(timezone.utc),
             operation="update",
             entity_type=type(entity).__name__,
             entity_id=entity.id,
-            user_context=None,
-            payload=metadata,
+            actor_id="",
+            schema_version="",
+            patch=metadata,
         )
-        return record
 
     def track_deletion(
         self, entity_id: str, metadata: Dict[str, Any]
     ) -> ProvenanceRecordType:
-        """Track the deletion of an entity."""
-        record = ProvenanceRecordType(
-            source="sqlite_adapter",
+        """Track the deletion of an entity (in-memory record, no DB write)."""
+        return ProvenanceRecordType(
             timestamp=datetime.now(timezone.utc),
-            operation="delete",
+            operation="availability_change",
             entity_type="unknown",
             entity_id=entity_id,
-            user_context=None,
-            payload=metadata,
+            actor_id="",
+            schema_version="",
+            patch={"status": "deleted", **metadata},
         )
-        return record
 
     def get_journal_mode(self) -> str:
         """Get the current journal mode."""

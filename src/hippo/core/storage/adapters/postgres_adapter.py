@@ -62,121 +62,150 @@ class PostgresEntity:
         self.superseded_by = superseded_by
 
 
+from hippo.core.storage.adapters.sqlite_adapter import (
+    _LEGACY_OPERATION_MAP as _PG_LEGACY_OPERATION_MAP,  # noqa: F401
+    _normalize_operation as _pg_normalize_operation,
+)
+
+
 class PostgresProvenanceStore:
-    """Store for provenance records in PostgreSQL."""
+    """Postgres sibling of ``ProvenanceStore`` on the ``ProvenanceRecord`` table.
 
-    def __init__(self, conn: psycopg.Connection):
+    Mirrors the SQLite store's sec9 §9.6 shape. SQL-level
+    append-only enforcement is handled by a BEFORE UPDATE / BEFORE DELETE
+    trigger equivalent to the SQLite one (Decision 9.6.C).
+    """
+
+    def __init__(self, conn: psycopg.Connection, schema_version: Optional[str] = None):
         self._conn = conn
-
-    @staticmethod
-    def compute_state_hash(data: dict[str, Any]) -> str:
-        serialized = json.dumps(data, sort_keys=True, default=str)
-        return hashlib.sha256(serialized.encode()).hexdigest()
-
-    @staticmethod
-    def generate_operation_id() -> str:
-        return str(uuid.uuid4())
+        self._schema_version = schema_version or ""
 
     def record(
         self,
-        entity_id: str,
-        entity_type: str,
-        operation_type: str,
-        user_context: Optional[str],
-        payload: dict[str, Any],
-        operation_id: Optional[str] = None,
-        previous_state_hash: Optional[str] = None,
-        state_snapshot: Optional[dict[str, Any]] = None,
+        entity_id: Optional[str],
+        entity_type: Optional[str],
+        operation: Any = None,
+        actor_id: Optional[str] = None,
+        patch: Optional[dict[str, Any]] = None,
+        context: Optional[dict[str, Any]] = None,
+        derived_from_id: Optional[str] = None,
+        process_id: Optional[str] = None,
+        schema_version: Optional[str] = None,
+        # Legacy kwargs (Decision 9.6.B)
+        operation_type: Any = None,
+        user_context: Optional[str] = None,
+        payload: Optional[dict[str, Any]] = None,
+        operation_id: Optional[str] = None,  # noqa: ARG002
+        previous_state_hash: Optional[str] = None,  # noqa: ARG002
+        state_snapshot: Optional[dict[str, Any]] = None,  # noqa: ARG002
     ) -> ProvenanceRecordType:
+        op_source = operation if operation is not None else operation_type
+        if op_source is None:
+            raise ValueError("operation (or legacy operation_type) is required")
+        op_value = _pg_normalize_operation(op_source)
+
+        effective_actor = actor_id if actor_id is not None else user_context
+        if effective_actor is None:
+            effective_actor = "unknown"
+        effective_patch = patch if patch is not None else payload
+
         now = datetime.now(timezone.utc)
-
-        if operation_id is None:
-            operation_id = self.generate_operation_id()
-        if previous_state_hash is None and payload:
-            previous_state_hash = self.compute_state_hash(payload)
-        if state_snapshot is None:
-            state_snapshot = payload
-
-        record = ProvenanceRecordType(
-            source="postgres_adapter",
-            timestamp=now,
-            operation=operation_type,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            user_context=user_context,
-            payload=payload,
-        )
+        record_id = str(uuid.uuid4())
+        sv = schema_version if schema_version is not None else self._schema_version
 
         cur = self._conn.cursor()
         cur.execute(
-            """INSERT INTO provenance
-               (entity_id, entity_type, operation_type, timestamp, user_context,
-                payload, operation_id, previous_state_hash, state_snapshot)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            """INSERT INTO "ProvenanceRecord"
+               (id, entity_id, entity_type, operation, actor_id, timestamp,
+                schema_version, derived_from_id, process_id, patch, context,
+                is_available)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)""",
             (
+                record_id,
                 entity_id,
                 entity_type,
-                operation_type,
+                op_value,
+                effective_actor,
                 now.isoformat(),
-                user_context,
-                json.dumps(payload),
-                operation_id,
-                previous_state_hash,
-                json.dumps(state_snapshot) if state_snapshot else None,
+                sv,
+                derived_from_id,
+                process_id,
+                json.dumps(effective_patch) if effective_patch is not None else None,
+                json.dumps(context) if context is not None else None,
             ),
         )
-        return record
+        return ProvenanceRecordType(
+            id=record_id,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            operation=op_value,
+            actor_id=effective_actor or "",
+            timestamp=now,
+            schema_version=sv,
+            derived_from_id=derived_from_id,
+            process_id=process_id,
+            patch=effective_patch,
+            context=context,
+        )
 
     def find_by_entity(
-        self, entity_id: str, operation_type: Optional[str] = None
+        self,
+        entity_id: str,
+        operation: Any = None,
+        operation_type: Any = None,
     ) -> Iterator[ProvenanceRecordType]:
+        op_filter = operation if operation is not None else operation_type
         cur = self._conn.cursor()
-        sql = "SELECT * FROM provenance WHERE entity_id = %s"
+        sql = 'SELECT * FROM "ProvenanceRecord" WHERE entity_id = %s'
         params: list[Any] = [entity_id]
 
-        if operation_type:
-            sql += " AND operation_type = %s"
-            params.append(operation_type)
+        if op_filter is not None:
+            sql += " AND operation = %s"
+            params.append(_pg_normalize_operation(op_filter))
 
         sql += " ORDER BY timestamp DESC"
         cur.execute(sql, params)
 
         for row in cur.fetchall():
             yield ProvenanceRecordType(
-                source="postgres_adapter",
-                timestamp=datetime.fromisoformat(row["timestamp"]),
-                operation=row["operation_type"],
-                entity_type=row["entity_type"],
+                id=row["id"],
                 entity_id=row["entity_id"],
-                user_context=row["user_context"],
-                payload=json.loads(row["payload"]) if row["payload"] else {},
+                entity_type=row["entity_type"],
+                operation=row["operation"],
+                actor_id=row["actor_id"] or "",
+                timestamp=datetime.fromisoformat(row["timestamp"]) if isinstance(row["timestamp"], str) else row["timestamp"],
+                schema_version=row["schema_version"] or "",
+                derived_from_id=row["derived_from_id"],
+                process_id=row["process_id"],
+                patch=json.loads(row["patch"]) if isinstance(row["patch"], str) and row["patch"] else row["patch"],
+                context=json.loads(row["context"]) if isinstance(row["context"], str) and row["context"] else row["context"],
             )
 
     def get_history(self, entity_id: str) -> list[dict[str, Any]]:
         cur = self._conn.cursor()
         cur.execute(
-            """SELECT operation_id, entity_id, entity_type, operation_type, timestamp,
-                      user_context, previous_state_hash, state_snapshot
-               FROM provenance
+            """SELECT id, entity_id, entity_type, operation, timestamp,
+                      actor_id, patch
+               FROM "ProvenanceRecord"
                WHERE entity_id = %s
                ORDER BY timestamp ASC""",
             (entity_id,),
         )
-
         results = []
         for row in cur.fetchall():
+            patch = row["patch"]
+            if isinstance(patch, str):
+                patch = json.loads(patch) if patch else None
             results.append(
                 {
-                    "operation_id": row["operation_id"],
+                    "operation_id": row["id"],
                     "entity_id": row["entity_id"],
                     "entity_type": row["entity_type"],
-                    "operation_type": row["operation_type"],
+                    "operation_type": row["operation"],
                     "timestamp": row["timestamp"],
-                    "user_id": row["user_context"],
-                    "previous_state_hash": row["previous_state_hash"],
-                    "state_snapshot": json.loads(row["state_snapshot"])
-                    if row["state_snapshot"]
-                    else None,
+                    "user_id": row["actor_id"],
+                    "previous_state_hash": None,
+                    "state_snapshot": patch,
                 }
             )
         return results
@@ -184,8 +213,8 @@ class PostgresProvenanceStore:
     def get_state_at(self, entity_id: str, timestamp: str) -> Optional[dict[str, Any]]:
         cur = self._conn.cursor()
         cur.execute(
-            """SELECT state_snapshot, timestamp, operation_type
-               FROM provenance
+            """SELECT patch, timestamp, operation
+               FROM "ProvenanceRecord"
                WHERE entity_id = %s AND timestamp <= %s
                ORDER BY timestamp DESC
                LIMIT 1""",
@@ -196,22 +225,28 @@ class PostgresProvenanceStore:
         if row is None:
             return None
 
-        if row["operation_type"] == "SOFT_DELETE":
-            return None
+        patch_val = row["patch"]
+        if isinstance(patch_val, str):
+            patch_val = json.loads(patch_val) if patch_val else None
+
+        if row["operation"] == "availability_change" and isinstance(patch_val, dict):
+            if (
+                patch_val.get("status") == "deleted"
+                or patch_val.get("is_available") is False
+            ):
+                return None
 
         return {
             "entity_id": entity_id,
-            "state": json.loads(row["state_snapshot"])
-            if row["state_snapshot"]
-            else None,
+            "state": patch_val,
             "timestamp": row["timestamp"],
         }
 
     def get_entity_creation_time(self, entity_id: str) -> Optional[str]:
         cur = self._conn.cursor()
         cur.execute(
-            """SELECT timestamp FROM provenance
-               WHERE entity_id = %s AND operation_type = 'CREATE'
+            """SELECT timestamp FROM "ProvenanceRecord"
+               WHERE entity_id = %s AND operation = 'create'
                ORDER BY timestamp ASC
                LIMIT 1""",
             (entity_id,),
@@ -226,8 +261,14 @@ class PostgresProvenanceStore:
         cur.execute(
             """SELECT
                    MIN(timestamp) AS created_at,
-                   MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at
-               FROM provenance
+                   MAX(CASE
+                       WHEN operation = 'availability_change'
+                            AND (patch::jsonb->>'status' = 'deleted'
+                                 OR patch::jsonb->>'is_available' = 'false')
+                           THEN NULL
+                       ELSE timestamp
+                   END) AS updated_at
+               FROM "ProvenanceRecord"
                WHERE entity_id = %s""",
             (entity_id,),
         )
@@ -747,85 +788,32 @@ class PostgresFTSStore:
 # ---------------------------------------------------------------------------
 
 POSTGRES_PROVENANCE_TRIGGERS = """
--- Prevent updates to provenance primary key
-CREATE OR REPLACE FUNCTION prevent_provenance_pk_update()
+-- Enforce hippo_append_only on ProvenanceRecord at the SQL level
+-- (sec9 §9.6 / Decision 9.6.C). A single BEFORE UPDATE / BEFORE DELETE
+-- trigger covers any column change and any row deletion.
+CREATE OR REPLACE FUNCTION prevent_provenance_update()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF OLD.entity_id IS DISTINCT FROM NEW.entity_id THEN
-        RAISE EXCEPTION 'Cannot update primary key of provenance record';
-    END IF;
-    RETURN NEW;
+    RAISE EXCEPTION 'Cannot update ProvenanceRecord: hippo_append_only class';
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_prevent_provenance_pk_update ON provenance;
-CREATE TRIGGER trg_prevent_provenance_pk_update
-    BEFORE UPDATE ON provenance
+DROP TRIGGER IF EXISTS trg_prevent_provenance_update ON "ProvenanceRecord";
+CREATE TRIGGER trg_prevent_provenance_update
+    BEFORE UPDATE ON "ProvenanceRecord"
     FOR EACH ROW
-    EXECUTE FUNCTION prevent_provenance_pk_update();
+    EXECUTE FUNCTION prevent_provenance_update();
 
--- Prevent updates to provenance timestamp
-CREATE OR REPLACE FUNCTION prevent_provenance_timestamp_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF OLD.timestamp IS DISTINCT FROM NEW.timestamp THEN
-        RAISE EXCEPTION 'Cannot update timestamp of provenance record';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_prevent_provenance_timestamp_update ON provenance;
-CREATE TRIGGER trg_prevent_provenance_timestamp_update
-    BEFORE UPDATE ON provenance
-    FOR EACH ROW
-    EXECUTE FUNCTION prevent_provenance_timestamp_update();
-
--- Prevent updates to provenance user_context
-CREATE OR REPLACE FUNCTION prevent_provenance_metadata_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF OLD.user_context IS DISTINCT FROM NEW.user_context THEN
-        RAISE EXCEPTION 'Cannot update user_context of provenance record';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_prevent_provenance_metadata_update ON provenance;
-CREATE TRIGGER trg_prevent_provenance_metadata_update
-    BEFORE UPDATE ON provenance
-    FOR EACH ROW
-    EXECUTE FUNCTION prevent_provenance_metadata_update();
-
--- Prevent updates to provenance payload
-CREATE OR REPLACE FUNCTION prevent_provenance_content_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF OLD.payload IS DISTINCT FROM NEW.payload THEN
-        RAISE EXCEPTION 'Cannot update payload of provenance record';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_prevent_provenance_content_update ON provenance;
-CREATE TRIGGER trg_prevent_provenance_content_update
-    BEFORE UPDATE ON provenance
-    FOR EACH ROW
-    EXECUTE FUNCTION prevent_provenance_content_update();
-
--- Prevent deletion of provenance records
 CREATE OR REPLACE FUNCTION prevent_provenance_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-    RAISE EXCEPTION 'Cannot delete provenance records';
+    RAISE EXCEPTION 'Cannot delete ProvenanceRecord: hippo_append_only class';
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_prevent_provenance_delete ON provenance;
+DROP TRIGGER IF EXISTS trg_prevent_provenance_delete ON "ProvenanceRecord";
 CREATE TRIGGER trg_prevent_provenance_delete
-    BEFORE DELETE ON provenance
+    BEFORE DELETE ON "ProvenanceRecord"
     FOR EACH ROW
     EXECUTE FUNCTION prevent_provenance_delete();
 """
@@ -934,36 +922,52 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
                 ON entities USING GIN (data)
             """)
 
+            # Drop legacy provenance table if it exists; data migration
+            # from legacy to ProvenanceRecord is not supported (dev-only
+            # deployments per Decision 9.6.D).
+            cur.execute("DROP TABLE IF EXISTS provenance CASCADE")
+
+            # ProvenanceRecord table (sec9 §9.6 / Decision 9.6.D). Shape
+            # matches what the LinkML DDL generator produces from
+            # hippo_core.ProvenanceRecord (verified by
+            # tests/core/test_ddl_generator.py::
+            # TestHippoCoreProvenanceRecordDDL).
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS provenance (
-                    id BIGSERIAL PRIMARY KEY,
-                    entity_id TEXT NOT NULL,
-                    entity_type TEXT NOT NULL,
-                    operation_type TEXT NOT NULL,
+                CREATE TABLE IF NOT EXISTS "ProvenanceRecord" (
+                    id TEXT PRIMARY KEY,
+                    entity_id TEXT,
+                    entity_type TEXT,
+                    operation TEXT NOT NULL,
+                    actor_id TEXT NOT NULL,
                     timestamp TEXT NOT NULL,
-                    user_context TEXT,
-                    payload TEXT,
-                    operation_id TEXT,
-                    previous_state_hash TEXT,
-                    state_snapshot TEXT
+                    schema_version TEXT NOT NULL,
+                    derived_from_id TEXT,
+                    process_id TEXT,
+                    patch TEXT,
+                    context TEXT,
+                    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+                    superseded_by TEXT
                 )
             """)
-
             cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_entity_id
-                ON provenance(entity_id)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_entity_id
+                ON "ProvenanceRecord"(entity_id)
             """)
             cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_operation_type
-                ON provenance(operation_type)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_operation
+                ON "ProvenanceRecord"(operation)
             """)
             cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_timestamp
-                ON provenance(timestamp)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_timestamp
+                ON "ProvenanceRecord"(timestamp)
             """)
             cur.execute("""
-                CREATE INDEX IF NOT EXISTS idx_provenance_entity_timestamp
-                ON provenance(entity_id, timestamp)
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_process_id
+                ON "ProvenanceRecord"(process_id)
+            """)
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_ProvenanceRecord_entity_timestamp
+                ON "ProvenanceRecord"(entity_id, timestamp)
             """)
 
             cur.execute("""
@@ -1020,18 +1024,30 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
             # Provenance immutability triggers
             cur.execute(POSTGRES_PROVENANCE_TRIGGERS)
 
-            # entity_provenance_summary view
+            # entity_provenance_summary view — sec9 §9.7 computed fields.
+            # Reads the ProvenanceRecord table; the availability-change
+            # exclusion mirrors the SOFT_DELETE logic (Decision 9.6.B):
+            # availability_change with status='deleted' or is_available=false
+            # does not count toward updated_at.
             cur.execute("""
                 CREATE OR REPLACE VIEW entity_provenance_summary AS
                 SELECT
-                    entity_id,
-                    entity_type,
-                    MIN(timestamp) AS created_at,
-                    MAX(CASE WHEN operation_type != 'SOFT_DELETE' THEN timestamp ELSE NULL END) AS updated_at,
-                    NULL::TEXT AS schema_version
-                FROM provenance
-                WHERE entity_id IS NOT NULL
-                GROUP BY entity_id, entity_type
+                    p1.entity_id,
+                    p1.entity_type,
+                    MIN(p1.timestamp) AS created_at,
+                    MAX(CASE
+                        WHEN p1.operation = 'availability_change'
+                             AND (p1.patch::jsonb->>'status' = 'deleted'
+                                  OR p1.patch::jsonb->>'is_available' = 'false')
+                            THEN NULL
+                        ELSE p1.timestamp
+                    END) AS updated_at,
+                    (SELECT p2.schema_version FROM "ProvenanceRecord" p2
+                     WHERE p2.entity_id = p1.entity_id
+                     ORDER BY p2.timestamp DESC LIMIT 1) AS schema_version
+                FROM "ProvenanceRecord" p1
+                WHERE p1.entity_id IS NOT NULL
+                GROUP BY p1.entity_id, p1.entity_type
             """)
 
     # ------------------------------------------------------------------
@@ -1090,9 +1106,9 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
             provenance.record(
                 entity_id=entity_id,
                 entity_type=entity_type,
-                operation_type="CREATE",
-                user_context=user_context,
-                payload=entity_data,
+                operation="create",
+                actor_id=user_context,
+                patch=entity_data,
             )
 
         return entity
@@ -1200,9 +1216,9 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
             provenance.record(
                 entity_id=entity_id,
                 entity_type=entity_type,
-                operation_type="SOFT_DELETE",
-                user_context=user_context,
-                payload=original_data,
+                operation="availability_change",
+                actor_id=user_context,
+                patch={"status": "deleted", "is_available": False, "data": original_data},
             )
 
             return True
@@ -1390,39 +1406,39 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
         self, entity: PostgresEntity, metadata: Dict[str, Any]
     ) -> ProvenanceRecordType:
         return ProvenanceRecordType(
-            source="postgres_adapter",
             timestamp=datetime.now(timezone.utc),
             operation="create",
             entity_type=type(entity).__name__,
             entity_id=entity.id,
-            user_context=None,
-            payload=metadata,
+            actor_id="",
+            schema_version="",
+            patch=metadata,
         )
 
     def track_update(
         self, entity: PostgresEntity, metadata: Dict[str, Any]
     ) -> ProvenanceRecordType:
         return ProvenanceRecordType(
-            source="postgres_adapter",
             timestamp=datetime.now(timezone.utc),
             operation="update",
             entity_type=type(entity).__name__,
             entity_id=entity.id,
-            user_context=None,
-            payload=metadata,
+            actor_id="",
+            schema_version="",
+            patch=metadata,
         )
 
     def track_deletion(
         self, entity_id: str, metadata: Dict[str, Any]
     ) -> ProvenanceRecordType:
         return ProvenanceRecordType(
-            source="postgres_adapter",
             timestamp=datetime.now(timezone.utc),
-            operation="delete",
+            operation="availability_change",
             entity_type="unknown",
             entity_id=entity_id,
-            user_context=None,
-            payload=metadata,
+            actor_id="",
+            schema_version="",
+            patch={"status": "deleted", **metadata},
         )
 
     def search_capabilities(self) -> set[str]:

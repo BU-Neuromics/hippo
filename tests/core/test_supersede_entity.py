@@ -57,10 +57,16 @@ class TestSupersededEntity:
         entity = client._storage.read_any("col-old")
         assert entity.superseded_by == "col-new"
 
-    def test_supersede_entity_writes_entity_superseded_provenance_event(
+    def test_supersede_entity_writes_supersede_provenance_event(
         self, client: HippoClient
     ) -> None:
-        """EntitySuperseded provenance event is recorded on source entity."""
+        """A 'supersede' provenance event is recorded on the source entity.
+
+        Per sec9 §9.6 / Decision 9.6.B, "EntitySuperseded" maps to the
+        ``supersede`` Operation enum; the replacement's id is carried in
+        ``derived_from_id`` (not in the patch payload as under the legacy
+        shape).
+        """
         client.put("Sample", {"id": "prov-old", "name": "old"})
         client.put("Sample", {"id": "prov-new", "name": "new"})
 
@@ -70,30 +76,28 @@ class TestSupersededEntity:
 
         history = client.history("prov-old")
         superseded_events = [
-            e for e in history if e["operation_type"] == "EntitySuperseded"
+            e for e in history if e["operation_type"] == "supersede"
         ]
         assert len(superseded_events) == 1
-        event = superseded_events[0]
-        import json
 
-        payload = event.get("state_snapshot") or {}
-        # Check payload has superseded_by_id.
-        assert (
-            payload.get("superseded_by_id") == "prov-new" or True
-        )  # payload in state_snapshot
-
-    def test_supersede_entity_writes_entity_updated_provenance_on_replacement(
+    def test_supersede_entity_writes_update_provenance_on_replacement(
         self, client: HippoClient
     ) -> None:
-        """EntityUpdated provenance event is recorded on replacement entity."""
+        """An 'update' provenance event is recorded on the replacement entity.
+
+        Legacy "EntityUpdated" → ``update`` per Decision 9.6.B. The record
+        notes the supersession relationship in the patch.
+        """
         client.put("Sample", {"id": "rep-old", "name": "old"})
         client.put("Sample", {"id": "rep-new", "name": "new"})
 
         client.supersede_entity("rep-old", "rep-new")
 
         history = client.history("rep-new")
-        updated_events = [e for e in history if e["operation_type"] == "EntityUpdated"]
-        assert len(updated_events) == 1
+        # put() writes one 'create' event; supersede_entity adds one 'update'
+        # event annotating rep-new as the active replacement for rep-old.
+        update_events = [e for e in history if e["operation_type"] == "update"]
+        assert len(update_events) == 1
 
     def test_supersede_entity_creates_relationship_edge(
         self, client: HippoClient

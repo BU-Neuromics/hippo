@@ -248,7 +248,8 @@ class TestPostgresAdapterProvenance:
         adapter.create(sample_entity)
         history = adapter.history(sample_entity.id)
         assert len(history) >= 1
-        assert history[0]["operation_type"] == "CREATE"
+        # sec9 §9.6 Operation enum values (lowercase)
+        assert history[0]["operation_type"] == "create"
 
     def test_delete_records_provenance(self, adapter, sample_entity):
         adapter.create(sample_entity)
@@ -256,13 +257,13 @@ class TestPostgresAdapterProvenance:
         history = adapter.history(sample_entity.id)
         assert len(history) >= 2
         ops = [h["operation_type"] for h in history]
-        assert "CREATE" in ops
-        assert "SOFT_DELETE" in ops
+        # Decision 9.6.B: SOFT_DELETE → availability_change
+        assert "create" in ops
+        assert "availability_change" in ops
 
     def test_track_creation(self, adapter, sample_entity):
         record = adapter.track_creation(sample_entity, {"test": "metadata"})
         assert record.operation == "create"
-        assert record.source == "postgres_adapter"
 
     def test_track_update(self, adapter, sample_entity):
         record = adapter.track_update(sample_entity, {"test": "metadata"})
@@ -270,7 +271,8 @@ class TestPostgresAdapterProvenance:
 
     def test_track_deletion(self, adapter, sample_entity):
         record = adapter.track_deletion(sample_entity.id, {"test": "metadata"})
-        assert record.operation == "delete"
+        # Legacy "delete" → availability_change per Decision 9.6.B
+        assert record.operation == "availability_change"
 
 
 class TestPostgresAdapterAtomicUpsert:

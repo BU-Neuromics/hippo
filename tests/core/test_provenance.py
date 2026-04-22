@@ -37,22 +37,59 @@ class TestProvenanceTracking:
     def _get_provenance_records(
         self, db_path: str, entity_id: str = None
     ) -> list[dict]:
-        """Helper to retrieve provenance records directly from DB."""
+        """Helper to retrieve ProvenanceRecord rows with legacy-shape dicts.
+
+        Queries the sec9 §9.6 ProvenanceRecord table but aliases columns
+        back to the legacy names (``operation`` → ``operation_type``,
+        ``actor_id`` → ``user_context``, ``patch`` → ``payload``) so
+        existing assertions continue to work during the transition. The
+        legacy-only ``CREATE`` / ``SOFT_DELETE`` operation strings are
+        also re-mapped to the new enum values at the assertion layer.
+        """
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
+        legacy_map = {
+            "create": "CREATE",
+            "update": "UPDATE",
+            "availability_change": "SOFT_DELETE",
+            "supersede": "SUPERSEDE",
+            "relationship_add": "RELATE",
+            "relationship_remove": "UNRELATE",
+        }
+
         if entity_id:
             cursor.execute(
-                "SELECT * FROM provenance WHERE entity_id = ? ORDER BY timestamp",
+                'SELECT id, entity_id, entity_type, operation, actor_id, '
+                'timestamp, patch FROM "ProvenanceRecord" '
+                "WHERE entity_id = ? ORDER BY timestamp",
                 (entity_id,),
             )
         else:
-            cursor.execute("SELECT * FROM provenance ORDER BY timestamp")
+            cursor.execute(
+                'SELECT id, entity_id, entity_type, operation, actor_id, '
+                'timestamp, patch FROM "ProvenanceRecord" '
+                "ORDER BY timestamp"
+            )
 
-        columns = [desc[0] for desc in cursor.description]
         results = []
         for row in cursor.fetchall():
-            results.append(dict(zip(columns, row)))
+            actor = row[4]
+            if actor == "unknown":
+                actor = None
+            results.append(
+                {
+                    "operation_id": row[0],
+                    "entity_id": row[1],
+                    "entity_type": row[2],
+                    "operation_type": legacy_map.get(row[3], row[3]),
+                    "user_context": actor,
+                    "timestamp": row[5],
+                    "payload": row[6],
+                    "previous_state_hash": None,
+                    "state_snapshot": row[6],
+                }
+            )
         conn.close()
         return results
 
@@ -95,8 +132,12 @@ class TestProvenanceTracking:
         assert "SOFT_DELETE" in record_types
 
         delete_record = [r for r in records if r["operation_type"] == "SOFT_DELETE"][0]
-        payload = json.loads(delete_record["payload"])
-        assert payload["id"] == "test-entity-2"
+        # sec9 §9.6: availability_change patches carry status + data.
+        # The original entity snapshot rides under patch.data during the transition.
+        patch = json.loads(delete_record["payload"])
+        assert patch["status"] == "deleted"
+        assert patch["is_available"] is False
+        assert patch["data"]["id"] == "test-entity-2"
 
         adapter.close()
 
@@ -149,117 +190,50 @@ class TestProvenanceTracking:
         adapter.close()
 
     def test_provenance_indexes_exist(self, db_path: str) -> None:
-        """Test that provenance indexes are created."""
+        """Test that ProvenanceRecord indexes are created (sec9 §9.6 names)."""
         adapter = SQLiteAdapter(db_path, wal_mode=True)
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_provenance_%'"
+            "SELECT name FROM sqlite_master WHERE type='index' "
+            "AND name LIKE 'idx_ProvenanceRecord_%'"
         )
         indexes = [row[0] for row in cursor.fetchall()]
         conn.close()
 
-        assert "idx_provenance_entity_id" in indexes
-        assert "idx_provenance_operation_type" in indexes
-        assert "idx_provenance_timestamp" in indexes
+        assert "idx_ProvenanceRecord_entity_id" in indexes
+        assert "idx_ProvenanceRecord_operation" in indexes
+        assert "idx_ProvenanceRecord_timestamp" in indexes
 
         adapter.close()
 
     def test_provenance_table_schema(self, db_path: str) -> None:
-        """Test that provenance table has correct schema."""
+        """Test that ProvenanceRecord table has the sec9 §9.6 column shape."""
         adapter = SQLiteAdapter(db_path, wal_mode=True)
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        cursor.execute("PRAGMA table_info(provenance)")
+        cursor.execute('PRAGMA table_info("ProvenanceRecord")')
         columns = {row[1]: row[2] for row in cursor.fetchall()}
         conn.close()
 
-        assert "entity_id" in columns
-        assert "entity_type" in columns
-        assert "operation_type" in columns
-        assert "timestamp" in columns
-        assert "user_context" in columns
-        assert "payload" in columns
-
-        adapter.close()
-
-    def test_provenance_new_columns_exist(self, db_path: str) -> None:
-        """Test that new provenance columns exist (operation_id, previous_state_hash, state_snapshot)."""
-        adapter = SQLiteAdapter(db_path, wal_mode=True)
-
-        entity = TestEntity(id="test-entity-new", name="New Columns Test")
-        adapter.create(entity)
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(provenance)")
-        columns = {row[1] for row in cursor.fetchall()}
-        conn.close()
-
-        assert "operation_id" in columns
-        assert "previous_state_hash" in columns
-        assert "state_snapshot" in columns
-
-        adapter.close()
-
-    def test_provenance_operation_id_generation(self, db_path: str) -> None:
-        """Test that operation_id is generated for each provenance record."""
-        adapter = SQLiteAdapter(db_path, wal_mode=True)
-
-        entity = TestEntity(id="test-op-id", name="Operation ID Test")
-        adapter.create(entity)
-
-        records = self._get_provenance_records(db_path, "test-op-id")
-
-        assert len(records) == 1
-        assert records[0]["operation_id"] is not None
-
-        import uuid
-
-        uuid.UUID(records[0]["operation_id"])
-
-        adapter.close()
-
-    def test_provenance_state_hash_computation(self, db_path: str) -> None:
-        """Test that previous_state_hash is computed using SHA-256."""
-        import hashlib
-
-        adapter = SQLiteAdapter(db_path, wal_mode=True)
-
-        entity = TestEntity(id="test-hash", name="Hash Test")
-        adapter.create(entity)
-
-        records = self._get_provenance_records(db_path, "test-hash")
-
-        assert records[0]["previous_state_hash"] is not None
-        assert len(records[0]["previous_state_hash"]) == 64
-
-        expected_hash = hashlib.sha256(
-            json.dumps(
-                {"id": "test-hash", "name": "Hash Test"}, sort_keys=True
-            ).encode()
-        ).hexdigest()
-        assert records[0]["previous_state_hash"] == expected_hash
-
-        adapter.close()
-
-    def test_provenance_state_snapshot(self, db_path: str) -> None:
-        """Test that state_snapshot is recorded."""
-        adapter = SQLiteAdapter(db_path, wal_mode=True)
-
-        entity = TestEntity(id="test-snapshot", name="Snapshot Test")
-        adapter.create(entity)
-
-        records = self._get_provenance_records(db_path, "test-snapshot")
-
-        assert records[0]["state_snapshot"] is not None
-        snapshot = json.loads(records[0]["state_snapshot"])
-        assert snapshot["id"] == "test-snapshot"
-        assert snapshot["name"] == "Snapshot Test"
+        for col in (
+            "id",
+            "entity_id",
+            "entity_type",
+            "operation",
+            "actor_id",
+            "timestamp",
+            "schema_version",
+            "derived_from_id",
+            "process_id",
+            "patch",
+            "context",
+        ):
+            assert col in columns, f"column {col!r} missing from ProvenanceRecord"
 
         adapter.close()
 
@@ -270,13 +244,13 @@ class TestProvenanceTracking:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_provenance_entity_timestamp'"
+            "SELECT name FROM sqlite_master WHERE type='index' "
+            "AND name='idx_ProvenanceRecord_entity_timestamp'"
         )
         result = cursor.fetchone()
         conn.close()
 
         assert result is not None
-        assert result[0] == "idx_provenance_entity_timestamp"
 
         adapter.close()
 
@@ -345,12 +319,15 @@ class TestHistoryMethods:
         history = adapter.history("history-test-1")
 
         assert len(history) == 2
-        assert history[0]["operation_type"] == "CREATE"
-        assert history[1]["operation_type"] == "UPDATE"
+        # sec9 §9.6 Operation enum values (lowercase)
+        assert history[0]["operation_type"] == "create"
+        assert history[1]["operation_type"] == "update"
 
         for record in history:
+            # operation_id is the record's UUID under the sec9 shape
             assert record["operation_id"] is not None
-            assert record["previous_state_hash"] is not None
+            # previous_state_hash was dropped in sec9 §9.6 — always None
+            assert record["previous_state_hash"] is None
 
         adapter.close()
 
@@ -501,7 +478,8 @@ class TestHistoryClientAPI:
         history = client.history(entity_id)
 
         assert len(history) >= 1
-        assert history[0]["operation_type"] == "CREATE"
+        # sec9 §9.6 Operation enum values (lowercase)
+        assert history[0]["operation_type"] == "create"
 
     def test_client_state_at(self, client) -> None:
         """Test 5.3: HippoClient.state_at() returns entity state at time."""

@@ -164,15 +164,16 @@ class ProvenanceService:
             )
 
             prov_store = self._storage._get_provenance_store(conn)
-            prov_payload: dict[str, Any] = {"superseded_by_id": replacement_id}
+            prov_patch: dict[str, Any] = {}
             if reason is not None:
-                prov_payload["reason"] = reason
+                prov_patch["reason"] = reason
             prov_store.record(
                 entity_id=entity_id,
                 entity_type=source_entity.entity_type,
-                operation_type="EntitySuperseded",
-                user_context=actor,
-                payload=prov_payload,
+                operation="supersede",
+                actor_id=actor,
+                derived_from_id=replacement_id,
+                patch=prov_patch or None,
             )
 
             rel_store = self._storage._get_relationship_store(conn)
@@ -187,9 +188,9 @@ class ProvenanceService:
             prov_store.record(
                 entity_id=replacement_id,
                 entity_type=replacement_entity.entity_type,
-                operation_type="EntityUpdated",
-                user_context=actor,
-                payload={
+                operation="update",
+                actor_id=actor,
+                patch={
                     "note": f"Now the active replacement for superseded entity {entity_id}",
                     "supersedes": entity_id,
                 },

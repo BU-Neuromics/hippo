@@ -81,7 +81,8 @@ class TestBulkAvailability:
         )
 
         history = client.history("b6")
+        # Legacy "AvailabilityChanged" → availability_change (Decision 9.6.B)
         availability_events = [
-            h for h in history if h["operation_type"] == "AvailabilityChanged"
+            h for h in history if h["operation_type"] == "availability_change"
         ]
         assert len(availability_events) >= 1

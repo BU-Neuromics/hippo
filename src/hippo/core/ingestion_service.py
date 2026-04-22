@@ -171,9 +171,9 @@ class IngestionService:
                 provenance.record(
                     entity_id=final_id,
                     entity_type=entity_type,
-                    operation_type="UPDATE",
-                    user_context=None,
-                    payload=data,
+                    operation="update",
+                    actor_id=None,
+                    patch=data,
                 )
 
                 self._sync_entity_to_fts(final_id, entity_type, data, is_available=True)
@@ -296,9 +296,9 @@ class IngestionService:
             provenance.record(
                 entity_id=entity_id,
                 entity_type=entity_type,
-                operation_type="REPLACED",
-                user_context=None,
-                payload=data,
+                operation="update",
+                actor_id=None,
+                patch=data,
             )
 
             self._sync_entity_to_fts(entity_id, entity_type, data, is_available=True)
@@ -411,15 +411,15 @@ class IngestionService:
                     )
 
                     provenance = self._storage._get_provenance_store(conn)
-                    prov_payload: dict[str, Any] = {"is_available": is_available}
+                    prov_patch: dict[str, Any] = {"is_available": is_available}
                     if reason:
-                        prov_payload["reason"] = reason
+                        prov_patch["reason"] = reason
                     provenance.record(
                         entity_id=eid,
                         entity_type=entity_type,
-                        operation_type="AvailabilityChanged",
-                        user_context=actor,
-                        payload=prov_payload,
+                        operation="availability_change",
+                        actor_id=actor,
+                        patch=prov_patch,
                     )
 
                 data = existing.data if existing else {}

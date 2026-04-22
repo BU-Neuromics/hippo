@@ -132,26 +132,65 @@ class ValidationResult(BaseModel):
         return self.valid
 
 
-class ProvenanceRecord(BaseModel):
-    """Provenance record for tracking data lineage.
+class Operation(str, Enum):
+    """Kind of operation recorded on a ProvenanceRecord.
 
-    Records the source, timestamp, and operation that created or modified data.
+    Mirrors the ``Operation`` enum declared in ``hippo_core.yaml`` (sec9 §9.6).
+    The canonical source is the LinkML declaration; this mirror exists so
+    Python callers can pass enum values without going through the registry.
     """
 
-    source: str = Field(description="Origin system or entity")
-    timestamp: datetime = Field(description="When the operation occurred")
-    operation: str = Field(
-        description="Type of operation (create, update, read, delete)"
+    create = "create"
+    update = "update"
+    availability_change = "availability_change"
+    supersede = "supersede"
+    relationship_add = "relationship_add"
+    relationship_remove = "relationship_remove"
+    external_id_add = "external_id_add"
+    external_id_remove = "external_id_remove"
+    migration_applied = "migration_applied"
+    reference_data_installed = "reference_data_installed"
+
+
+class ProvenanceRecord(BaseModel):
+    """Provenance record for tracking data lineage (sec9 §9.6 shape).
+
+    In-memory representation returned by ``ProvenanceStore.record()``.
+    Corresponds 1:1 with the ``ProvenanceRecord`` class declared in
+    ``hippo_core.yaml``.
+    """
+
+    id: Optional[str] = Field(
+        default=None, description="UUID primary key; assigned by the store on write"
+    )
+    entity_id: Optional[str] = Field(
+        default=None,
+        description="UUID of the targeted entity; null for system operations",
     )
     entity_type: Optional[str] = Field(
-        default=None, description="Type of entity affected"
+        default=None, description="Fully-qualified class name of the target entity"
     )
-    entity_id: Optional[str] = Field(default=None, description="ID of entity")
-    user_context: Optional[str] = Field(
-        default=None, description="User or system context that initiated the operation"
+    operation: Operation = Field(description="Kind of operation (sec9 §9.6)")
+    actor_id: str = Field(
+        description="UUID of the entity responsible for the operation (sec9 §9.5)"
     )
-    payload: dict[str, Any] = Field(
-        default_factory=dict, description="Complete entity state as JSON"
+    timestamp: datetime = Field(description="UTC wall-clock time of completion")
+    schema_version: str = Field(
+        description="Version of the merged schema at write time"
+    )
+    derived_from_id: Optional[str] = Field(
+        default=None,
+        description="For supersede operations, UUID of the previous entity version",
+    )
+    process_id: Optional[str] = Field(
+        default=None, description="Enclosing Process UUID, if any"
+    )
+    patch: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Operation-specific change payload as a JSON-serializable dict",
+    )
+    context: Optional[dict[str, Any]] = Field(
+        default=None, description="Caller-supplied contextual metadata"
     )
 
 
