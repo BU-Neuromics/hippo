@@ -669,3 +669,59 @@ class TestAppendOnlyClassesHelper:
             "      id: {identifier: true}\n"
         )
         assert "AbstractLog" not in reg.append_only_classes()
+
+
+class TestReferenceLoadersHelper:
+    """SchemaRegistry.reference_loaders() — returns concrete subclasses of
+    ReferenceLoader in the merged schema (sec9 §9.5, reference-loader-shape).
+    """
+
+    _HIPPO_CORE_IMPORT_SCHEMA = (
+        "id: https://example.org/t\n"
+        "name: t\n"
+        "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+        "default_range: string\n"
+        "imports: [linkml:types, hippo_core]\n"
+        "classes: {}\n"
+    )
+
+    def test_empty_when_no_subclasses_declared(self):
+        reg = SchemaRegistry.from_yaml(self._HIPPO_CORE_IMPORT_SCHEMA)
+        assert reg.reference_loaders() == []
+
+    def test_includes_subclass_of_reference_loader(self):
+        schema = (
+            "id: https://example.org/t\n"
+            "name: t\n"
+            "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+            "default_range: string\n"
+            "imports: [linkml:types, hippo_core]\n"
+            "classes:\n"
+            "  ChemicalLoader:\n"
+            "    is_a: ReferenceLoader\n"
+            "    attributes:\n"
+            "      id: {identifier: true}\n"
+        )
+        reg = SchemaRegistry.from_yaml(schema)
+        assert "ChemicalLoader" in reg.reference_loaders()
+
+    def test_excludes_reference_loader_itself(self):
+        reg = SchemaRegistry.from_yaml(self._HIPPO_CORE_IMPORT_SCHEMA)
+        assert "ReferenceLoader" not in reg.reference_loaders()
+
+    def test_excludes_abstract_subclass(self):
+        schema = (
+            "id: https://example.org/t\n"
+            "name: t\n"
+            "prefixes: {linkml: 'https://w3id.org/linkml/'}\n"
+            "default_range: string\n"
+            "imports: [linkml:types, hippo_core]\n"
+            "classes:\n"
+            "  AbstractLoader:\n"
+            "    is_a: ReferenceLoader\n"
+            "    abstract: true\n"
+            "    attributes:\n"
+            "      id: {identifier: true}\n"
+        )
+        reg = SchemaRegistry.from_yaml(schema)
+        assert "AbstractLoader" not in reg.reference_loaders()

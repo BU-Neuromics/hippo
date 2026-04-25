@@ -23,7 +23,7 @@ reference to the shipped file.
 | `ProvenanceRecord` | class | Atomic audit record of an operation on an entity. Annotated `hippo_append_only: true`; PROV-O-aligned. `is_a: Entity`. |
 | `Process` | class | Composite activity grouping atomic operations under one logical execution (reference loads, migrations, pipeline runs). `is_a: Entity`. |
 | `Validator` | class (placeholder) | Declarative validator definition; slot inventory finalized later. |
-| `ReferenceLoader` | class (placeholder) | Metadata for reference-data loader plugins; slot inventory finalized by the `reference-loader-shape` OpenSpec change. |
+| `ReferenceLoader` | class | Metadata for reference-data loader plugins. Full slot inventory: `name`, `entity_type` (multivalued), `source`, `schema_fragment`. |
 | `Status` | enum | Lifecycle state of an entity. |
 | `Operation` | enum | Operation kinds recorded on a `ProvenanceRecord`. |
 
@@ -203,30 +203,62 @@ user-schema extensions become possible as soon as the shape firms up.
 
 ---
 
-### `ReferenceLoader` (placeholder)
+### `ReferenceLoader`
 
-Metadata for reference-data loader plugins. Slot inventory deferred to the
-`reference-loader-shape` OpenSpec change (Wave 3 per sec9 §9.12). Two open
-design questions gate the final shape:
+Metadata for a reference-data loader plugin. Instances are contributed by
+plugins registered under the `hippo.reference_loaders` entry point. The full
+slot inventory was finalized by the `reference-loader-shape` OpenSpec change
+(Wave 3 per sec9 §9.12), resolving Decisions 9.5.E and 9.5.F.
 
-- **Multi-class loaders.** `entity_type` must be multivalued; exact
-  cardinality semantics open.
-- **Referential boundary of `schema_fragment`.** A `ReferenceLoader`
-  instance may reference classes declared in its own `schema_fragment`.
-  The load-order contract (when the fragment is merged, when the
-  instance is validated) needs deliberate design.
+| Slot | Type | Multivalued | Required | Semantics |
+|---|---|---|---|---|
+| `name` | string (identifier) | no | yes | Stable plugin identifier. Used in registration error messages (`plugin <name> failed to register: <reason>`). |
+| `entity_type` | string | yes | no | Declarative list of entity class names this loader populates. Used for provenance and discoverability via `SchemaRegistry.reference_loaders()`. Does NOT drive runtime ingestion order. |
+| `source` | string | no | no | URL, file path, or other locator identifying the origin of the reference data. Recorded in provenance; not interpreted by Hippo. |
+| `schema_fragment` | string | no | no | Inline LinkML schema YAML fragment contributed by this plugin. Merged into the live `SchemaView` at plugin registration. Classes declared here may be referenced in `entity_type`. |
 
-Current declared slots:
+#### Plugin registration contract (Decision 9.5.E)
 
-| Slot | Type | Required |
-|---|---|---|
-| `name` | string (identifier) | yes |
+Plugin registration is a two-step lockstep:
+
+1. Hippo merges the loader's `schema_fragment` into the live `SchemaView`.
+2. Hippo validates the `ReferenceLoader` instance against the merged view,
+   so `entity_type` references can resolve.
+
+Either step failing aborts plugin registration with a single error:
+`plugin <name> failed to register: <reason>`. Partial state — fragment merged
+but instance rejected, or instance accepted before its fragment loads — is
+impossible. End users never see schema or validation errors at runtime; those
+are developer-facing, caught during plugin registration.
+
+#### Developer responsibility — data-loading semantics (Decision 9.5.F)
+
+`entity_type` is purely declarative. **Hippo does not enforce ingestion order
+from it.** A multi-class loader (e.g., one that populates both `Substance` and
+`Reaction`) must insert rows in the correct FK-satisfying order inside its own
+code — Hippo schema validation provides no such guarantee. If `Substance` must
+exist before `Reaction`, the loader inserts `Substance` rows first. This is an
+explicit contract: schema-side validation cannot substitute for correct
+data-loading logic.
+
+If a future plugin needs Hippo to surface per-class metadata, promote
+`entity_type` to a `LoaderTarget` record range — a mechanical migration with
+no semantics change for existing loaders.
+
+#### Introspection
+
+`SchemaRegistry.reference_loaders()` returns the names of all concrete classes
+in the merged schema that subclass `ReferenceLoader`. After a plugin's
+`schema_fragment` is merged, any loader-specific subclass it declares (via
+`is_a: ReferenceLoader`) appears in this list. The optional REST endpoint
+(`GET /schemas/reference_loaders`) is deferred until the
+`generated-rest-surface` change lands.
 
 ---
 
 ### Version and compatibility
 
-`hippo_core.version` is `0.3.0` (0.1.0 initial → 0.2.0 added `Process` → 0.3.0 added `ProvenanceRecord`). Bump rules (per sec9 §9.3):
+`hippo_core.version` is `0.4.0` (0.1.0 initial → 0.2.0 added `Process` → 0.3.0 added `ProvenanceRecord` → 0.4.0 finalized `ReferenceLoader` slot inventory). Bump rules (per sec9 §9.3):
 
 | Change | Bump |
 |---|---|
@@ -269,5 +301,5 @@ adding the concept to `hippo_core` ad-hoc.
 | `actor_id` UUID resolution through an identity-model service layer | Follow-up to `provenance-migration` (see Decision 9.6.F) |
 | `schema_version` populated from `SchemaRegistry` at write time | Follow-up to `provenance-migration` (see Decision 9.6.F) |
 | Final `Validator` slot inventory | Later OpenSpec change; deferred pending `validators.yaml` reconciliation |
-| Final `ReferenceLoader` slot inventory | `reference-loader-shape` (Wave 3) |
+| REST introspection endpoint for reference loaders | `generated-rest-surface` (deferred) |
 | Typed client Pydantic generation | `typed-client` (Wave 3) |

@@ -409,6 +409,29 @@ class SchemaRegistry:
             if annotation_value(s, HIPPO_UNIQUE)
         ]
 
+    def reference_loaders(self) -> list[str]:
+        """Names of concrete classes that are subclasses of ``ReferenceLoader``.
+
+        Returns every non-abstract class in the merged schema whose ancestry
+        includes ``ReferenceLoader``.  Plugin schema fragments that declare a
+        loader-specific subclass (``is_a: ReferenceLoader``) appear here after
+        their fragment is merged into the live ``SchemaView``.
+
+        Used for discoverability — callers can enumerate which loader types are
+        registered in the current deployment.  For provenance queries use the
+        ``entity_type`` slot on individual instances.
+        """
+        out: list[str] = []
+        for name, cls in self._sv.all_classes(imports=True).items():
+            if cls.abstract:
+                continue
+            if name == "ReferenceLoader":
+                continue
+            ancestors = self._sv.class_ancestors(name)
+            if "ReferenceLoader" in ancestors:
+                out.append(name)
+        return out
+
     def append_only_classes(self) -> set[str]:
         """Names of classes annotated ``hippo_append_only: true``.
 

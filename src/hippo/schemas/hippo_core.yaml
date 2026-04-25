@@ -11,7 +11,7 @@ description: >-
   `design/reference_hippo_core.md` for the per-class reference.
 
 license: https://creativecommons.org/publicdomain/zero/1.0/
-version: 0.3.0
+version: 0.4.0
 
 prefixes:
   linkml: https://w3id.org/linkml/
@@ -244,20 +244,53 @@ classes:
     description: >-
       Metadata for a reference-data loader plugin. Instances are contributed
       by plugins registered under the `hippo.reference_loaders` entry point.
-      Placeholder — full slot inventory is finalized in the
-      `reference-loader-shape` OpenSpec change (Wave 3). Two open design
-      questions block the final shape:
-        - multi-class loaders (entity_type must be multivalued; exact
-          cardinality semantics open)
-        - referential boundary of `schema_fragment` (load-order contract
-          between plugin schema merge and ReferenceLoader instance
-          validation)
-      See sec9 §9.5.
+
+      Plugin registration contract (Decision 9.5.E): Hippo merges
+      `schema_fragment` into the live SchemaView at plugin registration, then
+      validates the ReferenceLoader instance against the merged view so
+      `entity_type` references resolve. Either failure aborts registration
+      with a single error path; partial state is not allowed. End users never
+      see fragment or instance validation errors at runtime.
+
+      `entity_type` semantics (Decision 9.5.F): the slot is declarative —
+      used for provenance recording and discoverability only. Hippo does NOT
+      drive runtime data-ingestion order from it. The loader's own code owns
+      ingestion order (e.g., insert Substance rows before Reaction rows for
+      FK satisfaction). See `design/reference_hippo_core.md` for the full
+      developer contract.
     attributes:
       name:
         identifier: true
         range: string
         required: true
+        description: >-
+          Stable identifier for this loader. Used as the plugin name in
+          registration error messages (`plugin <name> failed to register`).
+      entity_type:
+        range: string
+        multivalued: true
+        required: false
+        description: >-
+          Declarative list of entity class names this loader populates.
+          Used for provenance (what classes did this loader touch?) and
+          discoverability via SchemaRegistry.reference_loaders(). Does NOT
+          drive runtime data-ingestion order — that is the loader's
+          responsibility (Decision 9.5.F).
+      source:
+        range: string
+        required: false
+        description: >-
+          URL, file path, or other locator identifying the origin of the
+          reference data. Recorded in provenance; not interpreted by Hippo.
+      schema_fragment:
+        range: string
+        required: false
+        description: >-
+          Inline LinkML schema YAML fragment contributed by this plugin.
+          Merged into the live SchemaView at plugin registration before the
+          ReferenceLoader instance is validated. Classes declared here are
+          available for use in `entity_type` and in the user schema after
+          registration (Decision 9.5.E).
 
 #
 # ---------------------------------------------------------------------------
