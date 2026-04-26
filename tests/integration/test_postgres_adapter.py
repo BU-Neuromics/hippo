@@ -68,8 +68,6 @@ def sample_entity():
         is_available=True,
         version=1,
         data={"name": "Test Sample", "category": "tissue", "status": "active"},
-        created_at=None,
-        updated_at=None,
     )
 
 
@@ -152,8 +150,6 @@ class TestPostgresAdapterQuery:
             is_available=True,
             version=1,
             data={"name": "Alpha", "category": "blood"},
-            created_at=None,
-            updated_at=None,
         )
         e2 = PostgresEntity(
             id=str(uuid.uuid4()),
@@ -161,8 +157,6 @@ class TestPostgresAdapterQuery:
             is_available=True,
             version=1,
             data={"name": "Beta", "category": "tissue"},
-            created_at=None,
-            updated_at=None,
         )
         adapter.create(e1)
         adapter.create(e2)
@@ -186,8 +180,6 @@ class TestPostgresAdapterQuery:
                 is_available=True,
                 version=1,
                 data={"name": f"Sample-{i}"},
-                created_at=None,
-                updated_at=None,
             )
             adapter.create(e)
 
@@ -303,8 +295,6 @@ class TestPostgresAdapterRelationships:
             is_available=True,
             version=1,
             data={"name": "Parent"},
-            created_at=None,
-            updated_at=None,
         )
         e2 = PostgresEntity(
             id=str(uuid.uuid4()),
@@ -312,8 +302,6 @@ class TestPostgresAdapterRelationships:
             is_available=True,
             version=1,
             data={"name": "Child"},
-            created_at=None,
-            updated_at=None,
         )
         adapter.create(e1)
         adapter.create(e2)
