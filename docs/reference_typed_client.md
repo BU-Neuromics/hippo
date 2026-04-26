@@ -152,6 +152,40 @@ client.samples.create(sample)
 When Pydantic generation fails at load time, `model_class` is `None` and the
 accessor falls back to plain-dict operation with a logged warning.
 
+### Direct Import via `hippo.models`
+
+As an alternative to `accessor.model_class`, Hippo registers every generated
+class under `hippo.models.<namespace>` so you can import classes directly:
+
+```python
+# Root-namespace class
+from hippo.models import Sample
+sample = Sample(id="x1", name="S001")
+client.samples.create(sample)
+
+# Non-root namespace class (hippo_namespace: tissue)
+from hippo.models.tissue import TissueSample
+
+# Nested namespace class (hippo_namespace: assay.quant)
+from hippo.models.assay.quant import Measurement
+```
+
+The `hippo.models` package is populated by `HippoClient.__init__` when a
+`SchemaRegistry` is provided. The modules are not available until after the
+first `HippoClient(registry=...)` construction.
+
+Classes are keyed by their LinkML class name (e.g. `Sample`, `TissueSample`)
+not by the accessor name (`samples`, `tissue_samples`). Root-namespace classes
+land on `hippo.models` itself; non-root classes land on
+`hippo.models.<namespace>`. Intermediate parent modules (e.g. `hippo.models.assay`
+when only `assay.quant` has classes) are registered as empty modules so import
+chains resolve.
+
+**Multi-client note:** If multiple `HippoClient` instances with different
+registries coexist in the same process, the last-constructed client's classes
+populate `hippo.models`. Concurrent multi-registry use in the same process is
+not supported.
+
 ---
 
 ## Error Handling

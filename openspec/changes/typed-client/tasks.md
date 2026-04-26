@@ -11,7 +11,7 @@
 
 - [x] 2.1 `hippo.core.typed_client.generate_pydantic_models(registry)` runs `linkml.generators.pydanticgen.PydanticGenerator` against a flattened merged schema and returns a `dict[class_name, BaseModel-subclass]`. In-memory; no file artifacts.
 - [x] 2.2 Generation failures degrade gracefully with a `logger.warning` — accessors still work against plain dicts (Decision 9.8.H). Four failure points each have their own warning: generator import, serialization, Pydantic import, exec.
-- [ ] 2.3 `hippo.models` module entry point exposing the generated classes under sub-modules per namespace (`hippo.models.tissue`, `hippo.models.assay.quant`) — **deferred**. The generated classes are attached to typed accessors via `EntityAccessor.model_class`; a separate `hippo.models` import surface is a later ergonomics pass.
+- [x] 2.3 `hippo.models` module entry point exposing the generated classes under sub-modules per namespace (`hippo.models.tissue`, `hippo.models.assay.quant`). Root-namespace classes land on `hippo.models` itself. Synthetic `sys.modules` entries registered by `hippo.models.populate()` called from `HippoClient.__init__` after `build_typed_surface`. See `src/hippo/models/__init__.py`. (PTS-71)
 
 ## 3. Namespace-aware accessors
 

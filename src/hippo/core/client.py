@@ -21,6 +21,7 @@ from hippo.core.typed_client import (
     build_typed_surface,
     generate_pydantic_models,
 )
+from hippo.models import populate as _populate_models
 
 
 class HippoClient:
@@ -108,6 +109,7 @@ class HippoClient:
                 self, registry, models=self._models
             )
             self._install_typed_accessors()
+            _populate_models(self._typed_root)
 
     def _install_typed_accessors(self) -> None:
         """Expose typed accessors on ``self`` for flat root access, plus
