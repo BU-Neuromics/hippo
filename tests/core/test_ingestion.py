@@ -377,10 +377,10 @@ class TestIngestionIdempotency:
     """
 
     @pytest.fixture()
-    def real_client(self, tmp_path):
+    def real_client(self, tmp_path, minimal_schema_registry):
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        storage = SQLiteAdapter(str(tmp_path / "test.db"))
+        storage = SQLiteAdapter(str(tmp_path / "test.db"), schema_registry=minimal_schema_registry)
         return HippoClient(storage=storage)
 
     @pytest.fixture()

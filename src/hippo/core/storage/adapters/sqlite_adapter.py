@@ -22,7 +22,10 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterator, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Generator, Iterator, List, Optional
+
+if TYPE_CHECKING:
+    from hippo.linkml_bridge import SchemaRegistry
 
 from hippo.core.storage import EntityStore, Query, ScoredMatch
 from hippo.core.storage.adapters import sqlite_triggers
@@ -883,12 +886,13 @@ class FTSStore:
         return fts_table_exists(self._conn.cursor(), table_name)
 
 
-class SQLiteAdapter(EntityStore[SQLiteEntity]):
+class SQLiteAdapter(EntityStore):
     """SQLite storage adapter with WAL mode for improved concurrency."""
 
     def __init__(
         self,
         database_path: str | Path,
+        schema_registry: "SchemaRegistry",
         wal_mode: bool = True,
         schema_version: Optional[str] = None,
     ):
@@ -896,6 +900,8 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
 
         Args:
             database_path: Path to the SQLite database file.
+            schema_registry: LinkML schema registry for schema introspection
+                and validation. Required for LinkML-native storage operations.
             wal_mode: Whether to enable WAL journal mode.
             schema_version: Schema version string captured on each
                 ``ProvenanceRecord`` write (sec9 §9.6 / §9.7). Typically
@@ -905,6 +911,7 @@ class SQLiteAdapter(EntityStore[SQLiteEntity]):
                 string (legacy transition; see Decision 9.6.F).
         """
         self.database_path = Path(database_path)
+        self.schema_registry = schema_registry
         self.wal_mode = wal_mode
         self._schema_version = schema_version or ""
         self._local = threading.local()

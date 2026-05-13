@@ -322,11 +322,11 @@ class TestIngestPipeline:
     """IngestPipeline upserts entities via a real HippoClient."""
 
     @pytest.fixture()
-    def real_client(self, tmp_path):
+    def real_client(self, tmp_path, minimal_schema_registry):
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
 
-        return HippoClient(storage=SQLiteAdapter(str(tmp_path / "test.db")))
+        return HippoClient(storage=SQLiteAdapter(str(tmp_path / "test.db"), schema_registry=minimal_schema_registry))
 
     def _csv_loader(self, data: bytes, config: dict = None):
         from hippo.core.loaders.csv import CSVLoader

@@ -109,7 +109,8 @@ def _make_client(
     from hippo.linkml_bridge import SchemaRegistry
 
     db_path = tmp_hippo / "hippo.db"
-    storage = SQLiteAdapter(str(db_path))
+    registry = SchemaRegistry.from_path(tmp_hippo / "schemas")
+    storage = SQLiteAdapter(str(db_path), schema_registry=registry)
 
     pipeline: ValidationPipeline | None = None
     if validation:
@@ -117,7 +118,6 @@ def _make_client(
         cel = CELWriteValidator(validators_path=str(tmp_hippo / "validators.yaml"))
         pipeline.add_validator(cel)
 
-    registry = SchemaRegistry.from_path(tmp_hippo / "schemas")
     client = HippoClient(storage=storage, pipeline=pipeline, registry=registry)
 
     if fts:

@@ -27,13 +27,13 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture
-def adapter():
+def adapter(minimal_schema_registry):
     """Create a fresh PostgresAdapter with clean tables for each test."""
     from hippo.core.storage.adapters.postgres_adapter import PostgresAdapter
 
     db_url = POSTGRES_URL
     # Use a unique schema prefix to avoid cross-test contamination
-    adapter = PostgresAdapter(database_url=db_url, min_pool_size=1, max_pool_size=5)
+    adapter = PostgresAdapter(database_url=db_url, schema_registry=minimal_schema_registry, min_pool_size=1, max_pool_size=5)
 
     yield adapter
 

@@ -46,7 +46,7 @@ class TestHippoIngestEntityYAML:
         p.write_text(yaml.dump(content))
         return p
 
-    def test_ingest_entity_file_creates_entities(self, runner, tmp_hippo):
+    def test_ingest_entity_file_creates_entities(self, runner, tmp_hippo, minimal_schema_registry):
         """hippo ingest <file> creates entities declared in the entity file."""
         entity_file = self._make_entity_file(tmp_hippo, [
             {"type": "GenomeBuild", "data": {"name": "GRCh38", "source": "ensembl", "release": "110"}},
@@ -55,7 +55,7 @@ class TestHippoIngestEntityYAML:
 
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         from hippo.cli.commands.ingest import ingest_entity_file, IngestResult
         result = ingest_entity_file(entity_file, client)
@@ -65,7 +65,7 @@ class TestHippoIngestEntityYAML:
         items = list(client.query("GenomeBuild").items)
         assert len(items) == 2
 
-    def test_ingest_entity_file_idempotent(self, runner, tmp_hippo):
+    def test_ingest_entity_file_idempotent(self, runner, tmp_hippo, minimal_schema_registry):
         """hippo ingest is idempotent — re-ingesting same file does not duplicate entities."""
         entity_file = self._make_entity_file(tmp_hippo, [
             {"type": "GenomeBuild", "data": {"name": "GRCh38", "source": "ensembl", "release": "110"},
@@ -75,7 +75,7 @@ class TestHippoIngestEntityYAML:
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         r1 = ingest_entity_file(entity_file, client)
         assert r1.created == 1
@@ -87,12 +87,12 @@ class TestHippoIngestEntityYAML:
         items = list(client.query("GenomeBuild").items)
         assert len(items) == 1
 
-    def test_ingest_entity_file_updates_changed_entity(self, runner, tmp_hippo):
+    def test_ingest_entity_file_updates_changed_entity(self, runner, tmp_hippo, minimal_schema_registry):
         """Re-ingest with changed data updates the entity."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         v1 = self._make_entity_file(tmp_hippo, [
             {"type": "GenomeBuild", "data": {"name": "GRCh38", "release": "109"},
@@ -112,12 +112,12 @@ class TestHippoIngestEntityYAML:
         assert len(items) == 1
         assert items[0]["data"]["release"] == "110"
 
-    def test_ingest_entity_file_missing_type_raises(self, runner, tmp_hippo):
+    def test_ingest_entity_file_missing_type_raises(self, runner, tmp_hippo, minimal_schema_registry):
         """Entity entries missing 'type' field are rejected with a clear error."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         bad_file = tmp_hippo / "bad.yaml"
         bad_file.write_text(yaml.dump({"entities": [{"data": {"name": "GRCh38"}}]}))
@@ -125,12 +125,12 @@ class TestHippoIngestEntityYAML:
         with pytest.raises(IngestError, match="missing 'type'"):
             ingest_entity_file(bad_file, client)
 
-    def test_ingest_entity_file_missing_data_raises(self, runner, tmp_hippo):
+    def test_ingest_entity_file_missing_data_raises(self, runner, tmp_hippo, minimal_schema_registry):
         """Entity entries missing 'data' field are rejected."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         bad_file = tmp_hippo / "bad.yaml"
         bad_file.write_text(yaml.dump({"entities": [{"type": "GenomeBuild"}]}))
@@ -138,22 +138,22 @@ class TestHippoIngestEntityYAML:
         with pytest.raises(IngestError, match="missing 'data'"):
             ingest_entity_file(bad_file, client)
 
-    def test_ingest_entity_file_not_found_raises(self, runner, tmp_hippo):
+    def test_ingest_entity_file_not_found_raises(self, runner, tmp_hippo, minimal_schema_registry):
         """Non-existent file raises IngestError."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         with pytest.raises(IngestError, match="not found"):
             ingest_entity_file(tmp_hippo / "nonexistent.yaml", client)
 
-    def test_ingest_entity_file_top_level_not_entities_raises(self, runner, tmp_hippo):
+    def test_ingest_entity_file_top_level_not_entities_raises(self, runner, tmp_hippo, minimal_schema_registry):
         """Entity file without top-level 'entities' key raises IngestError."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         bad_file = tmp_hippo / "bad.yaml"
         bad_file.write_text(yaml.dump({"records": [{"type": "GenomeBuild", "data": {}}]}))
@@ -161,12 +161,12 @@ class TestHippoIngestEntityYAML:
         with pytest.raises(IngestError, match="'entities'"):
             ingest_entity_file(bad_file, client)
 
-    def test_ingest_entity_file_partial_failure_continues(self, runner, tmp_hippo):
+    def test_ingest_entity_file_partial_failure_continues(self, runner, tmp_hippo, minimal_schema_registry):
         """If one entity fails validation, others are still created."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         # Entity 2 has empty data — should fail but entity 1 should succeed
         entity_file = self._make_entity_file(tmp_hippo, [
@@ -186,12 +186,12 @@ class TestHippoIngestEntityYAML:
 class TestHippoIngestRejectsCSV:
     """hippo ingest must reject CSV/JSON data files — those belong to Cappella."""
 
-    def test_ingest_csv_file_raises_error(self, runner, tmp_hippo):
+    def test_ingest_csv_file_raises_error(self, runner, tmp_hippo, minimal_schema_registry):
         """Passing a CSV file to ingest_entity_file raises IngestError, not silently processes it."""
         from hippo.core.client import HippoClient
         from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
         from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db")))
+        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
 
         csv_file = tmp_hippo / "data.csv"
         csv_file.write_text("external_id,name\nBU0001,Alice\n")

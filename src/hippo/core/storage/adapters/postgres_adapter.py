@@ -21,7 +21,10 @@ import hashlib
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, Generator, Iterator, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Generator, Iterator, List, Optional
+
+if TYPE_CHECKING:
+    from hippo.linkml_bridge import SchemaRegistry
 
 from hippo.core.storage import EntityStore, Query, ScoredMatch
 from hippo.core.types import ProvenanceRecord as ProvenanceRecordType, TemporalRecord
@@ -869,12 +872,14 @@ CREATE TRIGGER trg_prevent_provenance_delete
 """
 
 
-class PostgresAdapter(EntityStore[PostgresEntity]):
+class PostgresAdapter(EntityStore):
     """PostgreSQL storage adapter with connection pooling.
 
     Args:
         database_url: PostgreSQL connection string (e.g. postgresql://user:pass@host:5432/db).
             Can also be set via HIPPO_DATABASE_URL environment variable.
+        schema_registry: LinkML schema registry for schema introspection
+            and validation. Required for LinkML-native storage operations.
         min_pool_size: Minimum number of connections in the pool (default: 2).
         max_pool_size: Maximum number of connections in the pool (default: 10).
     """
@@ -882,11 +887,13 @@ class PostgresAdapter(EntityStore[PostgresEntity]):
     def __init__(
         self,
         database_url: str,
+        schema_registry: "SchemaRegistry",
         min_pool_size: int = 2,
         max_pool_size: int = 10,
         schema_version: Optional[str] = None,
     ):
         self.database_url = database_url
+        self.schema_registry = schema_registry
         self.min_pool_size = min_pool_size
         self.max_pool_size = max_pool_size
         self._schema_version = schema_version or ""

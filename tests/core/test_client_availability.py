@@ -31,8 +31,8 @@ from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
 
 
 @pytest.fixture()
-def client(tmp_path: Path) -> HippoClient:
-    storage = SQLiteAdapter(str(tmp_path / "hippo.db"))
+def client(tmp_path: Path, minimal_schema_registry) -> HippoClient:
+    storage = SQLiteAdapter(str(tmp_path / "hippo.db"), schema_registry=minimal_schema_registry)
     return HippoClient(storage=storage)
 
 

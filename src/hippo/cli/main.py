@@ -320,12 +320,22 @@ def _get_client(db_path: str | None = None):
     """Construct a HippoClient backed by SQLite.
 
     Looks for the database at --db-path, then data/hippo.db.
+    Uses the bundled hippo_core schema for validation.
     """
     from hippo.core.client import HippoClient
     from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
+    from hippo.linkml_bridge import SchemaRegistry
+    from linkml_runtime.utils.schemaview import SchemaView
+    import importlib.resources
 
     path = Path(db_path) if db_path else Path("data/hippo.db")
-    return HippoClient(storage=SQLiteAdapter(str(path)))
+
+    # Create a minimal schema registry from the bundled hippo_core schema
+    hippo_core_path = importlib.resources.files("hippo.schemas").joinpath("hippo_core.yaml")
+    schema_view = SchemaView(str(hippo_core_path))
+    registry = SchemaRegistry(schema_view)
+
+    return HippoClient(storage=SQLiteAdapter(str(path), schema_registry=registry))
 
 
 @app.command()

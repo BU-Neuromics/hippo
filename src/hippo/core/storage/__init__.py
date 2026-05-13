@@ -4,13 +4,10 @@ from abc import ABC, abstractmethod
 from typing import (
     Any,
     Dict,
-    Generic,
     Iterator,
     List,
     Optional,
     Protocol,
-    TypeVar,
-    runtime_checkable,
 )
 from collections import namedtuple
 
@@ -27,9 +24,6 @@ class Entity(Protocol):
     def id(self) -> str:
         """Return the unique identifier for this entity."""
         ...
-
-
-T = TypeVar("T", bound=Entity)
 
 
 class Query:
@@ -50,17 +44,21 @@ class Query:
         self.filter_mode = filter_mode  # "and" or "or"
 
 
-class EntityStore(ABC, Generic[T]):
+class EntityStore(ABC):
     """Abstract base class for storage adapters.
 
     This ABC defines the interface for all storage adapters (SQLite, PostgreSQL, etc.)
     that need to implement CRUD operations, search functionality, and provenance tracking.
 
+    All adapters must accept a ``schema_registry: SchemaRegistry`` parameter in their
+    ``__init__`` method. This registry provides schema introspection and validation
+    capabilities required for LinkML-native storage operations.
+
     Subclasses must implement all abstract methods.
     """
 
     @abstractmethod
-    def create(self, entity: T) -> T:
+    def create(self, entity: Any) -> Any:
         """Create a new entity in the store.
 
         Args:
@@ -72,7 +70,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def read(self, entity_id: str) -> Optional[T]:
+    def read(self, entity_id: str) -> Optional[Any]:
         """Read an entity by its ID.
 
         Args:
@@ -84,7 +82,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def update(self, entity: T) -> T:
+    def update(self, entity: Any) -> Any:
         """Update an existing entity.
 
         Args:
@@ -108,7 +106,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def find(self, query: Query) -> Iterator[T]:
+    def find(self, query: Query) -> Iterator[Any]:
         """Find entities matching a query.
 
         Args:
@@ -120,7 +118,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def findAll(self) -> Iterator[T]:
+    def findAll(self) -> Iterator[Any]:
         """Find all entities.
 
         Returns:
@@ -129,7 +127,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def findBy(self, **kwargs: Any) -> Iterator[T]:
+    def findBy(self, **kwargs: Any) -> Iterator[Any]:
         """Find entities by field values.
 
         Args:
@@ -164,7 +162,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def track_creation(self, entity: T, metadata: Dict[str, Any]) -> ProvenanceRecord:
+    def track_creation(self, entity: Any, metadata: Dict[str, Any]) -> ProvenanceRecord:
         """Track the creation of an entity.
 
         Args:
@@ -177,7 +175,7 @@ class EntityStore(ABC, Generic[T]):
         ...
 
     @abstractmethod
-    def track_update(self, entity: T, metadata: Dict[str, Any]) -> ProvenanceRecord:
+    def track_update(self, entity: Any, metadata: Dict[str, Any]) -> ProvenanceRecord:
         """Track the update of an entity.
 
         Args:
