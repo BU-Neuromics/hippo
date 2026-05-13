@@ -151,6 +151,25 @@ class DDLGenerator:
         """Post-process CREATE TABLE: fix BOOLEAN→INTEGER, inject DEFAULTs, add superseded_by."""
         sv = registry.schema_view
 
+        # Strip FKs whose target is an abstract class — abstract classes
+        # have no SQL table (filtered out earlier in ``generate``), so the
+        # FK clause references a non-existent table and the constraint
+        # fires on every insert. PR 2.4 will reintroduce these as FKs
+        # against the ``_entity_registry`` shadow table.
+        for slot in registry.induced_slots(table_name):
+            if not slot.range:
+                continue
+            target_cls = sv.get_class(slot.range)
+            if target_cls is None or not getattr(target_cls, "abstract", False):
+                continue
+            stmt = re.sub(
+                rf',\s*\n?\s*FOREIGN\s+KEY\s*\(\s*"?{re.escape(slot.name)}"?\s*\)'
+                rf'\s+REFERENCES\s+"?{re.escape(slot.range)}"?\s*\([^)]*\)',
+                "",
+                stmt,
+                flags=re.IGNORECASE,
+            )
+
         # Fix BOOLEAN → INTEGER for is_available (handles both quoted and unquoted)
         stmt = re.sub(
             r'\bis_available\s+BOOLEAN\b',

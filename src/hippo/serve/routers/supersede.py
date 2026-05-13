@@ -37,6 +37,7 @@ class SupersedeRequest(BaseModel):
 
     old_external_id: str
     new_external_id: str
+    source_system: str = "default"
 
 
 @router.post("/{entity_id}/supersede")
@@ -67,6 +68,7 @@ async def supersede_entity(
             entity_id=entity_id,
             old_external_id=body.old_external_id,
             new_external_id=body.new_external_id,
+            source_system=body.source_system,
         )
         return result
     except EntityNotFoundError as e:

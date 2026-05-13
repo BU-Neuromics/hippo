@@ -106,16 +106,40 @@ class TestHippoClientExternalId:
         assert len(results) == 2
 
     def test_get_by_external_id_returns_latest(self, client: HippoClient) -> None:
-        """Test that get_by_external_id returns the entity with latest created_at."""
+        """Two entities may share an external-id value across distinct source
+        systems; the most recently registered active mapping wins.
+
+        Under the per-class ``ExternalID`` model, ``(source_system, value)``
+        is unique within active records, so mapping the same value to two
+        entities requires distinct source systems.
+        """
         entity1 = client.put("Sample", {"id": "test-1", "name": "test1"})
         entity2 = client.put("Sample", {"id": "test-2", "name": "test2"})
 
-        client.register_external_id(entity1["id"], "SHARED-EXT")
-        client.register_external_id(entity2["id"], "SHARED-EXT")
+        client.register_external_id(
+            entity1["id"], "SHARED-EXT", source_system="STARLIMS"
+        )
+        client.register_external_id(
+            entity2["id"], "SHARED-EXT", source_system="DONOR_DB"
+        )
 
         result = client.get_by_external_id("SHARED-EXT")
 
         assert result["id"] == entity2["id"]
+
+    def test_register_external_id_duplicate_in_source_system(
+        self, client: HippoClient
+    ) -> None:
+        """``(source_system, value)`` is unique among active mappings —
+        registering the same pair twice raises an IntegrityError."""
+        import sqlite3
+
+        entity1 = client.put("Sample", {"id": "test-1", "name": "test1"})
+        entity2 = client.put("Sample", {"id": "test-2", "name": "test2"})
+
+        client.register_external_id(entity1["id"], "DUP-EXT")
+        with pytest.raises(sqlite3.IntegrityError, match="UNIQUE constraint"):
+            client.register_external_id(entity2["id"], "DUP-EXT")
 
     def test_get_by_external_id_archived_entity(self, client: HippoClient) -> None:
         """Test get_by_external_id with archived entities."""

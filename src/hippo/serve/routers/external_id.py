@@ -36,6 +36,7 @@ class ExternalIdRequest(BaseModel):
     """Request body for registering an external ID."""
 
     external_id: str
+    source_system: str = "default"
 
 
 @router.get("/external-ids/{id_type}/{external_id}")
@@ -128,6 +129,7 @@ async def register_external_id(
         result = client.register_external_id(
             entity_id=entity_id,
             external_id=body.external_id,
+            source_system=body.source_system,
         )
         return result
     except EntityNotFoundError as e:

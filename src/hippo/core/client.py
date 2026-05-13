@@ -484,16 +484,41 @@ class HippoClient:
     def _get_provenance_summary_map(self, entity_type: str) -> dict[str, dict]:
         return self._provenance_service.get_provenance_summary_map(entity_type)
 
-    def register_external_id(self, entity_id: str, external_id: str) -> dict[str, Any]:
-        """Register an external ID for an entity."""
-        return self._provenance_service.register_external_id(entity_id, external_id)
+    def register_external_id(
+        self,
+        entity_id: str,
+        external_id: str,
+        source_system: str = "default",
+    ) -> dict[str, Any]:
+        """Register an external ID for an entity.
+
+        ``source_system`` defaults to ``"default"`` for backward
+        compatibility with legacy two-argument callers. Callers managing
+        multiple source systems should pass the parameter explicitly so
+        the ``(source_system, value)`` uniqueness constraint applies
+        within the correct scope.
+        """
+        return self._provenance_service.register_external_id(
+            entity_id, external_id, source_system=source_system
+        )
 
     def supersede(
-        self, entity_id: str, old_external_id: str, new_external_id: str
+        self,
+        entity_id: str,
+        old_external_id: str,
+        new_external_id: str,
+        source_system: str = "default",
     ) -> dict[str, Any]:
-        """Supersede an entity's external ID with a new one."""
+        """Supersede an entity's external ID with a new one.
+
+        The supersede operation is scoped to one ``source_system``;
+        legacy two-argument callers default to ``"default"``.
+        """
         return self._provenance_service.supersede(
-            entity_id, old_external_id, new_external_id
+            entity_id,
+            old_external_id,
+            new_external_id,
+            source_system=source_system,
         )
 
     def supersede_entity(
