@@ -180,22 +180,14 @@ class SDKBackend:
                     rel_store = storage._get_relationship_store(conn)
                     rels = list(rel_store.list_for_entity(entity_id))
                 for rel in rels:
-                    # Determine target entity type from entities table
+                    # Determine target entity type via the adapter's
+                    # UUID → class resolver (ProvenanceRecord-backed
+                    # in PR 2.3; ``_entity_registry`` in PR 2.4).
                     target_type = rel.relationship_type
                     try:
-                        with storage._transaction() as conn:
-                            cursor = conn.cursor()
-                            cursor.execute(
-                                "SELECT entity_type FROM entities WHERE id = ?",
-                                (rel.target_id,),
-                            )
-                            row = cursor.fetchone()
-                            if row:
-                                target_type = (
-                                    row["entity_type"]
-                                    if hasattr(row, "keys")
-                                    else row[0]
-                                )
+                        resolved = storage.resolve_type(rel.target_id)
+                        if resolved:
+                            target_type = resolved
                     except Exception:
                         pass
                     relationships.append(

@@ -223,26 +223,23 @@ class MigrationExecutor:
         fields = task["fields"]
 
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='entities'"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (entity_type,),
         )
         if not cursor.fetchone():
             return 0
 
+        # Per-class typed tables expose each FTS-indexed slot as a real
+        # column; project them directly instead of decoding a JSON blob.
+        select_cols = ", ".join(f'"{f}"' for f in fields)
         cursor.execute(
-            "SELECT id, data FROM entities WHERE entity_type = ? AND is_available = 1",
-            (entity_type,),
+            f'SELECT id, {select_cols} FROM "{entity_type}" WHERE is_available = 1',
         )
 
         count = 0
         for row in cursor.fetchall():
             entity_id = row["id"]
-            data = row["data"]
-            if isinstance(data, str):
-                import json
-
-                data = json.loads(data)
-
-            content_parts = [str(data[f]) for f in fields if f in data]
+            content_parts = [str(row[f]) for f in fields if row[f] is not None]
             if content_parts:
                 cursor.execute(
                     f"INSERT INTO {fts_table} (entity_id, content) VALUES (?, ?)",

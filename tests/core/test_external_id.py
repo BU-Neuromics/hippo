@@ -4,8 +4,9 @@ Following PR 2.2 of the LinkML-native β-refactor (sec9 §9), external IDs
 are stored as first-class ``ExternalID`` entities in the per-class typed
 table. ``ProvenanceService`` is the seam that orchestrates the writes;
 these tests pin its behavior against the underlying ``SQLiteAdapter``.
-The legacy ``ExternalIdStorageAdapter`` is retained until PR 2.3 but no
-longer participates in provenance service writes.
+PR 2.3 removed the legacy ``ExternalIdStorageAdapter`` and the
+``entity_external_ids`` table entirely; all reads/writes go through the
+``ExternalID`` per-class typed table.
 """
 
 import os
@@ -42,10 +43,9 @@ class TestProvenanceServiceExternalId:
     def entity_id(self, storage: SQLiteAdapter) -> str:
         """Create a parent entity and return its ID.
 
-        ``Sample`` is not declared in ``hippo_core`` so the write falls
-        through to the legacy ``entities`` table — that suffices because
-        ``ProvenanceService`` resolves the parent via ``read``/``read_any``,
-        which still consult the legacy table during the PR 2.x transition.
+        ``Sample`` is declared in the test SchemaRegistry overlay
+        (``tests/conftest.py``) as a generic stand-in user class, so the
+        adapter persists it in the per-class ``Sample`` table.
         """
         entity = SQLiteEntity(
             id="parent-1",

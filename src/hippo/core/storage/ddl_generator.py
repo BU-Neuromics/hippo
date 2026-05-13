@@ -323,7 +323,12 @@ class FTSMigrationPlanner:
                     ),
                     source_entity_type=class_name,
                     fts_version=mode,
-                    content_table="entities",
+                    # Post-PR-2.3 the legacy ``entities`` table is gone;
+                    # FTS5 contentless tables manage their own storage,
+                    # so emit them without a ``content=`` clause. The
+                    # adapter maintains FTS rows directly on entity
+                    # writes (see ``IngestionService._sync_entity_to_fts``).
+                    content_table="",
                     content_rowid="rowid",
                     fields=[
                         FTSFieldMetadata(
@@ -359,11 +364,18 @@ class FTSMigrationPlanner:
         statements: list[str] = []
         for tables in self._fts_tables.values():
             for meta in tables:
+                # Post-PR-2.3 every FTS table is a regular FTS5 table
+                # (no external ``content=`` clause) with the standard
+                # ``entity_id, content`` column shape — the same shape
+                # ``IngestionService._sync_entity_to_fts`` writes into.
+                # The field-specific table name (e.g. ``fts_sample_notes``)
+                # already encodes which slot the index covers; per-field
+                # columns inside the table are redundant.
                 statements.append(
                     generate_fts_create_sql(
                         table_name=meta.table_name,
-                        columns=["entity_id"] + meta.get_fts_columns(),
-                        content_table=meta.content_table,
+                        columns=["entity_id", "content"],
+                        content_table=None,
                         content_rowid=meta.content_rowid,
                     )
                 )

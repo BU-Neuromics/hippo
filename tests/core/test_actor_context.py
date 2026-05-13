@@ -95,19 +95,24 @@ class TestProvenanceStorePicksUpContextVar:
         adapter.close()
 
     def test_explicit_kwarg_overrides_context_var(self, db_path: str):
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
+        from hippo.core.storage.adapters.sqlite_adapter import (
+            SQLiteAdapter,
+            SQLiteEntity,
+        )
 
         adapter = SQLiteAdapter(db_path, wal_mode=True, schema_registry=_build_minimal_schema_registry())
 
-        with adapter._transaction() as conn:
-            from hippo.core.storage.adapters.sqlite_adapter import SQLiteEntity
-
-            cursor = conn.cursor()
-            cursor.execute(
-                """INSERT INTO entities (id, entity_type, is_available, version, data)
-                   VALUES (?, ?, ?, ?, ?)""",
-                ("ctx-entity-3", "Sample", 1, 1, '{"name": "explicit"}'),
+        adapter.create(
+            SQLiteEntity(
+                id="ctx-entity-3",
+                entity_type="Sample",
+                is_available=True,
+                version=1,
+                data={"name": "explicit"},
             )
+        )
+
+        with adapter._transaction() as conn:
             provenance = adapter._get_provenance_store(conn)
             with with_actor("context-actor"):
                 provenance.record(
@@ -117,8 +122,18 @@ class TestProvenanceStorePicksUpContextVar:
                     actor_id="explicit-actor",  # explicit kwarg wins
                 )
 
+        # Pre-PR-2.3 this test inserted into the legacy ``entities``
+        # table via raw SQL so the only provenance row came from the
+        # explicit ``provenance.record`` call. Post-PR-2.3 ``adapter.create``
+        # is the only persistent write path and it emits its own
+        # ``create`` provenance record (under ``with_actor("context-actor")``
+        # the create writes "unknown" since the create runs *outside*
+        # that block, then the explicit call writes "explicit-actor").
+        # Assert the explicit-actor row is present rather than asserting
+        # the exact list — the property under test ("explicit kwarg wins
+        # over context var") still holds.
         actors = self._get_actor_ids(db_path, "ctx-entity-3")
-        assert actors == ["explicit-actor"]
+        assert "explicit-actor" in actors
         adapter.close()
 
 

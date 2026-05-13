@@ -1,26 +1,21 @@
-"""Regression tests for per-class typed-table emission in SQLiteAdapter (PTS-172).
+"""Regression tests for per-class typed-table emission in SQLiteAdapter.
 
 These tests verify that ``SQLiteAdapter._init_database`` calls the
 ``DDLGenerator`` to emit per-class typed tables for every concrete user
 class, and that ``create`` / ``update_data`` / ``set_availability`` /
-``mark_superseded`` / ``delete`` keep the per-class table and the
-legacy ``entities`` table in sync.
+``mark_superseded`` / ``delete`` write to the per-class typed table.
 
-Per the sec9 handoff (Phase 2 / PR 2.1) tests favour *semantic*
-assertions ("an entity of type X is queryable by name Y") over
-table-layout assertions, but this module also peeks at the typed
-table directly to lock in the contract that PR 2.1 introduces. PR 2.3
-drops the legacy ``entities`` table; that PR will update the half of
-this file that asserts dual-write.
+Per the sec9 handoff (Phase 2 / PR 2.3) the legacy ``entities`` blob
+table no longer exists; assertions about per-class layout are kept here,
+while semantic ("an entity of type X is queryable by name Y") behavior
+is exercised by the broader integration suite.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import sqlite3
 import tempfile
-from pathlib import Path
 from typing import Iterator
 
 import pytest
@@ -92,9 +87,10 @@ class TestPerClassTableEmission:
         SQLiteAdapter(db_path, schema_registry=_registry())
         assert "Sample" in _table_names(db_path)
 
-    def test_legacy_entities_table_still_exists(self, db_path: str):
+    def test_legacy_entities_table_is_dropped(self, db_path: str):
         SQLiteAdapter(db_path, schema_registry=_registry())
-        assert "entities" in _table_names(db_path)
+        assert "entities" not in _table_names(db_path)
+        assert "entity_external_ids" not in _table_names(db_path)
 
     def test_re_init_is_idempotent(self, db_path: str):
         SQLiteAdapter(db_path, schema_registry=_registry())
@@ -117,7 +113,7 @@ class TestPerClassTableEmission:
         assert len(rows) == 1
 
 
-class TestCreateDualWrite:
+class TestCreate:
     def test_create_writes_typed_row(self, client: HippoClient, db_path: str):
         result = client.put("Sample", {"name": "S001", "tissue": "DLPFC"})
         row = _per_class_row(db_path, "Sample", result["id"])
@@ -126,23 +122,12 @@ class TestCreateDualWrite:
         assert row["tissue"] == "DLPFC"
         assert row["is_available"] == 1
 
-    def test_create_writes_legacy_entities_row(
-        self, client: HippoClient, db_path: str
-    ):
+    def test_create_round_trips_via_sdk(self, client: HippoClient):
         result = client.put("Sample", {"name": "S002", "tissue": "DLPFC"})
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            row = conn.execute(
-                "SELECT id, entity_type, data FROM entities WHERE id = ?",
-                (result["id"],),
-            ).fetchone()
-        finally:
-            conn.close()
-        assert row is not None
-        assert row["entity_type"] == "Sample"
-        data = json.loads(row["data"])
-        assert data["name"] == "S002"
+        got = client.get("Sample", result["id"])
+        assert got is not None
+        assert got["data"]["name"] == "S002"
+        assert got["data"]["tissue"] == "DLPFC"
 
 
 class TestUpdateKeepsTablesInSync:

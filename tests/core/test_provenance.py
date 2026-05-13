@@ -158,13 +158,12 @@ class TestProvenanceTracking:
         for record in records:
             assert record["entity_id"] == "test-entity-3"
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM entities WHERE id = ?", ("test-entity-3",))
-        row = cursor.fetchone()
-        conn.close()
-
+        # The per-class typed row persists across the soft delete; only
+        # ``is_available`` flips. Read through the adapter rather than
+        # poking at table layout.
+        row = adapter.read_any("test-entity-3")
         assert row is not None
+        assert row.is_available is False
 
         adapter.close()
 
@@ -290,28 +289,12 @@ class TestHistoryMethods:
         )
         adapter.create(entity)
 
-        entity2 = SQLiteEntity(
-            id="history-test-1",
+        adapter.update_data(
+            entity_id="history-test-1",
             entity_type="TestEntity",
-            is_available=True,
-            version=2,
             data={"name": "Version 2"},
+            new_version=2,
         )
-        with adapter._transaction() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """UPDATE entities SET data = ?, version = ?
-                   WHERE id = ? AND is_available = 1""",
-                ('{"name": "Version 2"}', 2, "history-test-1"),
-            )
-            provenance = adapter._get_provenance_store(conn)
-            provenance.record(
-                entity_id="history-test-1",
-                entity_type="TestEntity",
-                operation_type="UPDATE",
-                user_context=None,
-                payload={"name": "Version 2"},
-            )
 
         history = adapter.history("history-test-1")
 
@@ -352,21 +335,12 @@ class TestHistoryMethods:
 
         time2 = (now.replace(second=now.second + 1)).isoformat()
 
-        with adapter._transaction() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """UPDATE entities SET data = ?, version = ?
-                   WHERE id = ? AND is_available = 1""",
-                ('{"name": "Updated"}', 2, "state-test-1"),
-            )
-            provenance = adapter._get_provenance_store(conn)
-            provenance.record(
-                entity_id="state-test-1",
-                entity_type="TestEntity",
-                operation_type="UPDATE",
-                user_context=None,
-                payload={"name": "Updated"},
-            )
+        adapter.update_data(
+            entity_id="state-test-1",
+            entity_type="TestEntity",
+            data={"name": "Updated"},
+            new_version=2,
+        )
 
         state_at_create = adapter.state_at("state-test-1", create_timestamp)
 

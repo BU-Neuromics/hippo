@@ -291,11 +291,6 @@ class ProvenanceService:
                 replacement_id,
                 is_available=False,
             )
-            cursor.execute(
-                """UPDATE entities SET is_available = 0, superseded_by = ?
-                   WHERE id = ?""",
-                (replacement_id, entity_id),
-            )
 
             prov_store = self._storage._get_provenance_store(conn)
             prov_patch: dict[str, Any] = {}

@@ -622,149 +622,6 @@ class RelationshipStore:
         )
 
 
-class ExternalIdRecord:
-    """External ID record."""
-
-    def __init__(
-        self,
-        id: str,
-        entity_id: str,
-        external_id: str,
-        created_at: str,
-        superseded_at: Optional[str] = None,
-    ):
-        self.id = id
-        self.entity_id = entity_id
-        self.external_id = external_id
-        self.created_at = created_at
-        self.superseded_at = superseded_at
-
-
-class ExternalIdStorageAdapter:
-    """Storage adapter for managing external IDs."""
-
-    def __init__(self, connection: sqlite3.Connection):
-        self._conn = connection
-
-    def create_external_id(self, entity_id: str, external_id: str) -> ExternalIdRecord:
-        """Create a new external ID for an entity."""
-        import uuid
-
-        now = datetime.now(timezone.utc).isoformat()
-        record_id = str(uuid.uuid4())
-
-        cursor = self._conn.cursor()
-        cursor.execute(
-            """INSERT INTO entity_external_ids (id, entity_id, external_id, created_at, superseded_at)
-               VALUES (?, ?, ?, ?, NULL)""",
-            (record_id, entity_id, external_id, now),
-        )
-
-        return ExternalIdRecord(
-            id=record_id,
-            entity_id=entity_id,
-            external_id=external_id,
-            created_at=now,
-            superseded_at=None,
-        )
-
-    def get_entity_by_external_id(
-        self, external_id: str, include_archived: bool = False
-    ) -> Optional[ExternalIdRecord]:
-        """Get the entity by external ID, returning the latest (by created_at)."""
-        cursor = self._conn.cursor()
-
-        if include_archived:
-            cursor.execute(
-                """SELECT * FROM entity_external_ids
-                   WHERE external_id = ? AND superseded_at IS NULL
-                   ORDER BY created_at DESC
-                   LIMIT 1""",
-                (external_id,),
-            )
-        else:
-            cursor.execute(
-                """SELECT eei.* FROM entity_external_ids eei
-                   INNER JOIN entities e ON eei.entity_id = e.id
-                   WHERE eei.external_id = ? AND e.is_available = 1 AND eei.superseded_at IS NULL
-                   ORDER BY eei.created_at DESC
-                   LIMIT 1""",
-                (external_id,),
-            )
-
-        row = cursor.fetchone()
-        if row is None:
-            return None
-
-        return self._row_to_external_id(row)
-
-    def list_external_ids_for_entity(
-        self, entity_id: str, include_superseded: bool = False
-    ) -> Iterator[ExternalIdRecord]:
-        """List all external IDs for an entity."""
-        cursor = self._conn.cursor()
-
-        if include_superseded:
-            cursor.execute(
-                """SELECT * FROM entity_external_ids
-                   WHERE entity_id = ?
-                   ORDER BY created_at DESC""",
-                (entity_id,),
-            )
-        else:
-            cursor.execute(
-                """SELECT * FROM entity_external_ids
-                   WHERE entity_id = ? AND superseded_at IS NULL
-                   ORDER BY created_at DESC""",
-                (entity_id,),
-            )
-
-        for row in cursor.fetchall():
-            yield self._row_to_external_id(row)
-
-    def supersede_external_id(
-        self, entity_id: str, old_external_id: str, new_external_id: str
-    ) -> ExternalIdRecord:
-        """Supersede an external ID with a new one."""
-        import uuid
-
-        now = datetime.now(timezone.utc).isoformat()
-        new_record_id = str(uuid.uuid4())
-
-        cursor = self._conn.cursor()
-
-        cursor.execute(
-            """UPDATE entity_external_ids
-               SET superseded_at = ?
-               WHERE entity_id = ? AND external_id = ? AND superseded_at IS NULL""",
-            (now, entity_id, old_external_id),
-        )
-
-        cursor.execute(
-            """INSERT INTO entity_external_ids (id, entity_id, external_id, created_at, superseded_at)
-               VALUES (?, ?, ?, ?, NULL)""",
-            (new_record_id, entity_id, new_external_id, now),
-        )
-
-        return ExternalIdRecord(
-            id=new_record_id,
-            entity_id=entity_id,
-            external_id=new_external_id,
-            created_at=now,
-            superseded_at=None,
-        )
-
-    def _row_to_external_id(self, row: sqlite3.Row) -> ExternalIdRecord:
-        """Convert a database row to an ExternalIdRecord."""
-        return ExternalIdRecord(
-            id=row["id"],
-            entity_id=row["entity_id"],
-            external_id=row["external_id"],
-            created_at=row["created_at"],
-            superseded_at=row["superseded_at"],
-        )
-
-
 class FTSStore:
     """Store for FTS5 virtual tables."""
 
@@ -918,7 +775,6 @@ class SQLiteAdapter(EntityStore):
         self._local = threading.local()
         self._provenance_store: Optional[ProvenanceStore] = None
         self._relationship_store: Optional[RelationshipStore] = None
-        self._external_id_store: Optional[ExternalIdStorageAdapter] = None
         self._fts_store: Optional[FTSStore] = None
         self._init_database()
 
@@ -972,32 +828,6 @@ class SQLiteAdapter(EntityStore):
                     value TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
-            """)
-
-            # DEPRECATED — remove in PR 2.3 (sec9 §9.5 / handoff Phase 2).
-            # The generic entities blob table is being replaced by per-class
-            # typed tables emitted from the user schema (see
-            # ``_init_per_class_tables`` below). It is retained here during
-            # PR 2.1 / PR 2.2 to support back-compat reads and cross-class
-            # UUID lookup (``read``/``resolve_type``). All writes go to both
-            # the per-class table AND this legacy table; PR 2.3 drops it.
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS entities (
-                    id TEXT PRIMARY KEY,
-                    entity_type TEXT NOT NULL,
-                    is_available INTEGER NOT NULL DEFAULT 1,
-                    version INTEGER NOT NULL DEFAULT 1,
-                    data TEXT NOT NULL
-                )
-            """)
-
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_entities_type
-                ON entities(entity_type)
-            """)
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_entities_available
-                ON entities(is_available)
             """)
 
             # ProvenanceRecord — shape stamped inline here to match what the
@@ -1067,27 +897,6 @@ class SQLiteAdapter(EntityStore):
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_relationships_type
                 ON relationships(relationship_type)
-            """)
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS entity_external_ids (
-                    id TEXT PRIMARY KEY,
-                    entity_id TEXT NOT NULL,
-                    external_id TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    superseded_at TEXT,
-                    FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
-                )
-            """)
-
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_entity_external_ids_entity
-                ON entity_external_ids(entity_id)
-            """)
-
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_entity_external_ids_external
-                ON entity_external_ids(external_id, created_at DESC)
             """)
 
             self._init_triggers(cursor)
@@ -1196,9 +1005,25 @@ class SQLiteAdapter(EntityStore):
         return entity_type != "ProvenanceRecord"
 
     def _per_class_columns(self, entity_type: str) -> list[str]:
-        """Return the set of slot names that exist as columns on the per-class table."""
+        """Return the column names actually present on the per-class table.
+
+        Falls back to ``induced_slots`` when the table doesn't exist
+        yet (used during DDL generation and tests that probe the
+        registry before init). Multivalued slots and other declarations
+        that LinkML emits as separate junction tables do not appear
+        here.
+        """
         if not self._per_class_table_exists(entity_type):
             return []
+        try:
+            with self._transaction() as conn:
+                cursor = conn.cursor()
+                cursor.execute(f'PRAGMA table_info("{entity_type}")')
+                cols = [row[1] for row in cursor.fetchall()]
+        except sqlite3.Error:
+            cols = []
+        if cols:
+            return cols
         return [slot.name for slot in self.schema_registry.induced_slots(entity_type)]
 
     def _project_to_columns(
@@ -1255,21 +1080,17 @@ class SQLiteAdapter(EntityStore):
         if cursor.fetchone() is not None:
             cursor.execute("DROP TABLE IF EXISTS provenance")
 
-        # System column: superseded_by (nullable, applied generically to entities table)
-        # This is analogous to is_available — a system field present on all entities.
-        cursor.execute("PRAGMA table_info(entities)")
-        entity_columns = {row[1] for row in cursor.fetchall()}
-        if "superseded_by" not in entity_columns:
-            cursor.execute("ALTER TABLE entities ADD COLUMN superseded_by TEXT")
-
-        # Phase E: drop legacy stored temporal columns (PTS-69).
-        # Temporal fields are now computed exclusively from ProvenanceRecord
-        # via entity_provenance_summary / get_temporal(). SQLite 3.35+ supports
-        # ALTER TABLE … DROP COLUMN. Guarded by PRAGMA table_info so the
-        # migration is idempotent.
-        for col in ("created_at", "updated_at"):
-            if col in entity_columns:
-                cursor.execute(f"ALTER TABLE entities DROP COLUMN {col}")
+        # Drop the legacy entities and entity_external_ids tables if a
+        # pre-PR-2.3 database still has them. Data migration is not
+        # supported (dev-only deployments per earlier user directive);
+        # all live data is in per-class typed tables and ProvenanceRecord.
+        for legacy in ("entity_external_ids", "entities"):
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (legacy,),
+            )
+            if cursor.fetchone() is not None:
+                cursor.execute(f"DROP TABLE IF EXISTS {legacy}")
 
     def _get_provenance_store(self, conn: sqlite3.Connection) -> ProvenanceStore:
         """Get or create a ProvenanceStore for the given connection."""
@@ -1285,16 +1106,6 @@ class SQLiteAdapter(EntityStore):
             self._relationship_store = RelationshipStore(conn)
         return self._relationship_store
 
-    def _get_external_id_store(
-        self, conn: Optional[sqlite3.Connection] = None
-    ) -> ExternalIdStorageAdapter:
-        """Get or create an ExternalIdStorageAdapter."""
-        if conn is None:
-            conn = self._get_connection()
-        if self._external_id_store is None:
-            self._external_id_store = ExternalIdStorageAdapter(conn)
-        return self._external_id_store
-
     def _get_fts_store(self, conn: Optional[sqlite3.Connection] = None) -> FTSStore:
         """Get or create an FTSStore."""
         if conn is None:
@@ -1307,7 +1118,7 @@ class SQLiteAdapter(EntityStore):
         self,
         table_name: str,
         columns: list[str],
-        content_table: str = "entities",
+        content_table: str = "",
     ) -> None:
         """Create an FTS5 virtual table."""
         with self._transaction() as conn:
@@ -1374,16 +1185,20 @@ class SQLiteAdapter(EntityStore):
                     entity_type=entity_type,
                 )
 
+            # Join the FTS table against the per-class typed table on
+            # ``entity_id`` (the standard Hippo FTS column) so that
+            # availability filtering happens on the per-class row. The
+            # per-class table only holds rows of ``entity_type``, so an
+            # explicit ``entity_type =`` predicate is unnecessary.
             cursor.execute(
-                f"""SELECT e.id, bm25({fts_table_name}) as bm25_score
+                f"""SELECT pc.id, bm25({fts_table_name}) as bm25_score
                     FROM {fts_table_name} fts
-                    INNER JOIN entities e ON fts.rowid = e.rowid
+                    INNER JOIN "{entity_type}" pc ON fts.entity_id = pc.id
                     WHERE {fts_table_name} MATCH ?
-                    AND e.entity_type = ?
-                    AND e.is_available = 1
+                    AND pc.is_available = 1
                     ORDER BY bm25_score
                     LIMIT ?""",
-                (query, entity_type, limit * 2),
+                (query, limit * 2),
             )
 
             results = []
@@ -1413,11 +1228,9 @@ class SQLiteAdapter(EntityStore):
         """Create a new entity in the store.
 
         Writes a typed row to the per-class table for ``entity.entity_type``
-        (when that class is known to the user schema), then writes the
-        same record to the legacy ``entities`` blob table for back-compat
-        cross-class UUID lookup (per handoff Phase 2: legacy table stays
-        until PR 2.3 / PR 2.4 replaces it with ``_entity_registry``).
-        Provenance is recorded in both cases.
+        and records a ``create`` ``ProvenanceRecord``. Cross-class UUID
+        lookup (``resolve_type`` / ``read``) is served by joining
+        ``ProvenanceRecord`` until PR 2.4 introduces ``_entity_registry``.
         """
         import uuid
 
@@ -1440,7 +1253,6 @@ class SQLiteAdapter(EntityStore):
                     if not callable(value):
                         entity_data[attr] = value
 
-        version = entity.version if hasattr(entity, "version") else 1
         is_available = (
             1 if not hasattr(entity, "is_available") or entity.is_available else 0
         )
@@ -1450,17 +1262,6 @@ class SQLiteAdapter(EntityStore):
 
             self._insert_per_class(cursor, entity_type, entity_id, entity_data,
                                    is_available=is_available)
-            cursor.execute(
-                """INSERT INTO entities (id, entity_type, is_available, version, data)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (
-                    entity_id,
-                    entity_type,
-                    is_available,
-                    version,
-                    json.dumps(entity_data),
-                ),
-            )
 
             provenance = self._get_provenance_store(conn)
             provenance.record(
@@ -1575,32 +1376,34 @@ class SQLiteAdapter(EntityStore):
             )
 
     def read(self, entity_id: str) -> Optional[SQLiteEntity]:
-        """Read an entity by its ID (available entities only)."""
-        with self._transaction() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """SELECT id, entity_type, is_available, version, data, superseded_by
-                   FROM entities WHERE id = ? AND is_available = 1""",
-                (entity_id,),
-            )
-            row = cursor.fetchone()
-            if row is None:
-                return None
+        """Read an entity by its ID (available entities only).
 
-            return self._row_to_entity(row)
+        Cross-class UUID lookup is served by ``ProvenanceRecord``: the
+        earliest record for ``entity_id`` carries the ``entity_type``;
+        the typed row then comes from the per-class table. Returns
+        ``None`` when the entity is unknown or not currently available.
+        """
+        entity_type = self.resolve_type(entity_id)
+        if entity_type is None:
+            return None
+        return self._read_per_class(entity_id, entity_type, only_available=True)
 
     def resolve_type(self, entity_id: str) -> Optional[str]:
         """Return the entity_type for a given UUID, or None if unknown.
 
-        Looks up the `entities` table's type discriminator. Includes entities
-        regardless of availability — the type is still meaningful for
-        archived / superseded rows. Per sec9 §9.5's identity model, this is
-        the relational adapter's implementation of UUID → type resolution.
+        Reads the ``entity_type`` from the earliest ``ProvenanceRecord``
+        for ``entity_id``. Includes entities regardless of availability —
+        the type is still meaningful for archived / superseded rows. Per
+        sec9 §9.5's identity model, this is the relational adapter's
+        implementation of UUID → type resolution. PR 2.4 replaces this
+        with a fast ``_entity_registry`` shadow-table lookup.
         """
         with self._transaction() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT entity_type FROM entities WHERE id = ?",
+                'SELECT entity_type FROM "ProvenanceRecord" '
+                "WHERE entity_id = ? AND entity_type IS NOT NULL "
+                "ORDER BY timestamp ASC LIMIT 1",
                 (entity_id,),
             )
             row = cursor.fetchone()
@@ -1618,55 +1421,116 @@ class SQLiteAdapter(EntityStore):
             cursor = conn.cursor()
             placeholders = ",".join("?" for _ in entity_ids)
             cursor.execute(
-                f"SELECT id, entity_type FROM entities WHERE id IN ({placeholders})",
+                f'SELECT entity_id, entity_type FROM "ProvenanceRecord" '
+                f"WHERE entity_id IN ({placeholders}) "
+                f"AND entity_type IS NOT NULL "
+                f"ORDER BY timestamp ASC",
                 tuple(entity_ids),
             )
-            return {row["id"]: row["entity_type"] for row in cursor.fetchall()}
+            resolved: dict[str, str] = {}
+            for row in cursor.fetchall():
+                # ORDER BY timestamp ASC → first row per id is the create.
+                resolved.setdefault(row["entity_id"], row["entity_type"])
+            return resolved
 
     def read_any(self, entity_id: str) -> Optional[SQLiteEntity]:
         """Read an entity by its ID, regardless of availability.
 
         This includes unavailable (soft-deleted, superseded) entities.
         """
+        entity_type = self.resolve_type(entity_id)
+        if entity_type is None:
+            return None
+        return self._read_per_class(entity_id, entity_type, only_available=False)
+
+    def _read_per_class(
+        self,
+        entity_id: str,
+        entity_type: str,
+        only_available: bool,
+    ) -> Optional[SQLiteEntity]:
+        """Hydrate a SQLiteEntity from the per-class typed table.
+
+        Returns ``None`` when the row is missing or (when
+        ``only_available=True``) when it is unavailable. ``version`` is
+        computed from the count of ``create``/``update`` ProvenanceRecord
+        rows for the entity — see ``_compute_version``.
+        """
+        if not self._per_class_table_exists(entity_type):
+            return None
+
+        slot_columns = [
+            c for c in self._per_class_columns(entity_type)
+            if c not in {"id", "is_available", "superseded_by"}
+        ]
+        select_cols = ['"id"', '"is_available"', '"superseded_by"'] + [
+            f'"{c}"' for c in slot_columns
+        ]
+        sql = (
+            f"SELECT {', '.join(select_cols)} FROM \"{entity_type}\" "
+            "WHERE id = ?"
+        )
+        if only_available:
+            sql += " AND is_available = 1"
+
         with self._transaction() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """SELECT id, entity_type, is_available, version, data, superseded_by
-                   FROM entities WHERE id = ?""",
-                (entity_id,),
-            )
+            cursor.execute(sql, (entity_id,))
             row = cursor.fetchone()
             if row is None:
                 return None
+            version = self._compute_version(cursor, entity_id)
 
-            return self._row_to_entity(row)
+        data = {
+            c: self._decode_column_value(row[c]) for c in slot_columns
+            if row[c] is not None
+        }
+        return SQLiteEntity(
+            id=row["id"],
+            entity_type=entity_type,
+            is_available=bool(row["is_available"]),
+            version=version,
+            data=data,
+            superseded_by=row["superseded_by"],
+        )
+
+    @staticmethod
+    def _compute_version(cursor: sqlite3.Cursor, entity_id: str) -> int:
+        """Derive the entity version from ProvenanceRecord.
+
+        Counts the number of ``create``/``update`` records: the create
+        gives version 1 and each subsequent update increments by 1. This
+        replaces the legacy ``entities.version`` column dropped in PR 2.3.
+        """
+        cursor.execute(
+            'SELECT COUNT(*) AS c FROM "ProvenanceRecord" '
+            "WHERE entity_id = ? AND operation IN ('create', 'update')",
+            (entity_id,),
+        )
+        row = cursor.fetchone()
+        count = int(row["c"] if row else 0)
+        return count if count > 0 else 1
 
     def update(self, entity: SQLiteEntity) -> SQLiteEntity:
-        """Update an existing entity's typed columns and JSON blob.
+        """Update an existing entity's typed columns.
 
         Performs a full-replacement update of the user-slot columns on
-        the per-class typed table (when the class is known) and refreshes
-        the legacy ``entities.data`` blob plus ``version``. Temporal
-        tracking still lives in ``ProvenanceRecord``; callers that want a
-        provenance event must invoke ``update_data`` or write the record
-        themselves. This method is kept for protocol compliance and for
-        callers that already produced their own ``ProvenanceRecord``.
+        the per-class typed table (when the class is known). Temporal
+        tracking and version derivation live in ``ProvenanceRecord``;
+        callers that want a provenance event must invoke ``update_data``
+        or write the record themselves. This method is kept for protocol
+        compliance and for callers that already produced their own
+        ``ProvenanceRecord``.
         """
         entity_id = getattr(entity, "id", None)
         if not entity_id:
             return entity
         entity_type = getattr(entity, "entity_type", "") or ""
         data = getattr(entity, "data", None) or {}
-        version = getattr(entity, "version", 1)
 
         with self._transaction() as conn:
             cursor = conn.cursor()
             self._update_per_class(cursor, entity_type, entity_id, data)
-            cursor.execute(
-                """UPDATE entities SET data = ?, version = ?
-                   WHERE id = ? AND is_available = 1""",
-                (json.dumps(data), version, entity_id),
-            )
         return entity
 
     def update_data(
@@ -1678,21 +1542,18 @@ class SQLiteAdapter(EntityStore):
         actor: Optional[str] = None,
         operation: str = "update",
     ) -> None:
-        """Update typed columns + ``entities.data`` and record provenance.
+        """Update typed columns and record provenance.
 
         Used by ``IngestionService._put_with_sqlite``/`_replace_with_sqlite`
-        and the supersede paths. Combines what the adapter used to expose
-        only as direct SQL on the ``entities`` table — keeps per-class
-        and legacy tables in lockstep through a single call site.
+        and the supersede paths. Version is no longer stored — it is
+        derived on read from ``ProvenanceRecord`` (see
+        ``_compute_version``); the ``new_version`` argument is accepted
+        for API stability but has no persistent effect.
         """
+        del new_version  # version is derived from ProvenanceRecord on read.
         with self._transaction() as conn:
             cursor = conn.cursor()
             self._update_per_class(cursor, entity_type, entity_id, data)
-            cursor.execute(
-                """UPDATE entities SET data = ?, version = ?
-                   WHERE id = ? AND is_available = 1""",
-                (json.dumps(data), new_version, entity_id),
-            )
 
             provenance = self._get_provenance_store(conn)
             provenance.record(
@@ -1711,7 +1572,7 @@ class SQLiteAdapter(EntityStore):
         actor: Optional[str] = None,
         reason: Optional[str] = None,
     ) -> None:
-        """Flip ``is_available`` on both per-class and legacy tables.
+        """Flip ``is_available`` on the per-class typed table.
 
         Records an ``availability_change`` provenance entry. Caller is
         responsible for ensuring the entity exists; this method does not
@@ -1721,10 +1582,6 @@ class SQLiteAdapter(EntityStore):
         with self._transaction() as conn:
             cursor = conn.cursor()
             self._set_per_class_availability(cursor, entity_type, entity_id, is_available)
-            cursor.execute(
-                "UPDATE entities SET is_available = ? WHERE id = ?",
-                (1 if is_available else 0, entity_id),
-            )
 
             patch: dict[str, Any] = {"is_available": is_available}
             if reason is not None:
@@ -1744,61 +1601,56 @@ class SQLiteAdapter(EntityStore):
         entity_type: str,
         replacement_id: str,
     ) -> None:
-        """Mark an entity as superseded on both tables in one transaction.
+        """Mark an entity as superseded on the per-class typed table.
 
         Sets ``is_available = 0`` and ``superseded_by = replacement_id``
-        on the per-class typed row and on the legacy ``entities`` row.
-        Provenance is the caller's responsibility — supersession
-        currently writes multiple ``ProvenanceRecord`` rows around this
-        mutation (sec9 §9.6) which would be awkward to inline here.
+        on the per-class typed row. Provenance is the caller's
+        responsibility — supersession currently writes multiple
+        ``ProvenanceRecord`` rows around this mutation (sec9 §9.6) which
+        would be awkward to inline here.
         """
         with self._transaction() as conn:
             cursor = conn.cursor()
             self._set_per_class_superseded_by(
                 cursor, entity_type, entity_id, replacement_id, is_available=False
             )
-            cursor.execute(
-                """UPDATE entities SET is_available = 0, superseded_by = ?
-                   WHERE id = ?""",
-                (replacement_id, entity_id),
-            )
 
     def delete(self, entity_id: str, user_context: Optional[str] = None) -> bool:
         """Delete an entity by its ID (soft delete).
 
-        Flips ``is_available = 0`` on both the per-class typed table and
-        the legacy ``entities`` table, then records an
-        ``availability_change`` provenance entry whose patch carries the
-        original payload (for round-trip reconstruction).
+        Looks up the entity's class via ``resolve_type``, flips
+        ``is_available = 0`` on the per-class typed table, then records
+        an ``availability_change`` provenance entry whose patch carries
+        the original payload (for round-trip reconstruction). Returns
+        ``False`` if the entity is unknown or already unavailable.
         """
+        existing = self.read(entity_id)
+        if existing is None:
+            return False
+
+        # ``id`` is a system column on the per-class table, not part of
+        # ``existing.data``. Re-inject it so the soft-delete provenance
+        # patch preserves the full entity payload for round-trip
+        # reconstruction by callers that inspect ``patch.data``.
+        snapshot = {"id": entity_id, **existing.data}
+
         with self._transaction() as conn:
             cursor = conn.cursor()
-
-            cursor.execute(
-                "SELECT id, entity_type, data FROM entities WHERE id = ? AND is_available = 1",
-                (entity_id,),
-            )
-            row = cursor.fetchone()
-            if row is None:
-                return False
-
-            entity_type = row["entity_type"]
-            original_data = json.loads(row["data"]) if row["data"] else {}
-
-            self._set_per_class_availability(cursor, entity_type, entity_id, False)
-            cursor.execute(
-                """UPDATE entities SET is_available = 0
-                   WHERE id = ? AND is_available = 1""",
-                (entity_id,),
+            self._set_per_class_availability(
+                cursor, existing.entity_type, entity_id, False
             )
 
             provenance = self._get_provenance_store(conn)
             provenance.record(
                 entity_id=entity_id,
-                entity_type=entity_type,
+                entity_type=existing.entity_type,
                 operation="availability_change",
                 actor_id=user_context,
-                patch={"status": "deleted", "is_available": False, "data": original_data},
+                patch={
+                    "status": "deleted",
+                    "is_available": False,
+                    "data": snapshot,
+                },
             )
 
             return True
@@ -1806,69 +1658,37 @@ class SQLiteAdapter(EntityStore):
     def find(self, query: Query) -> Iterator[SQLiteEntity]:
         """Find entities matching a query.
 
-        When ``query.entity_type`` is set and the class is in the user
-        schema, the query targets the per-class typed table and filters
-        on real columns. Otherwise it falls back to the legacy
-        ``entities`` JSON-blob query — used for cross-class scans and
-        for classes that are not declared in the schema (a transition
-        affordance; in steady state every class lives in the registry).
+        When ``query.entity_type`` is set the query targets the
+        corresponding per-class typed table and filters on real columns;
+        if the type is unknown to the schema, the result is empty.
+        Without ``entity_type``, the adapter scans every concrete
+        per-class table in the schema and merges results (cross-class
+        scan).
         """
-        if (
-            query.entity_type
-            and self._per_class_table_exists(query.entity_type)
-        ):
-            yield from self._find_per_class(query)
+        if query.entity_type:
+            if not self._per_class_table_exists(query.entity_type):
+                return
+            yield from self._find_per_class(query.entity_type, query)
             return
 
-        with self._transaction() as conn:
-            cursor = conn.cursor()
+        registry = self.schema_registry
+        if registry is None:
+            return
+        for class_name in registry.class_names():
+            if not self._per_class_table_exists(class_name):
+                continue
+            yield from self._find_per_class(class_name, query)
 
-            sql = "SELECT id, entity_type, is_available, version, data, superseded_by FROM entities WHERE is_available = 1"
-            params: list[Any] = []
+    def _find_per_class(
+        self, entity_type: str, query: Query
+    ) -> Iterator[SQLiteEntity]:
+        """Query a single per-class typed table.
 
-            if query.entity_type:
-                sql += " AND entity_type = ?"
-                params.append(query.entity_type)
-
-            if query.filters:
-                joiner = " OR " if getattr(query, "filter_mode", "and") == "or" else " AND "
-                filter_clauses = []
-                for f in query.filters:
-                    if "field" in f and "value" in f:
-                        field = f["field"]
-                        value = f["value"]
-                        filter_clauses.append("json_extract(data, ?) = ?")
-                        params.append(f"$.{field}")
-                        params.append(value)
-                    else:
-                        for key, value in f.items():
-                            filter_clauses.append("json_extract(data, ?) = ?")
-                            params.append(f"$.{key}")
-                            params.append(value)
-                if filter_clauses:
-                    sql += " AND (" + joiner.join(filter_clauses) + ")"
-
-            if query.limit:
-                sql += f" LIMIT {query.limit}"
-                if query.offset:
-                    sql += f" OFFSET {query.offset}"
-            elif query.offset:
-                sql += f" LIMIT -1 OFFSET {query.offset}"
-
-            cursor.execute(sql, params)
-            for row in cursor.fetchall():
-                yield self._row_to_entity(row)
-
-    def _find_per_class(self, query: Query) -> Iterator[SQLiteEntity]:
-        """Query the per-class typed table directly.
-
-        Filters become column-level predicates rather than
-        ``json_extract`` over a blob; ``data`` for the returned
-        :class:`SQLiteEntity` is reconstructed from the typed row.
-        ``version`` is still served from the legacy ``entities`` table
-        until PR 2.3 / PR 2.4 redesigns version tracking.
+        Filters become column-level predicates; ``data`` for the
+        returned :class:`SQLiteEntity` is reconstructed from the typed
+        row. ``version`` is derived from ``ProvenanceRecord`` (see
+        ``_compute_version``).
         """
-        entity_type = query.entity_type
         slot_columns = [
             c for c in self._per_class_columns(entity_type)
             if c not in {"id", "is_available", "superseded_by"}
@@ -1891,13 +1711,13 @@ class SQLiteAdapter(EntityStore):
                     field = f["field"]
                     value = f["value"]
                     if field not in valid_columns:
-                        return iter(())  # type: ignore[return-value]
+                        return
                     filter_clauses.append(f'"{field}" = ?')
                     params.append(self._coerce_for_column(value))
                 else:
                     for key, value in f.items():
                         if key not in valid_columns:
-                            return iter(())  # type: ignore[return-value]
+                            return
                         filter_clauses.append(f'"{key}" = ?')
                         params.append(self._coerce_for_column(value))
             if filter_clauses:
@@ -1915,18 +1735,20 @@ class SQLiteAdapter(EntityStore):
             cursor.execute(sql, params)
             rows = cursor.fetchall()
 
-            # Resolve version from the legacy entities table in one
-            # round-trip. PR 2.4 replaces this with a version-tracking
-            # scheme owned by the per-class adapter.
-            row_ids = [r["id"] for r in rows]
             version_map: dict[str, int] = {}
+            row_ids = [r["id"] for r in rows]
             if row_ids:
                 placeholders = ",".join("?" for _ in row_ids)
                 cursor.execute(
-                    f"SELECT id, version FROM entities WHERE id IN ({placeholders})",
+                    f'SELECT entity_id, COUNT(*) AS c FROM "ProvenanceRecord" '
+                    f"WHERE entity_id IN ({placeholders}) "
+                    f"AND operation IN ('create', 'update') "
+                    f"GROUP BY entity_id",
                     tuple(row_ids),
                 )
-                version_map = {r["id"]: r["version"] for r in cursor.fetchall()}
+                version_map = {
+                    r["entity_id"]: int(r["c"]) for r in cursor.fetchall()
+                }
 
         for row in rows:
             data = {
@@ -1967,22 +1789,6 @@ class SQLiteAdapter(EntityStore):
         query = Query()
         query.filters = [kwargs]
         return self.find(query)
-
-    def _row_to_entity(self, row: sqlite3.Row) -> "SQLiteEntity":
-        """Convert a database row to an entity."""
-        # superseded_by column may not exist in older deployments pre-migration.
-        try:
-            superseded_by = row["superseded_by"]
-        except IndexError:
-            superseded_by = None
-        return SQLiteEntity(
-            id=row["id"],
-            entity_type=row["entity_type"],
-            is_available=bool(row["is_available"]),
-            version=row["version"],
-            data=json.loads(row["data"]) if row["data"] else {},
-            superseded_by=superseded_by,
-        )
 
     def track_creation(
         self, entity: SQLiteEntity, metadata: Dict[str, Any]
