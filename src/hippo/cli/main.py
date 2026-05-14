@@ -343,24 +343,41 @@ def validate(
     typer.echo("Validation complete - all checks passed")
 
 
-def _get_client(db_path: str | None = None):
-    """Construct a HippoClient backed by SQLite.
+def _build_schema_registry(schema_path: str | None = None):
+    """Build a SchemaRegistry from ``schema_path`` or the bundled hippo_core schema.
 
-    Looks for the database at --db-path, then data/hippo.db.
-    Uses the bundled hippo_core schema for validation.
+    The bundled schema only declares Hippo's framework classes (Entity,
+    ProvenanceRecord, ExternalID, ...). Callers that need user-domain
+    classes (Sample, Project, ...) must pass an explicit ``schema_path``.
     """
-    from hippo.core.client import HippoClient
-    from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
     from hippo.linkml_bridge import SchemaRegistry
     from linkml_runtime.utils.schemaview import SchemaView
     import importlib.resources
 
-    path = Path(db_path) if db_path else Path("data/hippo.db")
+    if schema_path:
+        return SchemaRegistry.from_path(schema_path)
 
-    # Create a minimal schema registry from the bundled hippo_core schema
-    hippo_core_path = importlib.resources.files("hippo.schemas").joinpath("hippo_core.yaml")
+    hippo_core_path = importlib.resources.files("hippo.schemas").joinpath(
+        "hippo_core.yaml"
+    )
     schema_view = SchemaView(str(hippo_core_path))
-    registry = SchemaRegistry(schema_view)
+    return SchemaRegistry(schema_view)
+
+
+def _get_client(db_path: str | None = None, schema_path: str | None = None):
+    """Construct a HippoClient backed by SQLite.
+
+    Looks for the database at --db-path, then data/hippo.db. When
+    ``schema_path`` is provided, the storage adapter is wired to a
+    SchemaRegistry built from that path so writes of user-domain classes
+    validate correctly; otherwise only the bundled hippo_core classes
+    are recognized.
+    """
+    from hippo.core.client import HippoClient
+    from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
+
+    path = Path(db_path) if db_path else Path("data/hippo.db")
+    registry = _build_schema_registry(schema_path)
 
     return HippoClient(storage=SQLiteAdapter(str(path), schema_registry=registry))
 
@@ -368,44 +385,99 @@ def _get_client(db_path: str | None = None):
 @app.command()
 def ingest(
     file: str = typer.Option(
-        None, "--file", "-f", help="Path to an entity YAML file to ingest"
+        None,
+        "--file",
+        "-f",
+        help="Path to a LinkML-native instance YAML bundle to ingest",
     ),
     loader_type: str = typer.Option(
         None, "--type", "-t", help="Loader type: csv, json, or sql"
     ),
     config: str = typer.Option(
-        None, "--config", "-c", help="Path to loader config file (for --type csv/json/sql)"
+        None,
+        "--config",
+        "-c",
+        help="Path to loader config file (for --type csv/json/sql)",
     ),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be written without writing"),
+    validate_schema: str = typer.Option(
+        None,
+        "--validate-schema",
+        help=(
+            "Path to a LinkML schema file or directory. The bundle is "
+            "validated against this schema's tree-root before any writes; "
+            "the same schema backs the storage adapter so user-domain "
+            "classes are recognized."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be written without writing"
+    ),
 ) -> None:
-    """Ingest entities into Hippo.
+    """Ingest a LinkML-native instance YAML bundle into Hippo.
 
-    Accepts an entity YAML file (--file) or a generic loader (--type + --config).
+    The bundle is a YAML mapping whose keys are tree-root accessor slots
+    (``samples:``, ``projects:`` etc.) and whose values are lists of
+    instance dicts. Identity is by the ``id`` slot on each instance.
 
     Examples:
 
-        hippo ingest --file entities.yaml
+        hippo ingest --file bundle.yaml --validate-schema schema.yaml
 
-        hippo ingest --file entities.yaml --dry-run
+        hippo ingest --file bundle.yaml --validate-schema schema.yaml --dry-run
 
         hippo ingest --type csv --file donors.csv --config donors_mapping.yaml
     """
-    from hippo.cli.commands.ingest import IngestError, ingest_entity_file
+    from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
 
     if file and not loader_type:
-        # DSL YAML ingest
         file_path = Path(file)
         if not file_path.exists():
             typer.echo(f"Error: File not found: {file_path}", err=True)
             raise typer.Exit(1)
 
+        if validate_schema and not Path(validate_schema).exists():
+            typer.echo(
+                f"Error: Schema not found: {validate_schema}", err=True
+            )
+            raise typer.Exit(1)
+
+        try:
+            registry = _build_schema_registry(validate_schema)
+        except Exception as e:
+            typer.echo(f"Error: Invalid LinkML schema: {e}", err=True)
+            raise typer.Exit(1)
+
         if dry_run:
-            typer.echo(f"[dry-run] Would ingest DSL file: {file_path}")
+            try:
+                import yaml as _yaml
+
+                parsed = _yaml.safe_load(file_path.read_text(encoding="utf-8"))
+            except Exception as e:
+                typer.echo(f"Error: Failed to parse YAML: {e}", err=True)
+                raise typer.Exit(1)
+            if not isinstance(parsed, dict):
+                typer.echo(
+                    "Error: Instance file must be a YAML mapping "
+                    "(tree-root bundle).",
+                    err=True,
+                )
+                raise typer.Exit(1)
+            errors = registry.validate(parsed, registry.tree_root_class_name())
+            if errors:
+                typer.echo(
+                    f"Error: {file_path}: {len(errors)} validation "
+                    f"error(s):",
+                    err=True,
+                )
+                for err in errors:
+                    typer.echo(f"  - {err}", err=True)
+                raise typer.Exit(1)
+            typer.echo(f"[dry-run] {file_path.name}: bundle validates.")
             return
 
-        client = _get_client()
+        client = _get_client(schema_path=validate_schema)
         try:
-            result = ingest_entity_file(file_path, client)
+            result = ingest_linkml_yaml(file_path, client, registry)
         except IngestError as e:
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(1)
@@ -413,7 +485,7 @@ def ingest(
         typer.echo(
             f"Ingested {file_path.name}: "
             f"created={result.created} updated={result.updated} "
-            f"unchanged={result.unchanged} errors={result.errors}"
+            f"errors={result.errors}"
         )
         for msg in result.error_messages:
             typer.echo(f"  Error: {msg}", err=True)
@@ -429,7 +501,11 @@ def ingest(
         _run_legacy_data_sources(config, dry_run)
 
     else:
-        typer.echo("Error: Provide --file for DSL ingest or --type + --config for a generic loader.", err=True)
+        typer.echo(
+            "Error: Provide --file (LinkML-native instance YAML) or "
+            "--type + --config for a generic loader.",
+            err=True,
+        )
         raise typer.Exit(1)
 
 

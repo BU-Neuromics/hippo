@@ -1,16 +1,12 @@
-"""Tests for `hippo ingest` command — entity YAML ingest.
+"""Tests for ``hippo ingest`` — LinkML-native instance YAML ingest.
 
-TDD RED phase: these tests define the desired behavior for the redesigned
-`hippo ingest` command that accepts structured entity YAML (not CSV/JSON data files).
-
-Design decision:
-- `hippo ingest` only accepts structured entity YAML files
-- CSV/JSON operational data ingestion is Cappella's responsibility
-- Reference data ingestion is reference loader plugins' responsibility
-- The command creates entities via HippoClient from a declarative YAML spec
+PR 3.3 retires the ``entities: [{type, data, external_id}]`` wrapper in
+favor of LinkML-native tree-root bundles. Each top-level key in the
+bundle is a tree-root accessor slot (``samples:`` etc.); each value is a
+list of instance dicts. Identity is by the ``id`` slot — re-ingesting an
+instance with an existing id updates it in place.
 """
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -21,6 +17,37 @@ from typer.testing import CliRunner
 from hippo.cli.main import app
 
 
+SCHEMA_YAML = """\
+id: https://example.org/hippo/test/ingest_cli
+name: ingest_cli_schema
+description: Minimal LinkML schema for ingest CLI tests.
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+imports:
+  - linkml:types
+  - hippo_core
+
+default_range: string
+
+classes:
+  Project:
+    is_a: Entity
+    attributes:
+      name:
+        required: true
+
+  Sample:
+    is_a: Entity
+    attributes:
+      name:
+        required: true
+      project_id:
+        range: Project
+"""
+
+
 @pytest.fixture()
 def runner():
     return CliRunner()
@@ -28,197 +55,301 @@ def runner():
 
 @pytest.fixture()
 def tmp_hippo(tmp_path: Path) -> Path:
-    """Create a minimal Hippo project directory with a SQLite database."""
     return tmp_path
 
 
+@pytest.fixture()
+def schema_file(tmp_path: Path) -> Path:
+    p = tmp_path / "schema.yaml"
+    p.write_text(SCHEMA_YAML)
+    return p
+
+
+@pytest.fixture()
+def schema_registry(schema_file: Path):
+    from hippo.linkml_bridge import SchemaRegistry
+
+    return SchemaRegistry.from_path(schema_file)
+
+
+@pytest.fixture()
+def client(tmp_hippo: Path, schema_registry):
+    from hippo.core.client import HippoClient
+    from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
+
+    return HippoClient(
+        storage=SQLiteAdapter(
+            str(tmp_hippo / "test.db"), schema_registry=schema_registry
+        )
+    )
+
+
+def _write_bundle(tmp_path: Path, bundle: dict, name: str = "bundle.yaml") -> Path:
+    p = tmp_path / name
+    p.write_text(yaml.dump(bundle))
+    return p
+
+
 # ---------------------------------------------------------------------------
-# Entity YAML ingest format
+# LinkML-native instance YAML ingest
 # ---------------------------------------------------------------------------
 
-class TestHippoIngestEntityYAML:
-    """hippo ingest accepts entity YAML files with structured entity declarations."""
 
-    def _make_entity_file(self, tmp_path: Path, entities: list[dict], name: str = "entities.yaml") -> Path:
-        """Create an entity ingest file."""
-        content = {"entities": entities}
-        p = tmp_path / name
-        p.write_text(yaml.dump(content))
-        return p
+class TestIngestLinkMLYAML:
+    """ingest_linkml_yaml consumes tree-root bundles and writes via client.put."""
 
-    def test_ingest_entity_file_creates_entities(self, runner, tmp_hippo, minimal_schema_registry):
-        """hippo ingest <file> creates entities declared in the entity file."""
-        entity_file = self._make_entity_file(tmp_hippo, [
-            {"type": "GenomeBuild", "data": {"name": "GRCh38", "source": "ensembl", "release": "110"}},
-            {"type": "GenomeBuild", "data": {"name": "CHM13", "source": "t2t", "release": "2.0"}},
-        ])
+    def test_ingest_creates_entities(self, tmp_hippo, client, schema_registry):
+        bundle = _write_bundle(
+            tmp_hippo,
+            {
+                "projects": [
+                    {"id": "p1", "name": "Project One", "is_available": True},
+                    {"id": "p2", "name": "Project Two", "is_available": True},
+                ]
+            },
+        )
 
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
+        from hippo.cli.commands.ingest import ingest_linkml_yaml
 
-        from hippo.cli.commands.ingest import ingest_entity_file, IngestResult
-        result = ingest_entity_file(entity_file, client)
+        result = ingest_linkml_yaml(bundle, client, schema_registry)
 
         assert result.created == 2
+        assert result.updated == 0
         assert result.errors == 0
-        items = list(client.query("GenomeBuild").items)
+        items = list(client.query("Project").items)
         assert len(items) == 2
 
-    def test_ingest_entity_file_idempotent(self, runner, tmp_hippo, minimal_schema_registry):
-        """hippo ingest is idempotent — re-ingesting same file does not duplicate entities."""
-        entity_file = self._make_entity_file(tmp_hippo, [
-            {"type": "GenomeBuild", "data": {"name": "GRCh38", "source": "ensembl", "release": "110"},
-             "external_id": "ensembl_grch38_110"},
-        ])
+    def test_ingest_updates_existing_id(self, tmp_hippo, client, schema_registry):
+        """Re-ingest with the same `id` updates the existing entity."""
+        from hippo.cli.commands.ingest import ingest_linkml_yaml
 
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
+        v1 = _write_bundle(
+            tmp_hippo,
+            {"projects": [{"id": "p1", "name": "Project One", "is_available": True}]},
+            name="v1.yaml",
+        )
+        ingest_linkml_yaml(v1, client, schema_registry)
 
-        r1 = ingest_entity_file(entity_file, client)
-        assert r1.created == 1
-
-        r2 = ingest_entity_file(entity_file, client)
-        assert r2.created == 0
-        assert r2.unchanged == 1
-
-        items = list(client.query("GenomeBuild").items)
-        assert len(items) == 1
-
-    def test_ingest_entity_file_updates_changed_entity(self, runner, tmp_hippo, minimal_schema_registry):
-        """Re-ingest with changed data updates the entity."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
-
-        v1 = self._make_entity_file(tmp_hippo, [
-            {"type": "GenomeBuild", "data": {"name": "GRCh38", "release": "109"},
-             "external_id": "grch38"},
-        ], "v1.yaml")
-        ingest_entity_file(v1, client)
-
-        v2 = self._make_entity_file(tmp_hippo, [
-            {"type": "GenomeBuild", "data": {"name": "GRCh38", "release": "110"},
-             "external_id": "grch38"},
-        ], "v2.yaml")
-        r2 = ingest_entity_file(v2, client)
+        v2 = _write_bundle(
+            tmp_hippo,
+            {"projects": [{"id": "p1", "name": "Project One Renamed", "is_available": True}]},
+            name="v2.yaml",
+        )
+        r2 = ingest_linkml_yaml(v2, client, schema_registry)
 
         assert r2.updated == 1
         assert r2.created == 0
-        items = list(client.query("GenomeBuild").items)
+        items = list(client.query("Project").items)
         assert len(items) == 1
-        assert items[0]["data"]["release"] == "110"
+        assert items[0]["data"]["name"] == "Project One Renamed"
 
-    def test_ingest_entity_file_missing_type_raises(self, runner, tmp_hippo, minimal_schema_registry):
-        """Entity entries missing 'type' field are rejected with a clear error."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
+    def test_ingest_multiple_classes(self, tmp_hippo, client, schema_registry):
+        """A single bundle can carry instances of more than one class."""
+        from hippo.cli.commands.ingest import ingest_linkml_yaml
 
-        bad_file = tmp_hippo / "bad.yaml"
-        bad_file.write_text(yaml.dump({"entities": [{"data": {"name": "GRCh38"}}]}))
+        bundle = _write_bundle(
+            tmp_hippo,
+            {
+                "projects": [{"id": "p1", "name": "Project One", "is_available": True}],
+                "samples": [
+                    {"id": "s1", "name": "Tissue A", "project_id": "p1", "is_available": True},
+                    {"id": "s2", "name": "Tissue B", "project_id": "p1", "is_available": True},
+                ],
+            },
+        )
 
-        with pytest.raises(IngestError, match="missing 'type'"):
-            ingest_entity_file(bad_file, client)
+        result = ingest_linkml_yaml(bundle, client, schema_registry)
 
-    def test_ingest_entity_file_missing_data_raises(self, runner, tmp_hippo, minimal_schema_registry):
-        """Entity entries missing 'data' field are rejected."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
+        assert result.created == 3
+        assert list(client.query("Project").items)
+        assert len(list(client.query("Sample").items)) == 2
 
-        bad_file = tmp_hippo / "bad.yaml"
-        bad_file.write_text(yaml.dump({"entities": [{"type": "GenomeBuild"}]}))
+    def test_ingest_missing_required_field_raises(
+        self, tmp_hippo, client, schema_registry
+    ):
+        """A bundle with a missing required field fails LinkML validation."""
+        from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
 
-        with pytest.raises(IngestError, match="missing 'data'"):
-            ingest_entity_file(bad_file, client)
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"samples": [{"id": "s1", "project_id": "p1", "is_available": True}]},  # no `name`
+        )
 
-    def test_ingest_entity_file_not_found_raises(self, runner, tmp_hippo, minimal_schema_registry):
-        """Non-existent file raises IngestError."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
+        with pytest.raises(IngestError, match="name"):
+            ingest_linkml_yaml(bundle, client, schema_registry)
+
+    def test_ingest_unknown_top_level_slot_raises(
+        self, tmp_hippo, client, schema_registry
+    ):
+        from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
+
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"not_a_class": [{"id": "x", "name": "y", "is_available": True}]},
+        )
+
+        with pytest.raises(IngestError):
+            ingest_linkml_yaml(bundle, client, schema_registry)
+
+    def test_ingest_not_a_mapping_raises(
+        self, tmp_hippo, client, schema_registry
+    ):
+        from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
+
+        bad = tmp_hippo / "list.yaml"
+        bad.write_text(yaml.dump(["item1", "item2"]))
+
+        with pytest.raises(IngestError, match="mapping"):
+            ingest_linkml_yaml(bad, client, schema_registry)
+
+    def test_ingest_file_not_found_raises(self, tmp_hippo, client, schema_registry):
+        from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
 
         with pytest.raises(IngestError, match="not found"):
-            ingest_entity_file(tmp_hippo / "nonexistent.yaml", client)
+            ingest_linkml_yaml(
+                tmp_hippo / "nonexistent.yaml", client, schema_registry
+            )
 
-    def test_ingest_entity_file_top_level_not_entities_raises(self, runner, tmp_hippo, minimal_schema_registry):
-        """Entity file without top-level 'entities' key raises IngestError."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
-
-        bad_file = tmp_hippo / "bad.yaml"
-        bad_file.write_text(yaml.dump({"records": [{"type": "GenomeBuild", "data": {}}]}))
-
-        with pytest.raises(IngestError, match="'entities'"):
-            ingest_entity_file(bad_file, client)
-
-    def test_ingest_entity_file_partial_failure_continues(self, runner, tmp_hippo, minimal_schema_registry):
-        """If one entity fails validation, others are still created."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
-
-        # Entity 2 has empty data — should fail but entity 1 should succeed
-        entity_file = self._make_entity_file(tmp_hippo, [
-            {"type": "GenomeBuild", "data": {"name": "GRCh38"}},
-            {"type": "GenomeBuild", "data": {}},   # empty data → ValidationFailure
-        ])
-        result = ingest_entity_file(entity_file, client)
-
-        assert result.created == 1
-        assert result.errors == 1
-
-
-# ---------------------------------------------------------------------------
-# CSV/JSON rejection
-# ---------------------------------------------------------------------------
-
-class TestHippoIngestRejectsCSV:
-    """hippo ingest must reject CSV/JSON data files — those belong to Cappella."""
-
-    def test_ingest_csv_file_raises_error(self, runner, tmp_hippo, minimal_schema_registry):
-        """Passing a CSV file to ingest_entity_file raises IngestError, not silently processes it."""
-        from hippo.core.client import HippoClient
-        from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
-        from hippo.cli.commands.ingest import ingest_entity_file, IngestError
-        client = HippoClient(storage=SQLiteAdapter(str(tmp_hippo / "test.db"), schema_registry=minimal_schema_registry))
+    def test_ingest_csv_file_rejected(self, tmp_hippo, client, schema_registry):
+        """``ingest_linkml_yaml`` rejects CSV/JSON data files — they belong
+        to Cappella."""
+        from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
 
         csv_file = tmp_hippo / "data.csv"
         csv_file.write_text("external_id,name\nBU0001,Alice\n")
 
         with pytest.raises(IngestError):
-            ingest_entity_file(csv_file, client)
+            ingest_linkml_yaml(csv_file, client, schema_registry)
+
+
+# ---------------------------------------------------------------------------
+# CLI surface
+# ---------------------------------------------------------------------------
+
+
+class TestIngestCLI:
+    """End-to-end ``hippo ingest`` CLI tests with ``--validate-schema``."""
+
+    def test_cli_file_with_validate_schema(
+        self, runner, tmp_hippo, schema_file, monkeypatch
+    ):
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"projects": [{"id": "p1", "name": "Project One", "is_available": True}]},
+        )
+        # `_get_client` writes to `data/hippo.db` relative to CWD; chdir
+        # into tmp_path so the on-disk side effect is contained.
+        (tmp_hippo / "data").mkdir()
+        monkeypatch.chdir(tmp_hippo)
+        result = runner.invoke(
+            app,
+            [
+                "ingest",
+                "--file",
+                str(bundle),
+                "--validate-schema",
+                str(schema_file),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "created=1" in result.output
+
+    def test_cli_dry_run_validates_bundle(
+        self, runner, tmp_hippo, schema_file
+    ):
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"projects": [{"id": "p1", "name": "Project One", "is_available": True}]},
+        )
+        result = runner.invoke(
+            app,
+            [
+                "ingest",
+                "--file",
+                str(bundle),
+                "--validate-schema",
+                str(schema_file),
+                "--dry-run",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "validates" in result.output
+
+    def test_cli_dry_run_rejects_missing_required(
+        self, runner, tmp_hippo, schema_file
+    ):
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"samples": [{"id": "s1", "project_id": "p1"}]},  # no name
+        )
+        result = runner.invoke(
+            app,
+            [
+                "ingest",
+                "--file",
+                str(bundle),
+                "--validate-schema",
+                str(schema_file),
+                "--dry-run",
+            ],
+        )
+        assert result.exit_code == 1
+        assert "validation error" in result.output
+
+    def test_cli_missing_schema_file(self, runner, tmp_hippo):
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"projects": [{"id": "p1", "name": "Project One", "is_available": True}]},
+        )
+        result = runner.invoke(
+            app,
+            [
+                "ingest",
+                "--file",
+                str(bundle),
+                "--validate-schema",
+                str(tmp_hippo / "missing.yaml"),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+    def test_cli_file_not_found(self, runner, tmp_hippo, schema_file):
+        result = runner.invoke(
+            app,
+            [
+                "ingest",
+                "--file",
+                str(tmp_hippo / "no-such-file.yaml"),
+                "--validate-schema",
+                str(schema_file),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "not found" in result.output
 
 
 # ---------------------------------------------------------------------------
 # IngestResult
 # ---------------------------------------------------------------------------
 
+
 class TestIngestResult:
     """IngestResult carries counts and errors."""
 
     def test_result_defaults(self):
         from hippo.cli.commands.ingest import IngestResult
-        r = IngestResult(source_file="test.yaml")
+
+        r = IngestResult(source_file="bundle.yaml")
         assert r.created == 0
         assert r.updated == 0
-        assert r.unchanged == 0
         assert r.errors == 0
         assert r.error_messages == []
 
     def test_result_to_dict(self):
         from hippo.cli.commands.ingest import IngestResult
-        r = IngestResult(source_file="test.yaml", created=2, errors=1)
+
+        r = IngestResult(source_file="bundle.yaml", created=2, errors=1)
         d = r.to_dict()
         assert d["created"] == 2
         assert d["errors"] == 1

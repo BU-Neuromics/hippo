@@ -1,8 +1,15 @@
-"""Entity YAML ingest command implementation for Hippo CLI.
+"""LinkML-native instance YAML ingest for the Hippo CLI.
 
-`hippo ingest` accepts structured entity YAML files that declare entities
-to create or upsert. It does NOT accept raw CSV/JSON data files — those are
-Cappella's responsibility.
+``hippo ingest`` accepts a tree-root LinkML instance bundle: a YAML mapping
+whose top-level keys are class accessors (``samples:``, ``projects:`` etc.)
+and whose values are lists of instance dicts. Identity is by the
+``id`` slot on each instance; re-ingest of an existing id updates that
+entity in place. There is no separate wrapper format and no top-level
+``external_id`` field — register external IDs by including ``external_ids:``
+entries in the same bundle (see ``hippo_core.ExternalID``).
+
+CSV/JSON operational data files are not accepted here; those belong to
+Cappella.
 """
 
 from dataclasses import dataclass, field
@@ -16,17 +23,16 @@ from hippo.core.exceptions import EntityNotFoundError
 
 
 class IngestError(Exception):
-    """Raised when an entity ingest file is invalid or cannot be processed."""
+    """Raised when an instance YAML file is invalid or cannot be processed."""
 
 
 @dataclass
 class IngestResult:
-    """Result of an entity ingest operation."""
+    """Result of a LinkML-native instance ingest operation."""
 
     source_file: str
     created: int = 0
     updated: int = 0
-    unchanged: int = 0
     errors: int = 0
     error_messages: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -36,33 +42,43 @@ class IngestResult:
             "source_file": self.source_file,
             "created": self.created,
             "updated": self.updated,
-            "unchanged": self.unchanged,
             "errors": self.errors,
             "error_messages": self.error_messages,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
 
 
-def ingest_entity_file(path: Path | str, client: Any) -> IngestResult:
-    """Ingest an entity YAML file into Hippo via client.
+def ingest_linkml_yaml(
+    path: Path | str,
+    client: Any,
+    registry: Any,
+) -> IngestResult:
+    """Ingest a LinkML-native instance YAML bundle.
 
-    The file must have a top-level ``entities`` key. Each entry must have:
-    - ``type`` (str): entity type
-    - ``data`` (dict): field values
-    - ``external_id`` (str, optional): enables idempotent upsert
+    The file must be a YAML mapping whose keys are tree-root accessor
+    slots (one per concrete class in ``registry``) and whose values are
+    lists of instance dicts. The bundle is validated against the
+    registry's synthesized tree-root class before any writes occur; if
+    validation fails the function raises :class:`IngestError` and writes
+    nothing.
 
-    When no ``external_id`` is present the entity is always created (not idempotent).
+    Per-instance writes go through :meth:`HippoClient.put`. Identity is
+    by the ``id`` slot on each instance: when ``id`` matches an existing
+    entity, ``put`` updates it in place; otherwise a new entity is
+    created.
 
     Args:
         path: Path to the YAML file.
-        client: HippoClient instance.
+        client: ``HippoClient`` instance.
+        registry: ``SchemaRegistry`` whose tree-root class and accessor
+            slot mapping describe the bundle shape.
 
     Returns:
-        IngestResult with per-entity counts.
+        :class:`IngestResult` with per-entity counts.
 
     Raises:
-        IngestError: If the file is not found, not valid YAML, or has
-                     structural errors (missing 'entities', 'type', or 'data').
+        IngestError: If the file is missing, not a YAML mapping, or
+            fails LinkML validation against the tree-root.
     """
     path = Path(path)
 
@@ -70,70 +86,88 @@ def ingest_entity_file(path: Path | str, client: Any) -> IngestResult:
         raise IngestError(f"File not found: {path}")
 
     try:
-        raw = path.read_text(encoding="utf-8")
-        parsed = yaml.safe_load(raw)
-    except Exception as exc:
+        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
         raise IngestError(f"Failed to parse YAML: {exc}") from exc
 
-    if not isinstance(parsed, dict) or "entities" not in parsed:
+    if not isinstance(parsed, dict):
         raise IngestError(
-            f"Entity file must have a top-level 'entities' key. Got: {type(parsed).__name__}. "
-            "Note: CSV/JSON data files are not accepted by 'hippo ingest' — use Cappella for operational data."
+            f"Instance file must be a YAML mapping (tree-root bundle); got "
+            f"{type(parsed).__name__}. Note: CSV/JSON data files are not "
+            "accepted by 'hippo ingest' — use Cappella for operational data."
         )
 
-    entities = parsed["entities"]
-    if not isinstance(entities, list):
-        raise IngestError("'entities' must be a list of entity declarations.")
+    tree_root = registry.tree_root_class_name()
+    errors = registry.validate(parsed, tree_root)
+    if errors:
+        raise IngestError(
+            f"Bundle does not validate against {tree_root}: "
+            + "; ".join(errors)
+        )
+
+    slot_to_class: dict[str, str] = {
+        slot.name: slot.range for slot in registry.tree_root_slots()
+    }
 
     result = IngestResult(source_file=str(path))
 
-    for idx, entry in enumerate(entities):
-        if not isinstance(entry, dict):
+    for slot_name, instances in parsed.items():
+        target_class = slot_to_class.get(slot_name)
+        if target_class is None:
+            # Tree-root validation already rejects unknown slots in
+            # closed-schema mode; guard against schema drift just in case.
             result.errors += 1
-            result.error_messages.append(f"Entry {idx}: must be a dict, got {type(entry).__name__}")
+            result.error_messages.append(
+                f"Unknown tree-root slot {slot_name!r}"
+            )
             continue
-
-        if "type" not in entry:
-            raise IngestError(f"Entry {idx}: missing 'type' field")
-
-        if "data" not in entry:
-            raise IngestError(f"Entry {idx}: missing 'data' field")
-
-        entity_type = entry["type"]
-        data = entry["data"]
-        external_id = entry.get("external_id")
-
-        try:
-            _upsert_entity(client, entity_type, data, external_id, result)
-        except Exception as exc:
+        if not isinstance(instances, list):
             result.errors += 1
-            result.error_messages.append(f"Entry {idx} ({entity_type}): {exc}")
+            result.error_messages.append(
+                f"Slot {slot_name!r}: expected a list, got "
+                f"{type(instances).__name__}"
+            )
+            continue
+        for idx, instance in enumerate(instances):
+            if not isinstance(instance, dict):
+                result.errors += 1
+                result.error_messages.append(
+                    f"{slot_name}[{idx}]: expected a mapping, got "
+                    f"{type(instance).__name__}"
+                )
+                continue
+            try:
+                _upsert_instance(client, target_class, instance, result)
+            except Exception as exc:
+                result.errors += 1
+                result.error_messages.append(
+                    f"{slot_name}[{idx}] ({target_class}): {exc}"
+                )
 
     return result
 
 
-def _upsert_entity(
+def _upsert_instance(
     client: Any,
     entity_type: str,
     data: dict[str, Any],
-    external_id: str | None,
     result: IngestResult,
 ) -> None:
-    """Upsert a single entity, updating result counts in-place."""
-    if external_id is None:
+    """Write a single instance via ``client.put``, updating result counts."""
+    entity_id = data.get("id")
+    if entity_id is None:
         client.put(entity_type=entity_type, data=data)
         result.created += 1
         return
 
     try:
-        existing = client.get_by_external_id(external_id, include_archived=False)
-        existing_data = existing.get("data", {})
-        if existing_data == data:
-            result.unchanged += 1
-        else:
-            client.put(entity_type=entity_type, data=data, entity_id=existing["id"])
-            result.updated += 1
+        client.get(entity_type, entity_id)
+        existed = True
     except EntityNotFoundError:
-        created = client.put(entity_type=entity_type, data=data)
-        client.register_external_id(created["id"], external_id)
+        existed = False
+
+    client.put(entity_type=entity_type, data=data, entity_id=entity_id)
+    if existed:
+        result.updated += 1
+    else:
         result.created += 1
