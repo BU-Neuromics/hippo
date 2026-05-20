@@ -838,8 +838,16 @@ def schema_migrate(
         raise typer.Exit(1)
 
 
-@reference_app.command(name="install")
+@reference_app.command(
+    name="install",
+    # D2.14.D — loaders may declare a Pydantic `load_params_schema`
+    # whose fields are rendered as additional `--<field-name>` flags
+    # below the Typer-known options. Capture those tokens for the
+    # per-loader argparse parser instead of having Typer reject them.
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def reference_install(
+    ctx: typer.Context,
     name: str = typer.Argument(..., help="Reference loader name (entry-point key)"),
     version: str = typer.Option(
         None, "--version", help="Loader-defined version slug (e.g. v1, test)."
@@ -851,14 +859,25 @@ def reference_install(
         None, "--schema-dir", help="Schema directory (default: schemas/)"
     ),
 ) -> None:
-    """Install a reference dataset via a registered loader (spec §2.14)."""
-    from hippo.cli.commands.reference import install_reference
+    """Install a reference dataset via a registered loader (spec §2.14).
+
+    When the loader declares a ``load_params_schema`` (Pydantic v2
+    model), additional ``--<field-name>`` flags are accepted on this
+    command and forwarded to the loader after validation.
+    """
+    from hippo.cli.commands.reference import (
+        find_loader,
+        install_reference,
+        parse_load_params,
+    )
 
     db = db_path or "data/hippo.db"
     sd = schema_dir or "schemas"
     try:
+        info = find_loader(name)
+        params = parse_load_params(info["instance"], list(ctx.args))
         result = install_reference(
-            name, version, db_path=db, schema_dir=sd
+            name, version, db_path=db, schema_dir=sd, params=params
         )
     except Exception as exc:
         typer.echo(f"Error: {exc}", err=True)
@@ -877,8 +896,12 @@ def reference_install(
     )
 
 
-@reference_app.command(name="upgrade")
+@reference_app.command(
+    name="upgrade",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def reference_upgrade(
+    ctx: typer.Context,
     name: str = typer.Argument(..., help="Reference loader name (entry-point key)"),
     version: str = typer.Option(
         None, "--version", help="Loader-defined target version slug."
@@ -895,18 +918,31 @@ def reference_upgrade(
         help="Remove prior-version rows AFTER the new install succeeds.",
     ),
 ) -> None:
-    """Upgrade a previously installed reference loader to a new version (D2.14.F)."""
-    from hippo.cli.commands.reference import upgrade_reference
+    """Upgrade a previously installed reference loader to a new version (D2.14.F).
+
+    Same ``--<field-name>`` flag surface as ``install`` (D2.14.D): when
+    the loader declares ``load_params_schema``, its fields render as
+    additional flags and are validated before being passed to
+    :meth:`ReferenceLoader.upgrade`.
+    """
+    from hippo.cli.commands.reference import (
+        find_loader,
+        parse_load_params,
+        upgrade_reference,
+    )
 
     db = db_path or "data/hippo.db"
     sd = schema_dir or "schemas"
     try:
+        info = find_loader(name)
+        params = parse_load_params(info["instance"], list(ctx.args))
         result = upgrade_reference(
             name,
             version,
             db_path=db,
             schema_dir=sd,
             prune_old=prune_old,
+            params=params,
         )
     except Exception as exc:
         typer.echo(f"Error: {exc}", err=True)

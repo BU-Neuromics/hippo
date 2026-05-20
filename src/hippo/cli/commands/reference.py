@@ -33,14 +33,17 @@ from importlib.metadata import (
     distributions,
     version as _dist_version,
 )
+import argparse
+import types as _types
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
+
+from pydantic import BaseModel, ValidationError
+from pydantic_core import PydanticUndefined
 
 from hippo.core.loaders.reference import LoadResult, ReferenceLoader
 
 if TYPE_CHECKING:
-    from pydantic import BaseModel
-
     from hippo.core.client import HippoClient
     from hippo.linkml_bridge import SchemaRegistry
 
@@ -147,6 +150,12 @@ def discover_reference_loaders() -> list[dict[str, Any]]:
                 f"hippo.core.loaders.reference.ReferenceLoader"
             )
         instance = loaded()
+        # D2.14.D — validate at registration that every field on the
+        # declared `load_params_schema` (if any) can be rendered as a
+        # `--flag` arg. Loaders that ship an unsupported field type
+        # fail loud here, not at first CLI invocation.
+        if loaded.load_params_schema is not None:
+            _validate_load_params_schema(ep.name, loaded.load_params_schema)
         package_name, package_version = _resolve_distribution(loaded.__module__)
         loaders.append(
             {
@@ -202,6 +211,196 @@ def _resolve_distribution(module: str) -> tuple[str, str]:
         return top_pkg, _dist_version(top_pkg)
     except PackageNotFoundError:
         return top_pkg, "0"
+
+
+# ---------------------------------------------------------------------------
+# load_params_schema → --flag rendering (D2.14.D).
+# ---------------------------------------------------------------------------
+
+
+_CLI_FLAG_SUPPORTED_HELP = "str, int, bool, list[str], or Optional thereof"
+
+
+def _classify_load_params_field(
+    annotation: Any,
+) -> tuple[str, type | None]:
+    """Classify a Pydantic field annotation for CLI rendering.
+
+    Returns a ``(kind, base_type)`` pair. ``kind`` is one of:
+
+    - ``"str"`` / ``"int"`` — scalar arg; ``base_type`` is the converter.
+    - ``"bool"`` — rendered as ``--<name>`` / ``--no-<name>``.
+    - ``"list_str"`` — rendered as repeated ``--<name>`` args.
+    - ``"unsupported"`` — out of scope for v1.
+
+    Optional[T] unwraps to T; Optional[list[str]] is treated as list[str]
+    (argparse can carry ``default=None`` for that case).
+    """
+    inner = annotation
+    if get_origin(inner) in (Union, _types.UnionType):
+        non_none = [arg for arg in get_args(inner) if arg is not type(None)]
+        if len(non_none) == 1:
+            inner = non_none[0]
+        else:
+            return ("unsupported", None)
+
+    if inner is str:
+        return ("str", str)
+    if inner is int:
+        return ("int", int)
+    if inner is bool:
+        return ("bool", bool)
+    if get_origin(inner) is list:
+        list_args = get_args(inner)
+        if len(list_args) == 1 and list_args[0] is str:
+            return ("list_str", str)
+    return ("unsupported", None)
+
+
+def _validate_load_params_schema(
+    loader_name: str, schema_cls: type[BaseModel]
+) -> None:
+    """Raise if any field of ``schema_cls`` can't be rendered as a CLI flag.
+
+    The error message names both the offending field and the type so the
+    loader author can fix it at registration time rather than discovering
+    the problem when an end user runs ``hippo reference install``.
+    """
+    for field_name, field_info in schema_cls.model_fields.items():
+        kind, _ = _classify_load_params_field(field_info.annotation)
+        if kind == "unsupported":
+            raise ReferenceLoaderRegistrationError(
+                f"Reference loader {loader_name!r}: field {field_name!r} on "
+                f"{schema_cls.__name__} has type {field_info.annotation!r}, "
+                f"which is not supported for CLI rendering. "
+                f"Supported: {_CLI_FLAG_SUPPORTED_HELP}."
+            )
+
+
+def _field_default(field_info: Any) -> Any:
+    """Resolve a Pydantic FieldInfo's default, handling default_factory.
+
+    Returns :data:`pydantic_core.PydanticUndefined` when the field is
+    truly required.
+    """
+    if field_info.default is not PydanticUndefined:
+        return field_info.default
+    if field_info.default_factory is not None:
+        return field_info.default_factory()
+    return PydanticUndefined
+
+
+class _ListStrReplacingAppend(argparse.Action):
+    """Append action that *replaces* the model default on first use.
+
+    argparse's stock ``append`` extends whatever default was set, so a
+    field declared as ``gene_biotypes: list[str] = ["protein_coding"]``
+    plus a user passing ``--gene-biotypes miRNA`` would yield
+    ``["protein_coding", "miRNA"]`` — surprising and wrong for our
+    semantics. We want user-provided values to fully replace the
+    default, while an omitted flag still produces the model default.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._user_seen = False
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Any,
+        option_string: str | None = None,
+    ) -> None:
+        if not self._user_seen:
+            self._user_seen = True
+            current: list[str] = []
+        else:
+            current = list(getattr(namespace, self.dest, None) or [])
+        current.append(values)
+        setattr(namespace, self.dest, current)
+
+
+def _build_load_params_parser(
+    schema_cls: type[BaseModel],
+) -> argparse.ArgumentParser:
+    """Build an argparse parser whose options mirror ``schema_cls`` fields.
+
+    Field naming: ``gene_biotypes`` becomes ``--gene-biotypes``. Required
+    fields stay required (argparse raises if omitted); optional fields
+    carry the model's default so Pydantic doesn't need to recompute it.
+    """
+    parser = argparse.ArgumentParser(
+        prog=f"<{schema_cls.__name__}>",
+        add_help=False,
+        exit_on_error=False,
+    )
+    for field_name, field_info in schema_cls.model_fields.items():
+        flag = f"--{field_name.replace('_', '-')}"
+        kind, base_type = _classify_load_params_field(field_info.annotation)
+        default = _field_default(field_info)
+        required = default is PydanticUndefined
+
+        kwargs: dict[str, Any] = {"dest": field_name}
+        if required:
+            kwargs["required"] = True
+        else:
+            kwargs["default"] = default
+
+        if kind == "bool":
+            kwargs["action"] = argparse.BooleanOptionalAction
+        elif kind == "list_str":
+            kwargs["action"] = _ListStrReplacingAppend
+            kwargs["type"] = str
+        else:  # "str" / "int"
+            assert base_type is not None
+            kwargs["type"] = base_type
+
+        parser.add_argument(flag, **kwargs)
+    return parser
+
+
+def parse_load_params(
+    loader: ReferenceLoader, extra_args: list[str]
+) -> BaseModel | None:
+    """Parse ``--<field>`` args against ``loader.load_params_schema``.
+
+    Returns a validated model instance, or ``None`` when the loader
+    declares no schema. Surfaces argparse and Pydantic errors as
+    :class:`ValueError` so the Typer surface can convert them to a clean
+    CLI exit code.
+    """
+    schema_cls = loader.load_params_schema
+    if schema_cls is None:
+        if extra_args:
+            raise ValueError(
+                f"Loader {loader.name!r} accepts no --flag arguments "
+                f"(load_params_schema is None); got {extra_args!r}."
+            )
+        return None
+
+    parser = _build_load_params_parser(schema_cls)
+    try:
+        namespace = parser.parse_args(extra_args)
+    except argparse.ArgumentError as exc:
+        raise ValueError(
+            f"Invalid --flag arguments for loader {loader.name!r}: {exc}"
+        ) from exc
+    except SystemExit as exc:
+        # Older argparse paths (notably required-arg errors before
+        # exit_on_error landed across all code paths) raise SystemExit.
+        # Convert so the CLI layer can render a single clean message.
+        raise ValueError(
+            f"Invalid --flag arguments for loader {loader.name!r} "
+            f"(argparse exit {exc.code})."
+        ) from exc
+
+    try:
+        return schema_cls(**vars(namespace))
+    except ValidationError as exc:
+        raise ValueError(
+            f"Invalid --flag values for loader {loader.name!r}:\n{exc}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------

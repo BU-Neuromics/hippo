@@ -58,6 +58,8 @@ schema = "hippo.validators.schema_validator:SchemaValidator"
 
 [project.entry-points."hippo.reference_loaders"]
 fake = "hippo.testing.fake_reference_loader:FakeReferenceLoader"
+rich = "hippo.testing.fake_reference_loader:RichParamsLoader"
+bare = "hippo.testing.fake_reference_loader:BareReferenceLoader"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hippo"]
