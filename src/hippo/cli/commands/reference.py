@@ -1,10 +1,47 @@
 """Reference loader management commands."""
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+
+def reference_cache_root() -> Path:
+    """Resolve the directory holding per-loader reference caches.
+
+    Mirrors :meth:`HippoClient._reference_cache_root` so the CLI can
+    operate without instantiating a full client (sec2 §2.14.3,
+    decision D2.14.E). ``$HIPPO_CACHE_DIR`` wins when set; otherwise
+    ``~/.cache/hippo/references/``.
+    """
+    env = os.environ.get("HIPPO_CACHE_DIR")
+    if env:
+        return Path(env)
+    return Path.home() / ".cache" / "hippo" / "references"
+
+
+def clean_reference_cache(name: str | None = None) -> dict[str, Any]:
+    """Remove cached reference-loader data.
+
+    With ``name``, removes only that loader's cache subtree; other
+    loaders are untouched. Without ``name``, removes the entire cache
+    root. Missing targets are a silent no-op (idempotent) so the verb
+    is safe to run on a fresh machine.
+    """
+    root = reference_cache_root()
+    if name is not None:
+        target = root / name
+        existed = target.exists()
+        if existed:
+            shutil.rmtree(target)
+        return {"removed": existed, "path": str(target), "scope": name}
+    existed = root.exists()
+    if existed:
+        shutil.rmtree(root)
+    return {"removed": existed, "path": str(root), "scope": None}
 
 
 def get_references_dir() -> Path:
