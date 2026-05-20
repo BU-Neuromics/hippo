@@ -6,6 +6,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from hippo.core.loaders.reference import ReferenceLoader
+
+
+class ReferenceLoaderRegistrationError(TypeError):
+    """Raised when a ``hippo.reference_loaders`` entry point does not
+    resolve to a concrete :class:`ReferenceLoader` subclass."""
+
 
 def get_references_dir() -> Path:
     """Get the references directory path."""
@@ -17,11 +24,19 @@ def get_references_dir() -> Path:
 
 
 def discover_reference_loaders() -> list[dict[str, Any]]:
-    """Discover reference loaders via entry points."""
+    """Discover and instantiate reference loaders via entry points.
+
+    Each entry point in the ``hippo.reference_loaders`` group must point
+    at a concrete :class:`ReferenceLoader` subclass. The class is
+    instantiated eagerly so that callers receive a ready-to-use loader
+    surface; an entry point pointing at anything else raises
+    :class:`ReferenceLoaderRegistrationError` with a message identifying
+    the offending entry point.
+    """
     from importlib.metadata import entry_points
 
-    loaders = []
-    
+    loaders: list[dict[str, Any]] = []
+
     # Handle both new and old API versions
     try:
         eps = entry_points()
@@ -34,20 +49,26 @@ def discover_reference_loaders() -> list[dict[str, Any]]:
             eps_list = list(eps["hippo.reference_loaders"])
         except (KeyError, TypeError):
             eps_list = []
-    
+
     for ep in eps_list:
-        try:
-            loader_class = ep.load()
-            loaders.append(
-                {
-                    "name": ep.name,
-                    "entry_point": ep.name,
-                    "class": loader_class.__name__,
-                    "module": loader_class.__module__,
-                }
+        loaded = ep.load()
+        if not (isinstance(loaded, type) and issubclass(loaded, ReferenceLoader)):
+            raise ReferenceLoaderRegistrationError(
+                f"Entry point 'hippo.reference_loaders:{ep.name}' "
+                f"({ep.value}) is not a subclass of "
+                f"hippo.core.loaders.reference.ReferenceLoader"
             )
-        except Exception:
-            pass
+        instance = loaded()
+        loaders.append(
+            {
+                "name": ep.name,
+                "entry_point": ep.name,
+                "class": loaded.__name__,
+                "module": loaded.__module__,
+                "description": getattr(instance, "description", ""),
+                "instance": instance,
+            }
+        )
 
     return loaders
 

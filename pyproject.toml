@@ -56,6 +56,9 @@ postgres = "hippo.core.storage.adapters.postgres_adapter:PostgresAdapter"
 [project.entry-points."hippo.write_validators"]
 schema = "hippo.validators.schema_validator:SchemaValidator"
 
+[project.entry-points."hippo.reference_loaders"]
+fake = "hippo.testing.fake_reference_loader:FakeReferenceLoader"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/hippo"]
 
