@@ -6,7 +6,7 @@ from typing import Optional
 
 app = typer.Typer(
     name="hippo",
-    help="Hippo - Metadata Tracking Service for BASS",
+    help="Hippo — a runtime for LinkML schemas. Run a schema as a service with typed SDK, REST API, and PROV-O provenance.",
     add_completion=False,
 )
 
@@ -17,7 +17,10 @@ def init(
         None, "--path", "-p", help="Project directory path"
     ),
     template: str = typer.Option(
-        "basic", "--template", "-t", help="Template to use (basic, minimal, full)"
+        "bibliography",
+        "--template",
+        "-t",
+        help="Template to use (bibliography, basic, minimal, full)",
     ),
     storage: str = typer.Option(
         "sqlite",
