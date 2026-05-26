@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.7.0 — 2026-05-25 (ReferenceLoader v2 — write-log substrate + EntityRef)
+
+### Breaking Changes
+
+- **`LoadResult` v2 shape (PTS-255).** Dropped `entity_type` and `entity_ids` fields. New: `entities: list[EntityRef]`. Loader authors populate via `EntityRef.from_put_result(client.put(...))` for small loaders (Pattern A), or leave empty for large loaders (Pattern B) — the write log is the authoritative `--prune-old` substrate. Clean break per D2.14.L; no deprecation window.
+
+- **`hippo_meta.reference_entity_ids` JSON blob retired (PTS-256).** Replaced by `reference_write_log` table (PTS-253). One-time backfill migrates existing rows on adapter init.
+
+### New Features — ReferenceLoader v2 (§2.14.8/.9)
+
+- **`EntityRef(id, type)` frozen dataclass (PTS-255).** Public, in `hippo.core.loaders.reference`. `EntityRef.from_put_result(rec: dict) -> EntityRef` classmethod bridges the v1 `client.put()` dict return.
+
+- **`reference_write_log` table on SQLite + Postgres (PTS-253).** Composite PK `(loader_name, version, entity_id)`, lookup index on `(loader_name, version)`. Records every entity write that occurred inside a `load_context` block. Authoritative substrate for `--prune-old` per D2.14.J.
+
+- **`HippoClient.load_context(loader_name, version)` context manager (PTS-254).** Used by the lifecycle layer to scope reference-loader puts; write-log INSERT shares the entity write's SQL transaction so orphan log rows never persist beyond committed entity writes. State on the `HippoClient` instance per D2.14.J (no ContextVar); nested entries raise `RuntimeError`.
+
+- **Lifecycle wiring + write-log prune (PTS-256).** `hippo reference install`/`upgrade` wrap `loader.load()`/`loader.upgrade()` in `client.load_context(...)`. `--prune-old` queries the write log scoped to `(loader_name, version)`, deletes per-entity-type rows in a single transaction, then clears the log rows. Loader authors do nothing for prune.
+
+- **Per-`entity_type` breakdown in CLI (PTS-257).** `hippo reference install`/`upgrade` print a per-class breakdown table (rows sorted by `count desc, type asc`, scalar `total` line preserved for v1 parity). Counts derive from `LoadResult.entities` when populated, else from `GROUP BY entity_type` over `reference_write_log`.
+
+### Documentation
+
+- **§B.8 Appendix B — ReferenceLoader v2 Authoring Patterns (PTS-258).** Pattern A (small) + Pattern B (large) with code samples; `LoadResult.entities` advisory-only doctrine; v1 → v2 migration paragraph; lifecycle + write-log diagnostics.
+- **§2.14.8/.9 sec2_architecture (PTS-243).** Authoritative v2 contract spec.
+- **D2.14.J/K/L sec9_decisions (PTS-243).** Decision log for write-log substrate, EntityRef-on-LoadResult-only (defer `put()` bundle), clean-break transition.
+
+Closes PTS-252.
+
+---
+
 ## v0.6.0 — 2026-05-21 (LinkML-native Phase 2/3 + §2.14 Reference Loaders)
 
 ### Breaking Changes
