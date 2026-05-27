@@ -784,6 +784,105 @@ class RecipeService:
             f"Run `hippo recipe list` to see what is installed."
         )
 
+    def diff(
+        self,
+        a: str | Path,
+        b: str | Path,
+        *,
+        base_dir_a: Optional[Path] = None,
+        base_dir_b: Optional[Path] = None,
+    ) -> "RecipeDiff":
+        """Structural diff of two recipes' schema fragments (sec10 §10.2.3).
+
+        Resolves each side via the same resolver chain ``inspect`` uses
+        (``file:``, ``https:``, bare paths/tarballs), reads each side's
+        ``schema.yaml`` directly (no merge, no SchemaView), and compares
+        the ``classes:`` / ``slots:`` sub-trees by name and by body.
+
+        Element bodies are compared by deep-equality on the parsed YAML
+        dicts; a class/slot present in both sides whose body dicts differ
+        is reported under ``classes_changed`` / ``slots_changed``.
+        Missing ``schema.yaml`` on either side is treated as "no
+        classes, no slots" (mirrors :meth:`inspect` semantics).
+
+        No DB writes. No cache writes. No provenance.
+
+        Args:
+            a, b: Recipe sources (paths, tarballs, ``file:`` / ``https:``
+                URIs).
+            base_dir_a, base_dir_b: Override the per-side base directory
+                used to resolve relative paths. Mirrors :meth:`inspect`.
+
+        Returns:
+            :class:`RecipeDiff` with the six lexicographically-sorted
+            name lists (classes added/removed/changed, slots
+            added/removed/changed).
+        """
+        from hippo.core.recipe import RecipeDiff
+
+        fragment_a = self._load_schema_fragment(a, base_dir=base_dir_a)
+        fragment_b = self._load_schema_fragment(b, base_dir=base_dir_b)
+
+        classes_a = fragment_a.get("classes") or {}
+        classes_b = fragment_b.get("classes") or {}
+        slots_a = fragment_a.get("slots") or {}
+        slots_b = fragment_b.get("slots") or {}
+
+        names_a_classes = set(classes_a)
+        names_b_classes = set(classes_b)
+        names_a_slots = set(slots_a)
+        names_b_slots = set(slots_b)
+
+        return RecipeDiff(
+            classes_added=tuple(sorted(names_b_classes - names_a_classes)),
+            classes_removed=tuple(sorted(names_a_classes - names_b_classes)),
+            classes_changed=tuple(
+                sorted(
+                    n
+                    for n in names_a_classes & names_b_classes
+                    if classes_a[n] != classes_b[n]
+                )
+            ),
+            slots_added=tuple(sorted(names_b_slots - names_a_slots)),
+            slots_removed=tuple(sorted(names_a_slots - names_b_slots)),
+            slots_changed=tuple(
+                sorted(
+                    n
+                    for n in names_a_slots & names_b_slots
+                    if slots_a[n] != slots_b[n]
+                )
+            ),
+        )
+
+    def _load_schema_fragment(
+        self,
+        source: str | Path,
+        *,
+        base_dir: Optional[Path],
+    ) -> dict:
+        """Resolve ``source`` and return the parsed ``schema.yaml`` dict.
+
+        Returns ``{}`` when ``schema.yaml`` is absent or unparseable;
+        diff treats the missing side as contributing no classes/slots.
+        """
+        src_str = str(source)
+        effective_base = base_dir
+        if effective_base is None and isinstance(source, Path) and source.exists():
+            effective_base = source.parent if source.is_file() else None
+
+        resolver = self._select_resolver(src_str)
+        with resolver.resolve(src_str, base_dir=effective_base) as recipe_dir:
+            schema_path = recipe_dir / "schema.yaml"
+            if not schema_path.is_file():
+                return {}
+            try:
+                content = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+            except yaml.YAMLError:
+                return {}
+            if not isinstance(content, dict):
+                return {}
+            return content
+
     def extend(
         self,
         installed_id: str,

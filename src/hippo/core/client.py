@@ -14,6 +14,7 @@ from hippo.core.query_service import QueryService
 from hippo.core.recipe import (
     ImportResult,
     InstalledRecipe,
+    RecipeDiff,
     RecipeExport,
     RecipeReport,
 )
@@ -820,3 +821,21 @@ class HippoClient:
         local additions. Returns the output directory.
         """
         return self._recipe_service.extend(installed_id, out_dir)
+
+    def recipe_diff(
+        self,
+        a: str | Path,
+        b: str | Path,
+        *,
+        base_dir_a: Optional[Path] = None,
+        base_dir_b: Optional[Path] = None,
+    ) -> RecipeDiff:
+        """Structural diff between two recipes' schemas (sec10 §10.2.3).
+
+        Thin delegator over :meth:`RecipeService.diff`. Returns a
+        :class:`RecipeDiff` with classes/slots added, removed, and
+        changed between ``a`` and ``b``.
+        """
+        return self._recipe_service.diff(
+            a, b, base_dir_a=base_dir_a, base_dir_b=base_dir_b
+        )

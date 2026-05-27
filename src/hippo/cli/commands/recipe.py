@@ -360,3 +360,68 @@ def recipe_extend(
         "\nNote: replace `id`, `name`, `version`, and the schema "
         "`id`/`name`/`default_prefix` stubs before importing."
     )
+
+
+@recipe_app.command(name="diff")
+def recipe_diff(
+    a: str = typer.Argument(
+        ...,
+        help="First recipe source: path, tarball, or file:/https: URI.",
+    ),
+    b: str = typer.Argument(
+        ...,
+        help="Second recipe source: path, tarball, or file:/https: URI.",
+    ),
+) -> None:
+    """Structural diff between two recipes' schemas (sec10 §10.2.3).
+
+    Reports classes and slots added (present only in ``b``), removed
+    (present only in ``a``), and changed (present in both but with
+    different bodies). No DB writes, no merge — both sides are read
+    directly from their ``schema.yaml`` after the resolver chain
+    fetches and validates them.
+    """
+    service = RecipeService()
+    try:
+        diff = service.diff(a, b)
+    except RecipeManifestError as e:
+        typer.echo(f"Error: invalid manifest at {e.source}: {e.message}", err=True)
+        raise typer.Exit(1)
+    except RecipeFetchError as e:
+        typer.echo(f"Error: fetch failed: {e.message}", err=True)
+        raise typer.Exit(1)
+    except RecipeDigestMismatchError as e:
+        typer.echo(f"Error: digest mismatch: {e.message}", err=True)
+        raise typer.Exit(1)
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+    no_changes = (
+        not diff.classes_added
+        and not diff.classes_removed
+        and not diff.classes_changed
+        and not diff.slots_added
+        and not diff.slots_removed
+        and not diff.slots_changed
+    )
+    if no_changes:
+        typer.echo("No structural differences.")
+        return
+
+    def _section(label: str, names: tuple[str, ...]) -> None:
+        if not names:
+            return
+        typer.echo(f"{label}: {len(names)}")
+        for name in names:
+            typer.echo(f"  - {name}")
+
+    _section("classes added", diff.classes_added)
+    _section("classes removed", diff.classes_removed)
+    _section("classes changed", diff.classes_changed)
+    _section("slots added", diff.slots_added)
+    _section("slots removed", diff.slots_removed)
+    _section("slots changed", diff.slots_changed)
