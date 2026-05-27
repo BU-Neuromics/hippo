@@ -320,6 +320,231 @@ class CacheIntegrityError(HippoError):
         super().__init__(message, **context)
 
 
+class RecipeManifestError(HippoError):
+    """Raised when a recipe's ``recipe.yaml`` fails manifest validation.
+
+    Covers closed-schema LinkML validation of the manifest document
+    against ``src/hippo/schemas/recipe_manifest.yaml`` (sec10 §10.3.2):
+    missing required fields, unknown keys, type mismatches. Distinct
+    from :class:`RecipeSchemaError`, which fires on the embedded
+    ``schema.yaml`` fragment.
+
+    Every error must include the failing ``RecipeRef.source`` (the
+    path or URI Hippo loaded the manifest from), plus the manifest's
+    ``id``/``version`` when those parsed successfully (sec10 error model).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        errors: Optional[list[str]] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.errors = errors or []
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        super().__init__(message, **context)
+
+
+class RecipeVersionIncompatibleError(HippoError):
+    """Raised when a recipe's ``hippo_version`` excludes the running Hippo.
+
+    Parsed via ``packaging.specifiers.SpecifierSet`` (sec10 §10.3.2 /
+    error model). Always raised before any state change.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        specifier: Optional[str] = None,
+        hippo_version: Optional[str] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.specifier = specifier
+        self.hippo_version = hippo_version
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        context["specifier"] = specifier
+        context["hippo_version"] = hippo_version
+        super().__init__(message, **context)
+
+
+class RecipeRequiresUnsatisfiedError(HippoError):
+    """Raised when a declared recipe or reference-loader dependency is missing.
+
+    ``requires.recipes`` entries resolve via the resolver chain; this
+    error fires when fetch/parse fails or when the referenced manifest
+    declares an ``id`` that does not match the ``RecipeRef.id``.
+    ``requires.reference_loaders`` entries are pin strings of the form
+    ``name==version``; this error fires when the named loader is not
+    installed at the declared version (sec10 §10.4.5 — preconditions,
+    not transitive installs).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        unresolved_source: Optional[str] = None,
+        loader_pin: Optional[str] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.unresolved_source = unresolved_source
+        self.loader_pin = loader_pin
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        context["unresolved_source"] = unresolved_source
+        context["loader_pin"] = loader_pin
+        super().__init__(message, **context)
+
+
+class RecipeLineageCycleError(HippoError):
+    """Raised when the ``parent``/``requires.recipes`` graph contains a cycle.
+
+    Recipe ``A`` requires ``B`` requires ``A`` is the canonical case
+    (sec10 §10.4.4). Cycle detection covers ``parent`` and
+    ``requires.recipes`` uniformly.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        cycle: Optional[list[str]] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.cycle = cycle or []
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        context["cycle"] = self.cycle
+        super().__init__(message, **context)
+
+
+class RecipeFetchError(HippoError):
+    """Raised when a recipe resolver cannot retrieve the source artifact.
+
+    Covers HTTP errors (4xx/5xx), network failures (DNS, refused
+    connection, timeout), and corrupt/unreadable tarballs returned by
+    a remote endpoint (sec10 §10.4.2). Distinct from
+    :class:`RecipeDigestMismatchError`, which fires after a successful
+    fetch when bytes don't match the declared digest.
+
+    Every error must include the failing ``RecipeRef.source`` URI
+    plus the recipe ``id``/``version`` when those are known.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        status_code: Optional[int] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.status_code = status_code
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        context["source"] = source
+        context["status_code"] = status_code
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        super().__init__(message, **context)
+
+
+class RecipeDigestMismatchError(HippoError):
+    """Raised when fetched bytes do not match the declared canonical-content digest.
+
+    Triggered by the install path (and by the resolver when an
+    ``expected_digest`` is provided) when ``sha256`` of the canonical
+    content hash disagrees with what the ``RecipeRef`` declared
+    (sec10 §10.4.3 / invariant 4). Always raised before any state
+    change.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        expected_digest: Optional[str] = None,
+        actual_digest: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.expected_digest = expected_digest
+        self.actual_digest = actual_digest
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        context["source"] = source
+        context["expected_digest"] = expected_digest
+        context["actual_digest"] = actual_digest
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        super().__init__(message, **context)
+
+
+class RecipeSchemaError(HippoError):
+    """Raised when a recipe's embedded schema fragment violates a merge invariant.
+
+    Covers both LinkML-shape failures of ``schema.yaml`` and the
+    no-in-place-override check (sec10 §10.7.2, invariant 6) — a recipe
+    must not redefine a class or slot whose ``provided_by`` annotation
+    names a different recipe or loader. Users override by subclassing
+    (``is_a:``) instead.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        element_name: Optional[str] = None,
+        element_kind: Optional[str] = None,
+        provided_by: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        **context: Any,
+    ):
+        self.element_name = element_name
+        self.element_kind = element_kind
+        self.provided_by = provided_by
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        context["element_name"] = element_name
+        context["element_kind"] = element_kind
+        context["provided_by"] = provided_by
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        super().__init__(message, **context)
+
+
 class SearchCapabilityError(HippoError):
     """Exception raised when a search operation is attempted on a field
     that does not support full-text search.

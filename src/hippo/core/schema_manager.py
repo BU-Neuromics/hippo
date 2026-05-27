@@ -17,7 +17,11 @@ from hippo.core.validation.validators import (
     WriteOperation,
     WriteValidator,
 )
-from hippo.linkml_bridge import SchemaRegistry
+from hippo.linkml_bridge import (
+    PROVIDED_BY_ANNOTATION,
+    SchemaRegistry,
+    annotation_value,
+)
 
 
 class SchemaManager:
@@ -141,3 +145,169 @@ class SchemaManager:
         if self._bypass_validation or self._pipeline is None:
             return ValidationResult(is_valid=True, errors=[])
         return self._pipeline.execute(operation)
+
+    def check_no_inplace_override(
+        self,
+        fragment: dict,
+        *,
+        importing_provided_by: Optional[str] = None,
+    ) -> None:
+        """Reject recipe fragments that redefine upstream-provided content.
+
+        Implements sec10 §10.7.2 / invariant 6 — the merge seam Phase 3
+        will call before invoking ``merge_fragment``. A fragment may
+        introduce brand-new classes/slots, and may subclass upstream
+        content via ``is_a:`` (that creates a NEW class), but it must
+        NOT redefine an existing class/slot whose ``provided_by``
+        annotation names a different recipe or loader.
+
+        Args:
+            fragment: Parsed ``schema.yaml`` dict. Only the top-level
+                ``classes`` and ``slots`` sections are inspected; nested
+                ``attributes`` are not checked separately because a
+                fragment that touches them must already have redeclared
+                the owning class, which the class-level check catches.
+            importing_provided_by: The ``provided_by`` attribution the
+                merge layer will inject for THIS recipe (e.g.,
+                ``recipe.org.example.foo@1.0``). When supplied, an
+                existing element with the exact same attribution is
+                permitted — re-merging the same recipe identity is not
+                an in-place override. When ``None``, ANY existing
+                element with a ``recipe.`` or ``loader.`` attribution
+                triggers rejection.
+
+        Raises:
+            RecipeSchemaError: When the fragment redefines an upstream
+                class or slot.
+        """
+        from hippo.core.exceptions import RecipeSchemaError
+
+        if self._registry is None:
+            return
+        sv = self._registry.schema_view
+
+        def _check(name: str, existing: object, kind: str) -> None:
+            pb = annotation_value(existing, PROVIDED_BY_ANNOTATION)
+            if not pb:
+                return
+            pb_str = str(pb)
+            if not (
+                pb_str.startswith("recipe.") or pb_str.startswith("loader.")
+            ):
+                return
+            if (
+                importing_provided_by is not None
+                and pb_str == importing_provided_by
+            ):
+                return
+            raise RecipeSchemaError(
+                f"Cannot redefine {kind} {name!r}: it is provided by "
+                f"{pb_str!r}. In-place override of upstream classes/slots "
+                f"is rejected (sec10 §10.7.2, invariant 6). Subclass via "
+                f"`is_a:` to specialise instead.",
+                element_name=name,
+                element_kind=kind,
+                provided_by=pb_str,
+            )
+
+        for class_name in (fragment.get("classes") or {}):
+            cls = sv.get_class(class_name)
+            if cls is not None:
+                _check(class_name, cls, "class")
+
+        for slot_name in (fragment.get("slots") or {}):
+            slot = sv.get_slot(slot_name)
+            if slot is not None:
+                _check(slot_name, slot, "slot")
+
+    def merge_fragment(
+        self,
+        fragment: dict,
+        *,
+        recipe_id: str,
+        recipe_version: str,
+    ) -> SchemaRegistry:
+        """Merge a recipe ``schema.yaml`` fragment into the live registry.
+
+        Implements the recipe-side of sec2 §2.14.5/§2.14.6 merge rules:
+
+        - Calls :meth:`check_no_inplace_override` first (invariant 6).
+        - Injects ``provided_by: recipe.<id>@<version>`` on every class,
+          top-level slot, and per-class attribute the fragment
+          introduces (invariant 7). Author-written annotations are
+          overwritten — manifest identity wins.
+        - Returns a fresh :class:`SchemaRegistry` over the merged
+          :class:`SchemaView`. The caller is responsible for swapping
+          the new registry in (``RecipeService.import_`` does this via
+          :meth:`set_registry`).
+
+        Args:
+            fragment: Parsed ``schema.yaml`` dict. Mutated only locally —
+                the input dict is not modified.
+            recipe_id: The recipe's manifest ``id`` (reverse-DNS form).
+            recipe_version: The recipe's manifest ``version``.
+
+        Returns:
+            A new :class:`SchemaRegistry` containing every class and slot
+            of the previous registry plus the fragment, with
+            ``provided_by`` stamped.
+
+        Raises:
+            RecipeSchemaError: When the fragment redefines an upstream
+                class/slot (invariant 6).
+        """
+        from hippo.linkml_bridge import (
+            _inject_provided_by_annotation,
+            _merge_prepared_fragment,
+        )
+        import copy
+
+        if self._registry is None:
+            raise ValueError(
+                "Cannot merge a recipe fragment: SchemaManager has no "
+                "registry. Pass `registry=` when constructing HippoClient."
+            )
+
+        attribution = f"recipe.{recipe_id}@{recipe_version}"
+        self.check_no_inplace_override(
+            fragment, importing_provided_by=attribution
+        )
+
+        prepared = copy.deepcopy(fragment)
+        prepared.pop("imports", None)  # recipes do not currently extend imports
+
+        for cls_name, cls in list((prepared.get("classes") or {}).items()):
+            if cls is None:
+                cls = {}
+                prepared.setdefault("classes", {})[cls_name] = cls
+            if isinstance(cls, dict):
+                _inject_provided_by_annotation(cls, attribution)
+                for attr_name, attr in list((cls.get("attributes") or {}).items()):
+                    if attr is None:
+                        attr = {}
+                        cls.setdefault("attributes", {})[attr_name] = attr
+                    if isinstance(attr, dict):
+                        _inject_provided_by_annotation(attr, attribution)
+
+        for slot_name, slot in list((prepared.get("slots") or {}).items()):
+            if slot is None:
+                slot = {}
+                prepared.setdefault("slots", {})[slot_name] = slot
+            if isinstance(slot, dict):
+                _inject_provided_by_annotation(slot, attribution)
+
+        merged_sv = _merge_prepared_fragment(self._registry.schema_view, prepared)
+        return SchemaRegistry(merged_sv)
+
+    def set_registry(self, registry: SchemaRegistry) -> None:
+        """Swap in a new :class:`SchemaRegistry` after a recipe merge.
+
+        Rebuilds the FTS metadata cache against the new schema. Search
+        capability re-validation is intentionally skipped — recipe
+        imports cannot change adapter capabilities, and re-running the
+        check would re-touch the storage adapter inside the recipe
+        transaction.
+        """
+        self._registry = registry
+        self._fts_table_metadata = {}
+        self._build_fts_metadata()

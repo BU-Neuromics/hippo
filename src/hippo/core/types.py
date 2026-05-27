@@ -178,6 +178,7 @@ class Operation(str, Enum):
     external_id_remove = "external_id_remove"
     migration_applied = "migration_applied"
     reference_data_installed = "reference_data_installed"
+    recipe_imported = "recipe_imported"
 
 
 class ProvenanceRecord(BaseModel):

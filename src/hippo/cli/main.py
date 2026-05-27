@@ -405,7 +405,10 @@ def _get_client(db_path: str | None = None, schema_path: str | None = None):
     path = Path(db_path) if db_path else Path("data/hippo.db")
     registry = _build_schema_registry(schema_path)
 
-    return HippoClient(storage=SQLiteAdapter(str(path), schema_registry=registry))
+    return HippoClient(
+        storage=SQLiteAdapter(str(path), schema_registry=registry),
+        registry=registry,
+    )
 
 
 @app.command()
@@ -628,6 +631,10 @@ app.add_typer(reference_app, name="reference")
 from hippo.cli.commands.reference import mount_reference_loader_subapps
 
 mount_reference_loader_subapps(reference_app)
+
+from hippo.cli.commands.recipe import recipe_app
+
+app.add_typer(recipe_app, name="recipe")
 
 schema_app = typer.Typer(name="schema", help="Schema management commands")
 app.add_typer(schema_app, name="schema")

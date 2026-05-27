@@ -11,6 +11,14 @@ from hippo.core.ingestion_service import IngestionService
 from hippo.core.pipeline import ValidationPipeline
 from hippo.core.provenance_service import ProvenanceService
 from hippo.core.query_service import QueryService
+from hippo.core.recipe import (
+    ImportResult,
+    InstalledRecipe,
+    RecipeDiff,
+    RecipeExport,
+    RecipeReport,
+)
+from hippo.core.recipe_service import RecipeService
 from hippo.core.relationship import RelationshipManager
 from hippo.core.schema_manager import SchemaManager
 from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
@@ -94,6 +102,11 @@ class HippoClient:
         self._ingestion_service = IngestionService(
             storage=storage,
             schema_manager=self._schema_manager,
+        )
+        self._recipe_service = RecipeService(
+            storage=storage,
+            schema_manager=self._schema_manager,
+            provenance_service=self._provenance_service,
         )
 
         self._storage = storage
@@ -728,3 +741,120 @@ class HippoClient:
     def state_at(self, entity_id: str, timestamp: str) -> Optional[dict[str, Any]]:
         """Get the entity state at a specific point in time."""
         return self._provenance_service.state_at(entity_id, timestamp)
+
+    # -- RecipeService delegations (sec10 §10.2.1) --
+
+    def recipe_list(self) -> list[InstalledRecipe]:
+        """Return every entry in ``hippo_meta.installed_recipes``.
+
+        Thin delegator over :meth:`RecipeService.list_installed`. Returns
+        ``[]`` on a clean instance.
+        """
+        return self._recipe_service.list_installed()
+
+    def recipe_inspect(
+        self,
+        source: str | Path,
+        *,
+        base_dir: Optional[Path] = None,
+        expected_digest: Optional[str] = None,
+    ) -> RecipeReport:
+        """Parse, validate, and digest a recipe — no state change (sec10 §10.2.3).
+
+        Thin delegator over :meth:`RecipeService.inspect`. Useful for
+        authoring (``hippo recipe inspect`` prints the canonical
+        content hash) and for callers that want a typed report before
+        committing to an import.
+        """
+        return self._recipe_service.inspect(
+            source, base_dir=base_dir, expected_digest=expected_digest
+        )
+
+    def recipe_import(
+        self,
+        source: str | Path,
+        *,
+        dry_run: bool = False,
+        base_dir: Optional[Path] = None,
+        expected_digest: Optional[str] = None,
+    ) -> ImportResult:
+        """Bootstrap-install a recipe end-to-end (sec10 §10.4).
+
+        Thin delegator over :meth:`RecipeService.import_`. Resolves
+        dependencies bottom-up, merges every fragment through
+        :class:`SchemaManager`, writes one ``installed_recipes`` entry
+        per recipe, and emits one ``recipe_imported`` provenance event
+        per recipe — all inside a single storage transaction.
+        """
+        return self._recipe_service.import_(
+            source,
+            dry_run=dry_run,
+            base_dir=base_dir,
+            expected_digest=expected_digest,
+        )
+
+    def recipe_export(
+        self,
+        *,
+        scope: str = "schema",
+        parent: Optional[str] = None,
+    ) -> RecipeExport:
+        """Package locally-authored schema for redistribution (sec10 §10.5).
+
+        Thin delegator over :meth:`RecipeService.export`. Returns a
+        :class:`RecipeExport` (manifest dict + schema-fragment dict +
+        auto-resolved ``requires.recipes`` list); the CLI is the only
+        caller that writes those documents to disk.
+        """
+        return self._recipe_service.export(scope=scope, parent=parent)
+
+    def recipe_extend(
+        self,
+        installed_id: str,
+        out_dir: Path,
+    ) -> Path:
+        """Scaffold a derivative recipe directory (sec10 §10.7.3).
+
+        Thin delegator over :meth:`RecipeService.extend`. Writes a
+        ``recipe.yaml`` whose ``parent`` block is populated from the
+        installed-recipe entry and an empty ``schema.yaml`` ready for
+        local additions. Returns the output directory.
+        """
+        return self._recipe_service.extend(installed_id, out_dir)
+
+    def recipe_diff(
+        self,
+        a: str | Path,
+        b: str | Path,
+        *,
+        base_dir_a: Optional[Path] = None,
+        base_dir_b: Optional[Path] = None,
+    ) -> RecipeDiff:
+        """Structural diff between two recipes' schemas (sec10 §10.2.3).
+
+        Thin delegator over :meth:`RecipeService.diff`. Returns a
+        :class:`RecipeDiff` with classes/slots added, removed, and
+        changed between ``a`` and ``b``.
+        """
+        return self._recipe_service.diff(
+            a, b, base_dir_a=base_dir_a, base_dir_b=base_dir_b
+        )
+
+    def recipe_export_lockfile(self, out: Path) -> Path:
+        """Dump ``installed_recipes`` as ``recipe.lock.yaml`` (sec10 §10.6).
+
+        Thin delegator over :meth:`RecipeService.export_lockfile`.
+        Writes a portable YAML document with ``lockfile_version: 1`` and
+        one entry per installed recipe (id, version, source,
+        sha256-prefixed digest, installed_at, parent).
+        """
+        return self._recipe_service.export_lockfile(out)
+
+    def recipe_install_from_lockfile(self, lockfile: Path) -> list[ImportResult]:
+        """Replay a lockfile on the current instance (sec10 §10.6).
+
+        Thin delegator over :meth:`RecipeService.install_from_lockfile`.
+        Installs every lockfile entry in dependency order, verifying
+        each digest against the freshly-fetched bytes.
+        """
+        return self._recipe_service.install_from_lockfile(lockfile)
