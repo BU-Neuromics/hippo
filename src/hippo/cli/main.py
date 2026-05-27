@@ -405,7 +405,10 @@ def _get_client(db_path: str | None = None, schema_path: str | None = None):
     path = Path(db_path) if db_path else Path("data/hippo.db")
     registry = _build_schema_registry(schema_path)
 
-    return HippoClient(storage=SQLiteAdapter(str(path), schema_registry=registry))
+    return HippoClient(
+        storage=SQLiteAdapter(str(path), schema_registry=registry),
+        registry=registry,
+    )
 
 
 @app.command()

@@ -11,7 +11,7 @@ from hippo.core.ingestion_service import IngestionService
 from hippo.core.pipeline import ValidationPipeline
 from hippo.core.provenance_service import ProvenanceService
 from hippo.core.query_service import QueryService
-from hippo.core.recipe import InstalledRecipe, RecipeReport
+from hippo.core.recipe import ImportResult, InstalledRecipe, RecipeReport
 from hippo.core.recipe_service import RecipeService
 from hippo.core.relationship import RelationshipManager
 from hippo.core.schema_manager import SchemaManager
@@ -762,4 +762,27 @@ class HippoClient:
         """
         return self._recipe_service.inspect(
             source, base_dir=base_dir, expected_digest=expected_digest
+        )
+
+    def recipe_import(
+        self,
+        source: str | Path,
+        *,
+        dry_run: bool = False,
+        base_dir: Optional[Path] = None,
+        expected_digest: Optional[str] = None,
+    ) -> ImportResult:
+        """Bootstrap-install a recipe end-to-end (sec10 §10.4).
+
+        Thin delegator over :meth:`RecipeService.import_`. Resolves
+        dependencies bottom-up, merges every fragment through
+        :class:`SchemaManager`, writes one ``installed_recipes`` entry
+        per recipe, and emits one ``recipe_imported`` provenance event
+        per recipe — all inside a single storage transaction.
+        """
+        return self._recipe_service.import_(
+            source,
+            dry_run=dry_run,
+            base_dir=base_dir,
+            expected_digest=expected_digest,
         )

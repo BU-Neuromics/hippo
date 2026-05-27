@@ -409,3 +409,12 @@ enums:
         description: A schema migration was applied (system event; entity_id is null).
       reference_data_installed:
         description: A reference loader installed data (system event; entity_id is null).
+      recipe_imported:
+        description: >-
+          A recipe was installed into the instance (system event; entity_id
+          is null). Emitted exactly once per top-level import; bottom-up
+          dependency installs each emit their own event in the same
+          transaction (sec10 §10.8.2, invariant 3). Patch carries
+          `recipe_id`, `recipe_version`, `recipe_digest`, `recipe_source`,
+          optional `parent` RecipeRef, and the lists of `classes_added`
+          and `slots_added`.

@@ -17,7 +17,16 @@ from typing import Optional
 
 import typer
 
-from hippo.core.exceptions import RecipeManifestError
+from hippo.core.exceptions import (
+    HippoError,
+    RecipeDigestMismatchError,
+    RecipeFetchError,
+    RecipeLineageCycleError,
+    RecipeManifestError,
+    RecipeRequiresUnsatisfiedError,
+    RecipeSchemaError,
+    RecipeVersionIncompatibleError,
+)
 from hippo.core.recipe_service import RecipeService
 
 
@@ -105,3 +114,98 @@ def recipe_inspect(
             typer.echo("\nslots:")
             for name in report.slots:
                 typer.echo(f"  - {name}")
+
+
+@recipe_app.command(name="import")
+def recipe_import(
+    source: str = typer.Argument(
+        ...,
+        help=(
+            "Recipe source: a directory path, tarball, or file:/https: URI. "
+            "https: sources require a declared digest (sec10 invariant 4)."
+        ),
+    ),
+    digest: Optional[str] = typer.Option(
+        None,
+        "--digest",
+        help=(
+            "Declared canonical-content-hash digest (sha256 hex, optionally "
+            "prefixed `sha256:`). Required for https: sources at install time."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Resolve dependencies and validate without writing any state.",
+    ),
+    db_path: str = typer.Option(
+        None,
+        "--db-path",
+        help="SQLite database path (default: data/hippo.db).",
+    ),
+    schema_dir: str = typer.Option(
+        None,
+        "--schema-dir",
+        help="Schema directory (default: schemas/).",
+    ),
+) -> None:
+    """Install a recipe and its dependencies into the current instance.
+
+    Resolves every ``parent`` and ``requires.recipes`` entry bottom-up,
+    merges each fragment through ``SchemaManager.merge_fragment``,
+    writes one ``installed_recipes`` entry per recipe, and emits one
+    ``recipe_imported`` provenance event per recipe — all inside a
+    single storage transaction (sec10 §10.4 / invariant 3).
+    """
+    from hippo.cli.main import _get_client
+
+    try:
+        client = _get_client(
+            db_path=db_path,
+            schema_path=schema_dir,
+        )
+    except Exception as exc:
+        typer.echo(f"Error: failed to open Hippo instance: {exc}", err=True)
+        raise typer.Exit(1)
+
+    try:
+        result = client.recipe_import(
+            source,
+            dry_run=dry_run,
+            expected_digest=digest,
+        )
+    except RecipeLineageCycleError as e:
+        typer.echo(f"Error: lineage cycle: {' -> '.join(e.cycle)}", err=True)
+        raise typer.Exit(1)
+    except RecipeRequiresUnsatisfiedError as e:
+        typer.echo(f"Error: unsatisfied requires: {e.message}", err=True)
+        raise typer.Exit(1)
+    except RecipeVersionIncompatibleError as e:
+        typer.echo(f"Error: incompatible hippo_version: {e.message}", err=True)
+        raise typer.Exit(1)
+    except RecipeDigestMismatchError as e:
+        typer.echo(f"Error: digest mismatch: {e.message}", err=True)
+        raise typer.Exit(1)
+    except RecipeFetchError as e:
+        typer.echo(f"Error: fetch failed: {e.message}", err=True)
+        raise typer.Exit(1)
+    except RecipeManifestError as e:
+        typer.echo(f"Error: invalid manifest at {e.source}: {e.message}", err=True)
+        for msg in e.errors:
+            typer.echo(f"  - {msg}", err=True)
+        raise typer.Exit(1)
+    except RecipeSchemaError as e:
+        typer.echo(f"Error: schema merge rejected: {e.message}", err=True)
+        raise typer.Exit(1)
+    except HippoError as e:
+        typer.echo(f"Error: {e.message}", err=True)
+        raise typer.Exit(1)
+
+    action = "[dry-run] Would install" if result.dry_run else "Installed"
+    typer.echo(f"{action} {len(result.installed)} recipe(s) in dependency order:")
+    for rec in result.installed:
+        typer.echo(f"  - {rec.id}@{rec.version} (sha256:{rec.digest})")
+    if result.classes_added:
+        typer.echo(f"  classes added by top-level: {len(result.classes_added)}")
+    if result.slots_added:
+        typer.echo(f"  slots added by top-level: {len(result.slots_added)}")

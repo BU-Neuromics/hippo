@@ -353,6 +353,99 @@ class RecipeManifestError(HippoError):
         super().__init__(message, **context)
 
 
+class RecipeVersionIncompatibleError(HippoError):
+    """Raised when a recipe's ``hippo_version`` excludes the running Hippo.
+
+    Parsed via ``packaging.specifiers.SpecifierSet`` (sec10 §10.3.2 /
+    error model). Always raised before any state change.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        specifier: Optional[str] = None,
+        hippo_version: Optional[str] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.specifier = specifier
+        self.hippo_version = hippo_version
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        context["specifier"] = specifier
+        context["hippo_version"] = hippo_version
+        super().__init__(message, **context)
+
+
+class RecipeRequiresUnsatisfiedError(HippoError):
+    """Raised when a declared recipe or reference-loader dependency is missing.
+
+    ``requires.recipes`` entries resolve via the resolver chain; this
+    error fires when fetch/parse fails or when the referenced manifest
+    declares an ``id`` that does not match the ``RecipeRef.id``.
+    ``requires.reference_loaders`` entries are pin strings of the form
+    ``name==version``; this error fires when the named loader is not
+    installed at the declared version (sec10 §10.4.5 — preconditions,
+    not transitive installs).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        unresolved_source: Optional[str] = None,
+        loader_pin: Optional[str] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.unresolved_source = unresolved_source
+        self.loader_pin = loader_pin
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        context["unresolved_source"] = unresolved_source
+        context["loader_pin"] = loader_pin
+        super().__init__(message, **context)
+
+
+class RecipeLineageCycleError(HippoError):
+    """Raised when the ``parent``/``requires.recipes`` graph contains a cycle.
+
+    Recipe ``A`` requires ``B`` requires ``A`` is the canonical case
+    (sec10 §10.4.4). Cycle detection covers ``parent`` and
+    ``requires.recipes`` uniformly.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        source: Optional[str] = None,
+        recipe_id: Optional[str] = None,
+        recipe_version: Optional[str] = None,
+        cycle: Optional[list[str]] = None,
+        **context: Any,
+    ):
+        self.source = source
+        self.recipe_id = recipe_id
+        self.recipe_version = recipe_version
+        self.cycle = cycle or []
+        context["source"] = source
+        context["recipe_id"] = recipe_id
+        context["recipe_version"] = recipe_version
+        context["cycle"] = self.cycle
+        super().__init__(message, **context)
+
+
 class RecipeFetchError(HippoError):
     """Raised when a recipe resolver cannot retrieve the source artifact.
 
