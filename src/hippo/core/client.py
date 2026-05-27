@@ -11,6 +11,8 @@ from hippo.core.ingestion_service import IngestionService
 from hippo.core.pipeline import ValidationPipeline
 from hippo.core.provenance_service import ProvenanceService
 from hippo.core.query_service import QueryService
+from hippo.core.recipe import InstalledRecipe
+from hippo.core.recipe_service import RecipeService
 from hippo.core.relationship import RelationshipManager
 from hippo.core.schema_manager import SchemaManager
 from hippo.core.storage.adapters.sqlite_adapter import SQLiteAdapter
@@ -94,6 +96,11 @@ class HippoClient:
         self._ingestion_service = IngestionService(
             storage=storage,
             schema_manager=self._schema_manager,
+        )
+        self._recipe_service = RecipeService(
+            storage=storage,
+            schema_manager=self._schema_manager,
+            provenance_service=self._provenance_service,
         )
 
         self._storage = storage
@@ -728,3 +735,13 @@ class HippoClient:
     def state_at(self, entity_id: str, timestamp: str) -> Optional[dict[str, Any]]:
         """Get the entity state at a specific point in time."""
         return self._provenance_service.state_at(entity_id, timestamp)
+
+    # -- RecipeService delegations (sec10 §10.2.1) --
+
+    def recipe_list(self) -> list[InstalledRecipe]:
+        """Return every entry in ``hippo_meta.installed_recipes``.
+
+        Thin delegator over :meth:`RecipeService.list_installed`. Returns
+        ``[]`` on a clean instance.
+        """
+        return self._recipe_service.list_installed()
