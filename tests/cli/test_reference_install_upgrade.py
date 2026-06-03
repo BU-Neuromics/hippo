@@ -44,7 +44,7 @@ from hippo.cli.commands.reference import (
 from hippo.cli.main import app
 from hippo.core.loaders.reference import EntityRef
 from hippo.core.meta import get_meta
-from hippo.testing.example_ontology_loader import OboDemoLoader, OboDemoParams
+from hippo.testing.example_ontology_loader import OboDemoLoader
 from hippo.testing.fake_reference_loader import FakeLoadParams
 
 
@@ -810,9 +810,7 @@ class TestOboDemoDryRun:
         before = _count_rows(obodemo_workspace["db"], "OntologyTerm")
 
         loader, client = _build_merged_client(obodemo_workspace)
-        result = loader.upgrade(
-            client, "v1", "v2", params=OboDemoParams(dry_run=True)
-        )
+        result = loader.dry_run_upgrade(client, "v1", "v2")
 
         # A clean dry-run: zero errors, reports what it WOULD write, and
         # leaves both the entity table and the write log untouched.
@@ -835,6 +833,41 @@ class TestOboDemoDryRun:
         errors = loader._dry_run_validate(client, [{"curie": "OBO:0000099"}])
         assert errors  # non-empty → the missing required slot was caught
 
+    def test_dry_run_is_not_a_state_corrupting_cli_flag(self, obodemo_workspace):
+        # Regression guard: the dry-run is an SDK-only method, deliberately
+        # NOT a load param. If it leaked into ``load_params_schema`` it would
+        # render as ``hippo reference upgrade --dry-run`` — and the lifecycle
+        # would still prune + rotate the version pointer after a write-free
+        # LoadResult, leaving an installed-but-empty (data-loss) state. So
+        # the flag must NOT exist on the loader's params, and the CLI must
+        # reject it.
+        assert "dry_run" not in OboDemoLoader.load_params_schema.model_fields
+
+        install_reference(
+            "obodemo",
+            "v1",
+            db_path=obodemo_workspace["db"],
+            schema_dir=obodemo_workspace["schemas"],
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            app,
+            ["reference", "upgrade", "obodemo", "--version", "v2",
+             "--db-path", str(obodemo_workspace["db"]),
+             "--schema-dir", str(obodemo_workspace["schemas"]),
+             "--prune-old", "--dry-run"],
+        )
+        # Unknown flag → non-zero exit, and crucially the prior release is
+        # untouched (no prune, no version rotation).
+        assert result.exit_code != 0
+        assert _count_rows(obodemo_workspace["db"], "OntologyTerm") == 4
+        conn = _open(obodemo_workspace["db"])
+        try:
+            versions = get_meta(conn, META_KEY_VERSIONS)
+        finally:
+            conn.close()
+        assert versions == {"obodemo": "v1"}
+
 
 class TestOboDemoDiffUpgradeAcceptance:
     """The verbatim §9 S1 acceptance, end to end."""
@@ -851,7 +884,7 @@ class TestOboDemoDiffUpgradeAcceptance:
 
         # 1) A clean dry-run gate BEFORE committing anything.
         loader, client = _build_merged_client(obodemo_workspace)
-        dry = loader.upgrade(client, "v1", "v2", params=OboDemoParams(dry_run=True))
+        dry = loader.dry_run_upgrade(client, "v1", "v2")
         assert dry.errors == 0
         assert _count_rows(db, "OntologyTerm") == 4  # still untouched
 
