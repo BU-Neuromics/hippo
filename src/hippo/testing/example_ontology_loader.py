@@ -60,7 +60,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from hippo.core.loaders.reference import (
     EntityRef,
@@ -84,8 +84,13 @@ _ENTITY_TYPE = "OntologyTerm"
 class OboDemoParams(BaseModel):
     """Runtime parameters for :class:`OboDemoLoader`.
 
-    Both fields render as CLI flags (``--base-url`` / ``--dry-run`` /
-    ``--no-dry-run``) via the standard ``load_params_schema`` pipeline.
+    Renders as the ``--base-url`` CLI flag via the standard
+    ``load_params_schema`` pipeline. Kept to genuine *load* parameters
+    only — the dry-run is an SDK-only concern
+    (:meth:`OboDemoLoader.dry_run_upgrade`), deliberately NOT a load param:
+    the install/upgrade lifecycle commits (rotates the version pointer,
+    prunes) after a clean ``LoadResult``, so a ``--dry-run`` flag routed
+    through ``load()`` would leave a corrupt installed-but-empty state.
     """
 
     # Override the release origin. ``None`` (default) fetches from the
@@ -94,12 +99,6 @@ class OboDemoParams(BaseModel):
     # network branch of ``cached_fetch``) or at a tampered directory (to
     # exercise the ``CacheIntegrityError`` branch).
     base_url: str | None = None
-    # Preview an upgrade/load: reconstruct the target term set and
-    # validate it against the merged schema *without writing any rows*
-    # (the in-process equivalent of ``hippo ingest --validate-schema
-    # --dry-run``, sec11 §11.5.2). A clean dry-run returns a ``LoadResult``
-    # with ``errors == 0`` and the count it *would* have written.
-    dry_run: bool = Field(default=False)
 
 
 class OboDemoLoader(ReferenceLoader):
@@ -158,17 +157,12 @@ class OboDemoLoader(ReferenceLoader):
         ``upgrade v1 → v2`` converge on the same term set.
         """
         p = self._params(params)
-        if version == _TEST_SLUG:
-            terms = self._parse_obo(self._fixtures_dir() / _TEST_FIXTURE)
-        elif version == "v1":
-            terms = self._parse_obo(self._fetch(client, p, "v1"))
-        elif version == "v2":
-            terms = self._reconstruct_v2(client, p)
-        else:
+        terms = self._terms_for_version(client, version, p)
+        if terms is None:
             return LoadResult(
                 errors=1, error_messages=[f"unknown version: {version}"]
             )
-        return self._ingest(client, terms, p)
+        return self._ingest(client, terms)
 
     def upgrade(
         self,
@@ -188,8 +182,61 @@ class OboDemoLoader(ReferenceLoader):
         p = self._params(params)
         if from_version == "v1" and to_version == "v2":
             terms = self._reconstruct_v2(client, p)
-            return self._ingest(client, terms, p)
+            return self._ingest(client, terms)
         return self.load(client, to_version, params)
+
+    def dry_run_upgrade(
+        self,
+        client: "HippoClient",
+        from_version: str,
+        to_version: str,
+        params: BaseModel | None = None,
+    ) -> LoadResult:
+        """Preview an upgrade WITHOUT writing — the clean-dry-run gate.
+
+        Reconstructs the ``to_version`` term set exactly as :meth:`upgrade`
+        would, then validates it against the client's merged schema
+        (:meth:`SchemaRegistry.validate`) — the in-process equivalent of
+        ``hippo ingest --validate-schema <merged-dir> --dry-run`` (sec11
+        §11.5.2, the same gate :meth:`DomainModule.evolve` runs). Returns a
+        :class:`LoadResult`: on a clean gate ``errors == 0`` and ``created``
+        is the count it *would* write; on failure ``errors`` /
+        ``error_messages`` carry the schema violations. **Nothing is
+        written and the version pointer never rotates** — this is an
+        SDK-only method, deliberately not wired through the committing
+        ``hippo reference upgrade`` lifecycle.
+        """
+        p = self._params(params)
+        if from_version == "v1" and to_version == "v2":
+            terms = self._reconstruct_v2(client, p)
+        else:
+            terms = self._terms_for_version(client, to_version, p)
+            if terms is None:
+                return LoadResult(
+                    errors=1,
+                    error_messages=[f"unknown version: {to_version}"],
+                )
+        errors = self._dry_run_validate(client, terms)
+        return LoadResult(
+            created=0 if errors else len(terms),
+            errors=len(errors),
+            error_messages=errors,
+        )
+
+    def _terms_for_version(
+        self,
+        client: "HippoClient",
+        version: str,
+        params: OboDemoParams,
+    ) -> list[dict[str, Any]] | None:
+        """Resolve the full term set for ``version`` (``None`` if unknown)."""
+        if version == _TEST_SLUG:
+            return self._parse_obo(self._fixtures_dir() / _TEST_FIXTURE)
+        if version == "v1":
+            return self._parse_obo(self._fetch(client, params, "v1"))
+        if version == "v2":
+            return self._reconstruct_v2(client, params)
+        return None
 
     # ------------------------------------------------------------------
     # Fetch + parse helpers
@@ -327,18 +374,8 @@ class OboDemoLoader(ReferenceLoader):
         self,
         client: "HippoClient",
         terms: list[dict[str, Any]],
-        params: OboDemoParams,
     ) -> LoadResult:
-        """Write ``terms`` as fresh-id rows, or — in dry-run — validate
-        them against the merged schema without writing.
-        """
-        if params.dry_run:
-            errors = self._dry_run_validate(client, terms)
-            return LoadResult(
-                created=0 if errors else len(terms),
-                errors=len(errors),
-                error_messages=errors,
-            )
+        """Write ``terms`` as fresh-id ``OntologyTerm`` rows."""
         entities = [
             EntityRef.from_put_result(client.put(_ENTITY_TYPE, dict(term)))
             for term in terms
