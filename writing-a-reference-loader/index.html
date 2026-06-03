@@ -16,7 +16,7 @@
         <link rel="prev" href="../reference-loaders/">
       
       
-        <link rel="next" href="../writing-a-recipe/">
+        <link rel="next" href="../writing-a-domain-module/">
       
       
         
@@ -423,7 +423,7 @@
           
   
   
-  Reference Loaders
+  Schema Packages
 
         </a>
       </li>
@@ -821,7 +821,7 @@
   <span class="md-ellipsis">
     
   
-    Reference Loaders
+    Schema Packages
   
 
     
@@ -837,7 +837,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Reference Loaders
+    Schema Packages
   
 
           </label>
@@ -1107,6 +1107,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writing-a-domain-module/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing a Domain Module
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1625,6 +1653,7 @@
 <ul>
 <li>A <strong>pure-schema package</strong> (one that only contributes types — no shipped data) subclasses <code>SchemaPackage</code> directly, implements just <code>versions()</code> + <code>schema_fragment()</code>, and merges + pins via <code>requires:</code> with no hand-written code.</li>
 <li>A <strong>reference loader</strong> is the <em>external-data</em> species: <code>ReferenceLoader(SchemaPackage)</code>. It keeps the familiar <code>load()</code> / <code>upgrade()</code> method names, and the genus maps <code>provision → load()</code> and <code>evolve → upgrade()</code> so the orchestrator can drive any package uniformly. Everything below describes this species — but the method names are unchanged from earlier Hippo versions, so existing loaders need no edits.</li>
+<li>A <strong>domain module</strong> is the <em>first-party mutable-data</em> species: <code>DomainModule(SchemaPackage)</code>. It owns the deployment's locally authored records and migrates them in place via declared <code>(from_version → to_version)</code> steps. See <a href="../writing-a-domain-module/">Writing a Domain Module</a>.</li>
 </ul>
 </blockquote>
 <hr />
