@@ -1,37 +1,48 @@
-"""HippoTUIApp — Textual application root for the Hippo TUI."""
+"""HippoTUIApp — Textual application root for the Hippo TUI.
+
+The app owns the backend, the schema cache, and the main-panel routing;
+individual views talk to the backend through the :class:`TUIBackend`
+protocol and report failures via :meth:`HippoTUIApp.report_error`.
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Header
 
-from hippo.tui.backend.protocol import SchemaView, TUIBackend
-from hippo.tui.widgets.sidebar import EntityTypeSidebar
-from hippo.tui.widgets.status_bar import StatusBar
+from hippo.tui.backend.protocol import BackendError, SchemaView, TUIBackend
 from hippo.tui.widgets.command_palette import HippoCommandPalette
 from hippo.tui.widgets.help_overlay import HelpOverlay
+from hippo.tui.widgets.sidebar import EntityTypeSidebar
+from hippo.tui.widgets.status_bar import StatusBar
 
-if TYPE_CHECKING:
-    pass
+_DARK_THEME = "textual-dark"
+_LIGHT_THEME = "textual-light"
 
 
 class HippoTUIApp(App):
     """Hippo Terminal User Interface.
 
-    Provides a keyboard-driven browser for entities, schemas, and provenance.
+    A keyboard-driven browser for entities, schemas, queries, and
+    provenance, backed by either the Python SDK (local SQLite) or the
+    REST API (remote ``hippo serve``).
 
     Args:
         backend: The TUIBackend implementation (SDK or REST).
     """
 
+    TITLE = "Hippo"
+    SUB_TITLE = "Metadata Tracking Service"
+
     CSS = """
     #sidebar {
-        width: 24;
-        min-width: 18;
+        width: 28;
+        min-width: 20;
+        border-right: solid $panel;
     }
     #main-panel {
         width: 1fr;
@@ -50,16 +61,18 @@ class HippoTUIApp(App):
         Binding("ctrl+p", "command_palette", "Palette", show=False),
         Binding("tab", "focus_next", "Focus next", show=False),
         Binding("r", "refresh", "Refresh", show=True),
+        Binding("ctrl+t", "toggle_theme", "Theme", show=True),
+        Binding("ctrl+q", "open_query", "Query", show=True),
         Binding("escape", "escape", "Back", show=False),
     ]
 
-    def __init__(self, backend: TUIBackend, **kwargs) -> None:
+    def __init__(self, backend: TUIBackend, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._backend = backend
         self._schema_cache: SchemaView | None = None
 
     # ------------------------------------------------------------------
-    # Schema cache
+    # Backend / schema cache
     # ------------------------------------------------------------------
 
     @property
@@ -86,7 +99,27 @@ class HippoTUIApp(App):
         return await self.get_or_fetch_schema()
 
     # ------------------------------------------------------------------
-    # Compose
+    # Error reporting
+    # ------------------------------------------------------------------
+
+    def report_error(self, message: str) -> None:
+        """Show *message* as an error toast and in the status bar."""
+        try:
+            self.query_one(StatusBar).set_error(message)
+        except Exception:  # noqa: BLE001 — status bar may not be mounted yet
+            pass
+        self.notify(message, title="Error", severity="error", timeout=8)
+
+    def report_success(self, message: str) -> None:
+        """Show *message* as a success toast and clear status-bar errors."""
+        try:
+            self.query_one(StatusBar).clear_error()
+        except Exception:  # noqa: BLE001
+            pass
+        self.notify(message, timeout=4)
+
+    # ------------------------------------------------------------------
+    # Compose / lifecycle
     # ------------------------------------------------------------------
 
     def compose(self) -> ComposeResult:
@@ -96,23 +129,91 @@ class HippoTUIApp(App):
             with Vertical(id="main-panel"):
                 pass
         yield StatusBar(id="status-bar")
-
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
+        yield Footer()
 
     async def on_mount(self) -> None:
-        """Fetch schema and populate sidebar on startup."""
-        await self.get_or_fetch_schema()
-        sidebar = self.query_one(EntityTypeSidebar)
-        await sidebar.load_entity_types(self._backend)
-
-        # Initialise status bar
+        """Probe the connection, fetch schema, and populate the sidebar."""
         status_bar = self.query_one(StatusBar)
         if hasattr(self._backend, "_db_path"):
             status_bar.set_backend("sdk", str(self._backend._db_path))
         elif hasattr(self._backend, "_url"):
             status_bar.set_backend("rest", self._backend._url)
+        self._startup()
+
+    def _startup(self) -> None:
+        """Kick off the initial connection probe + sidebar load worker."""
+        self.run_worker(self._startup_async(), exclusive=True, group="startup")
+
+    async def _startup_async(self) -> None:
+        status_bar = self.query_one(StatusBar)
+        try:
+            info = await self._backend.connection_info()
+            status_bar.set_connection(info)
+            if not info.ok:
+                self.report_error(f"Cannot reach backend: {info.detail}")
+        except BackendError as exc:
+            self.report_error(exc.message)
+        except Exception:  # noqa: BLE001 — backend may not implement probe
+            pass
+
+        try:
+            await self.get_or_fetch_schema()
+            sidebar = self.query_one(EntityTypeSidebar)
+            await sidebar.load_entity_types(self._backend)
+        except BackendError as exc:
+            self.report_error(exc.message)
+
+    # ------------------------------------------------------------------
+    # Main panel routing
+    # ------------------------------------------------------------------
+
+    async def switch_main_panel(self, widget: Any) -> None:
+        """Replace the main panel contents with *widget*."""
+        main_panel = self.query_one("#main-panel")
+        await main_panel.remove_children()
+        await main_panel.mount(widget)
+
+    async def open_entity_browser(self, entity_type: str, count: int = 0) -> None:
+        """Show the entity browser for *entity_type* in the main panel."""
+        from hippo.tui.views.entity_browser import EntityBrowserView
+
+        await self.switch_main_panel(
+            EntityBrowserView(entity_type=entity_type, backend=self._backend)
+        )
+        status_bar = self.query_one(StatusBar)
+        status_bar.entity_count = count
+
+    async def open_schema_explorer(self) -> None:
+        """Show the schema explorer in the main panel."""
+        from hippo.tui.views.schema_explorer import SchemaExplorerView
+
+        try:
+            schema = await self.get_or_fetch_schema()
+        except BackendError as exc:
+            self.report_error(exc.message)
+            return
+        await self.switch_main_panel(SchemaExplorerView(schema=schema, app_ref=self))
+
+    async def open_query_view(self) -> None:
+        """Show the query screen in the main panel."""
+        from hippo.tui.views.query import QueryView
+
+        try:
+            schema = await self.get_or_fetch_schema()
+        except BackendError as exc:
+            self.report_error(exc.message)
+            return
+        await self.switch_main_panel(QueryView(backend=self._backend, schema=schema))
+
+    def open_entity_detail(self, entity_type: str, entity_id: str) -> None:
+        """Push a detail screen for one entity onto the screen stack."""
+        from hippo.tui.views.entity_detail import EntityDetailScreen
+
+        self.push_screen(
+            EntityDetailScreen(
+                entity_type=entity_type, entity_id=entity_id, backend=self._backend
+            )
+        )
 
     # ------------------------------------------------------------------
     # Actions
@@ -126,19 +227,31 @@ class HippoTUIApp(App):
         """Open the command palette."""
         schema = await self.get_or_fetch_schema()
         entity_type_names = [et.name for et in schema.entity_types]
-        await self.push_screen(HippoCommandPalette(entity_type_names=entity_type_names))
+        await self.push_screen(
+            HippoCommandPalette(entity_type_names=entity_type_names)
+        )
 
     async def action_refresh(self) -> None:
-        """Invalidate schema cache and refresh the current view."""
-        await self.invalidate_schema_cache()
-        sidebar = self.query_one(EntityTypeSidebar)
-        await sidebar.load_entity_types(self._backend)
-        # Notify the active view if it supports refresh
-        from textual.screen import Screen
+        """Invalidate schema cache and refresh sidebar + active view."""
+        try:
+            await self.invalidate_schema_cache()
+            sidebar = self.query_one(EntityTypeSidebar)
+            await sidebar.load_entity_types(self._backend)
+        except BackendError as exc:
+            self.report_error(exc.message)
+            return
 
         active = self.screen
         if hasattr(active, "action_refresh"):
             await active.action_refresh()
+
+    def action_toggle_theme(self) -> None:
+        """Toggle between the dark and light themes."""
+        self.theme = _LIGHT_THEME if self.theme == _DARK_THEME else _DARK_THEME
+
+    async def action_open_query(self) -> None:
+        """Open the query view."""
+        await self.open_query_view()
 
     async def action_escape(self) -> None:
         """Go back / dismiss overlays."""
@@ -146,35 +259,46 @@ class HippoTUIApp(App):
             self.pop_screen()
 
     # ------------------------------------------------------------------
-    # Message handlers
+    # Message handlers — sidebar
     # ------------------------------------------------------------------
 
     async def on_entity_type_sidebar_entity_type_selected(
-        self, message: "EntityTypeSidebar.EntityTypeSelected"
+        self, message: EntityTypeSidebar.EntityTypeSelected
     ) -> None:
-        """Swap the main panel to an EntityBrowserView for the selected type."""
-        from hippo.tui.views.entity_browser import EntityBrowserView
-
-        main_panel = self.query_one("#main-panel")
-        await main_panel.remove_children()
-        view = EntityBrowserView(
-            entity_type=message.entity_type,
-            backend=self._backend,
-        )
-        await main_panel.mount(view)
-
-        # Update status bar entity count
-        status_bar = self.query_one(StatusBar)
-        status_bar.entity_count = message.entity_count
+        await self.open_entity_browser(message.entity_type, message.entity_count)
 
     async def on_entity_type_sidebar_schema_explorer_selected(
-        self, message: "EntityTypeSidebar.SchemaExplorerSelected"
+        self, message: EntityTypeSidebar.SchemaExplorerSelected
     ) -> None:
-        """Swap the main panel to SchemaExplorerView."""
-        from hippo.tui.views.schema_explorer import SchemaExplorerView
+        await self.open_schema_explorer()
 
-        schema = await self.get_or_fetch_schema()
-        main_panel = self.query_one("#main-panel")
-        await main_panel.remove_children()
-        view = SchemaExplorerView(schema=schema, app_ref=self)
-        await main_panel.mount(view)
+    async def on_entity_type_sidebar_query_selected(
+        self, message: EntityTypeSidebar.QuerySelected
+    ) -> None:
+        await self.open_query_view()
+
+    # ------------------------------------------------------------------
+    # Message handlers — command palette
+    # ------------------------------------------------------------------
+
+    async def on_hippo_command_palette_entity_type_navigated(
+        self, message: HippoCommandPalette.EntityTypeNavigated
+    ) -> None:
+        await self.open_entity_browser(message.entity_type)
+
+    async def on_hippo_command_palette_command_executed(
+        self, message: HippoCommandPalette.CommandExecuted
+    ) -> None:
+        command = message.command
+        if command == "Go to schema":
+            await self.open_schema_explorer()
+        elif command == "Query":
+            await self.open_query_view()
+        elif command == "Refresh":
+            await self.action_refresh()
+        elif command == "Toggle theme":
+            self.action_toggle_theme()
+        elif command == "Help":
+            await self.action_help_overlay()
+        elif command == "Quit":
+            self.exit()

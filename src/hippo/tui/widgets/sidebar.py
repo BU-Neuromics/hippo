@@ -1,22 +1,30 @@
-"""EntityTypeSidebar widget — lists entity types and a Schema Explorer entry."""
+"""EntityTypeSidebar widget — entity types plus Query and Schema Explorer entries."""
 
 from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.message import Message
-from textual.widgets import ListItem, ListView, Label
+from textual.widgets import Label, ListItem, ListView
 
 from hippo.tui.backend.protocol import TUIBackend
 
 _SCHEMA_EXPLORER_LABEL = "Schema Explorer"
+_QUERY_LABEL = "Query"
 
 
 class EntityTypeSidebar(ListView):
-    """A ``ListView`` sidebar that shows entity types and a Schema Explorer entry.
+    """A ``ListView`` sidebar listing entity types and navigation entries.
 
     Emits:
         EntityTypeSelected — when the user selects an entity type.
+        QuerySelected — when the user selects the Query entry.
         SchemaExplorerSelected — when the user selects the Schema Explorer entry.
+    """
+
+    DEFAULT_CSS = """
+    EntityTypeSidebar > ListItem.section-entry Label {
+        color: $text-accent;
+    }
     """
 
     # ------------------------------------------------------------------
@@ -31,6 +39,9 @@ class EntityTypeSidebar(ListView):
             self.entity_type = entity_type
             self.entity_count = entity_count
 
+    class QuerySelected(Message):
+        """Fired when the Query entry is selected."""
+
     class SchemaExplorerSelected(Message):
         """Fired when the Schema Explorer entry is selected."""
 
@@ -39,47 +50,54 @@ class EntityTypeSidebar(ListView):
     # ------------------------------------------------------------------
 
     def compose(self) -> ComposeResult:
-        # Items are populated dynamically via load_entity_types()
-        yield ListItem(Label(_SCHEMA_EXPLORER_LABEL), id="schema-explorer-item")
+        # Entity type items are populated dynamically via load_entity_types()
+        yield ListItem(
+            Label(_QUERY_LABEL), id="query-item", classes="section-entry"
+        )
+        yield ListItem(
+            Label(_SCHEMA_EXPLORER_LABEL),
+            id="schema-explorer-item",
+            classes="section-entry",
+        )
 
     async def load_entity_types(self, backend: TUIBackend) -> None:
         """Fetch entity types from *backend* and populate the list.
 
-        The "Schema Explorer" entry is always appended last.
+        The Query and Schema Explorer entries always stay at the bottom.
+        Backend failures leave the navigation entries intact and re-raise
+        as :class:`BackendError` for the app to report.
         """
         summaries = await backend.list_entity_types()
 
-        # Remove all existing items except the Schema Explorer entry
+        # Remove all existing entity type items
         for item in list(self.query(ListItem)):
-            if item.id != "schema-explorer-item":
+            if item.id not in ("schema-explorer-item", "query-item"):
                 await item.remove()
 
-        # Insert entity type items before the Schema Explorer entry
-        schema_item = self.query_one("#schema-explorer-item")
-
+        # Insert entity type items before the Query entry
+        anchor = self.query_one("#query-item")
         for summary in summaries:
             label_text = f"{summary.name}  ({summary.count})"
             new_item = ListItem(
                 Label(label_text),
                 id=f"entity-type-{summary.name}",
             )
-            # Store count as an attribute for later use
+            # Store metadata for selection handling
             new_item._entity_type = summary.name  # type: ignore[attr-defined]
             new_item._entity_count = summary.count  # type: ignore[attr-defined]
-            await self.mount(new_item, before=schema_item)
-
-        # Move schema explorer to end (it's already there from compose but
-        # we need to ensure it stays at the bottom after dynamic inserts)
+            await self.mount(new_item, before=anchor)
 
     # ------------------------------------------------------------------
     # Event handlers
     # ------------------------------------------------------------------
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        """Handle selection — determine which item was selected and emit message."""
+        """Determine which item was selected and emit the right message."""
         item = event.item
         if item.id == "schema-explorer-item":
             self.post_message(self.SchemaExplorerSelected())
+        elif item.id == "query-item":
+            self.post_message(self.QuerySelected())
         elif item.id and item.id.startswith("entity-type-"):
             entity_type = getattr(
                 item, "_entity_type", item.id.removeprefix("entity-type-")

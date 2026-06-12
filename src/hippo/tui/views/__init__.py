@@ -1,1 +1,1 @@
-"""TUI views — EntityBrowserView, EntityDetailPanel, SchemaExplorerView."""
+"""TUI views — entity browser/detail/form, schema explorer, query, provenance."""

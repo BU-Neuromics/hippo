@@ -13,6 +13,8 @@ _SHORTCUTS: list[tuple[str, str]] = [
     ("q / Ctrl+C", "Quit"),
     ("?", "Show this help overlay"),
     ("/ or Ctrl+P", "Open command palette"),
+    ("Ctrl+Q", "Open query view"),
+    ("Ctrl+T", "Toggle dark/light theme"),
     ("Tab", "Cycle focus between panels"),
     ("↑ / ↓", "Navigate lists"),
     ("Enter", "Select / drill in"),
@@ -20,6 +22,10 @@ _SHORTCUTS: list[tuple[str, str]] = [
     ("r", "Refresh current view"),
     ("f", "Focus filter bar (Entity Browser)"),
     ("← / →", "Previous / next page (Entity Browser)"),
+    ("n", "New entity (Entity Browser)"),
+    ("e", "Edit entity (browser / detail)"),
+    ("a", "Change availability (browser / detail)"),
+    ("p", "Provenance history (browser / detail)"),
 ]
 
 
