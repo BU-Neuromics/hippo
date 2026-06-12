@@ -10,7 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from hippo.tui.backend.sdk import SDKBackend, _resolve_db_path
+from hippo.tui.backend.sdk import (
+    SDKBackend,
+    _resolve_db_path,
+    _resolve_validators_path,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -344,3 +348,91 @@ def test_sdk_set_availability_unknown_entity(seeded_backend):
     backend, _project_id, _sample_ids = seeded_backend
     with pytest.raises(BackendError):
         asyncio.run(backend.set_availability("Sample", "no-such-id", False))
+
+
+# ---------------------------------------------------------------------------
+# Tests: validators_path resolution + write pipeline wiring
+# ---------------------------------------------------------------------------
+
+
+def test_explicit_validators_path_takes_precedence(tmp_path):
+    explicit = tmp_path / "v.yaml"
+    assert _resolve_validators_path(explicit) == explicit
+
+
+def test_validators_path_from_config_json(tmp_path, monkeypatch):
+    (tmp_path / "config.json").write_text(
+        json.dumps({"validators_path": "./validators.yaml"})
+    )
+    monkeypatch.chdir(tmp_path)
+    assert _resolve_validators_path(None) == Path("./validators.yaml")
+
+
+def test_validators_path_skipped_when_validation_disabled(tmp_path, monkeypatch):
+    (tmp_path / "config.json").write_text(
+        json.dumps(
+            {"validators_path": "./validators.yaml", "validation_enabled": False}
+        )
+    )
+    monkeypatch.chdir(tmp_path)
+    assert _resolve_validators_path(None) is None
+
+
+def test_validators_path_none_without_config(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert _resolve_validators_path(None) is None
+
+
+_VALIDATORS_YAML = """\
+validators:
+  - name: volume_positive
+    entity_types:
+      - Sample
+    on:
+      - create
+      - update
+    condition: 'entity.volume_ml > 0'
+    error: "volume_ml must be positive"
+"""
+
+
+@pytest.fixture
+def validated_backend(tmp_path):
+    """SDKBackend whose write pipeline carries a CEL validator (volume > 0)."""
+    validators = tmp_path / "validators.yaml"
+    validators.write_text(_VALIDATORS_YAML)
+    return SDKBackend(
+        db_path=tmp_path / "tui.db",
+        schema_path=_FIXTURE_SCHEMA,
+        validators_path=validators,
+    )
+
+
+def test_configured_validator_rejects_bad_write(validated_backend):
+    """A write violating the configured CEL rule is rejected via the SDK.
+
+    Without the pipeline wired into HippoClient this would succeed — the
+    schema permits any float for volume_ml — so this proves the TUI honours
+    deployment-configured validators rather than bypassing them.
+    """
+    from hippo.tui.backend.protocol import BackendError
+
+    with pytest.raises(BackendError):
+        asyncio.run(
+            validated_backend.create_entity(
+                "Sample", {"name": "bad", "volume_ml": -1.0}
+            )
+        )
+
+
+def test_configured_validator_allows_valid_write(validated_backend):
+    """A write satisfying the CEL rule succeeds through the same pipeline."""
+    new_id = asyncio.run(
+        validated_backend.create_entity(
+            "Sample", {"name": "good", "volume_ml": 2.5}
+        )
+    )
+    assert new_id
+
+    detail = asyncio.run(validated_backend.get_entity("Sample", new_id))
+    assert detail.data["volume_ml"] == 2.5

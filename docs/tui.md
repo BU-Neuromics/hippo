@@ -1,9 +1,12 @@
 # TUI — Terminal User Interface
 
 `hippo tui` launches an interactive, keyboard-driven terminal browser for a
-Hippo instance. It can talk to a **local SQLite database directly through the
-Python SDK**, or to a **remote `hippo serve` instance over the REST API** —
-the interface is identical in both modes.
+Hippo instance. It can drive the **Python SDK in-process against a local
+database**, or call a **remote `hippo serve` instance over the REST API** —
+the interface is identical in both modes. In SDK mode the TUI is a pure
+consumer of the public `HippoClient` API (queries, writes, provenance, and
+validation all go through the SDK); it never touches the storage backend
+directly.
 
 ```bash
 pip install 'hippo[tui]'
