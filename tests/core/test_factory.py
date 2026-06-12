@@ -56,10 +56,18 @@ def test_resolve_sqlite_backend():
 
 
 def test_resolve_postgres_backend_registered():
-    # `postgres` is registered in the entry-point group; with the [postgres]
-    # extra installed it loads to an EntityStore subclass.
-    cls = resolve_storage_adapter_class("postgres")
-    assert issubclass(cls, EntityStore)
+    # `postgres` is registered in the entry-point group. With the [postgres]
+    # extra installed it loads to an EntityStore subclass; without it (e.g.
+    # CI's plain .[dev] install) resolution fails with the install hint.
+    try:
+        import psycopg  # noqa: F401
+    except ImportError:
+        with pytest.raises(AdapterError) as exc:
+            resolve_storage_adapter_class("postgres")
+        assert "hippo[postgres]" in str(exc.value)
+    else:
+        cls = resolve_storage_adapter_class("postgres")
+        assert issubclass(cls, EntityStore)
 
 
 def test_resolve_unknown_backend_raises():
