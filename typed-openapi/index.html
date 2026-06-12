@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://bu-neuromics.github.io/hippo/reference-loaders/">
+        <link rel="canonical" href="https://bu-neuromics.github.io/hippo/typed-openapi/">
       
       
-        <link rel="prev" href="../typed-openapi/">
+        <link rel="prev" href="../api-reference/">
       
       
-        <link rel="next" href="../writing-a-reference-loader/">
+        <link rel="next" href="../reference-loaders/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Overview - Hippo</title>
+        <title>Typed OpenAPI - Hippo</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#reference-loaders" class="md-skip">
+        <a href="#typed-openapi" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Typed OpenAPI
             
           </span>
         </div>
@@ -432,9 +432,11 @@
   
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../typed-openapi/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
   
@@ -451,13 +453,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../reference-loaders/" class="md-tabs__link">
           
   
   
@@ -855,90 +855,6 @@
       
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../typed-openapi/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Typed OpenAPI
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Schema Packages
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_13">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Schema Packages
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
     
   
   
@@ -958,7 +874,7 @@
   <span class="md-ellipsis">
     
   
-    Overview
+    Typed OpenAPI
   
 
     
@@ -976,7 +892,7 @@
   <span class="md-ellipsis">
     
   
-    Overview
+    Typed OpenAPI
   
 
     
@@ -1002,10 +918,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installing-a-loader-package" class="md-nav__link">
+  <a href="#what-gets-generated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installing a loader package
+        What gets generated
       
     </span>
   </a>
@@ -1013,22 +929,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#commands" class="md-nav__link">
+  <a href="#browsing-the-typed-surface" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Commands
+        Browsing the typed surface
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Commands">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generating-typed-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generating typed clients
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Generating typed clients">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hippo-reference-list" class="md-nav__link">
+  <a href="#datamodel-code-generator-python-pydantic" class="md-nav__link">
     <span class="md-ellipsis">
       
-        hippo reference list
+        datamodel-code-generator (Python / Pydantic)
       
     </span>
   </a>
@@ -1036,32 +963,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hippo-reference-install" class="md-nav__link">
+  <a href="#openapi-generator-many-languages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        hippo reference install
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hippo-reference-upgrade" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hippo reference upgrade
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hippo-reference-clean-cache" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hippo reference clean-cache
+        openapi-generator (many languages)
       
     </span>
   </a>
@@ -1070,67 +975,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Environment variables
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#declaring-required-loaders-in-your-schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Declaring required loaders in your schema
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Declaring required loaders in your schema">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#referencing-loader-provided-entity-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Referencing loader-provided entity types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-test-version-slug" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The "test" version slug
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tracking-installed-loaders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tracking installed loaders
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1138,6 +982,85 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Packages
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Schema Packages
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference-loaders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1519,10 +1442,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#installing-a-loader-package" class="md-nav__link">
+  <a href="#what-gets-generated" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installing a loader package
+        What gets generated
       
     </span>
   </a>
@@ -1530,22 +1453,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#commands" class="md-nav__link">
+  <a href="#browsing-the-typed-surface" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Commands
+        Browsing the typed surface
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Commands">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generating-typed-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generating typed clients
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Generating typed clients">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hippo-reference-list" class="md-nav__link">
+  <a href="#datamodel-code-generator-python-pydantic" class="md-nav__link">
     <span class="md-ellipsis">
       
-        hippo reference list
+        datamodel-code-generator (Python / Pydantic)
       
     </span>
   </a>
@@ -1553,32 +1487,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hippo-reference-install" class="md-nav__link">
+  <a href="#openapi-generator-many-languages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        hippo reference install
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hippo-reference-upgrade" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hippo reference upgrade
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hippo-reference-clean-cache" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        hippo reference clean-cache
+        openapi-generator (many languages)
       
     </span>
   </a>
@@ -1587,67 +1499,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Environment variables
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#declaring-required-loaders-in-your-schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Declaring required loaders in your schema
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Declaring required loaders in your schema">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#referencing-loader-provided-entity-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Referencing loader-provided entity types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-test-version-slug" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The "test" version slug
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tracking-installed-loaders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tracking installed loaders
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1671,165 +1522,122 @@
   
 
 
-<h1 id="reference-loaders">Reference Loaders<a class="headerlink" href="#reference-loaders" title="Permanent link">&para;</a></h1>
-<p>Reference loaders install community-standard ontology and annotation data (Ensembl genes, FMA anatomy terms, Gene Ontology, etc.) as regular Hippo entities. Once installed, your schema can reference loader-provided entity types directly — no manual ETL required.</p>
-<p>Reference loaders are distributed as <code>hippo-reference-&lt;name&gt;</code> packages on PyPI, discovered automatically when installed alongside Hippo.</p>
-<h2 id="installing-a-loader-package">Installing a loader package<a class="headerlink" href="#installing-a-loader-package" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>hippo-reference-ensembl<span class="w">   </span><span class="c1"># example: Ensembl gene annotations</span>
+<h1 id="typed-openapi">Typed OpenAPI<a class="headerlink" href="#typed-openapi" title="Permanent link">&para;</a></h1>
+<p>Hippo's REST routes are deliberately generic — entity payloads travel as
+plain JSON and the entity type is named in the URL, not in a per-type
+route. That keeps the transport thin (all typing lives in the schema and
+the SDK), but a vanilla generated OpenAPI document would describe every
+payload as an opaque object.</p>
+<p>Hippo closes that gap by <strong>enriching the OpenAPI document with
+schema-derived components</strong>. When the app is built around a configured
+client (which is what <code>hippo serve</code> does), <code>/openapi.json</code> includes one
+JSON Schema component per entity type in your LinkML schema, so API
+explorers and client generators see the real payload shapes — while the
+routes themselves stay generic.</p>
+<h2 id="what-gets-generated">What gets generated<a class="headerlink" href="#what-gets-generated" title="Permanent link">&para;</a></h2>
+<p>Given a schema like:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">classes</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">Project</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">is_a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Entity</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">Sample</span><span class="p">:</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">is_a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Entity</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">        </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">      </span><span class="nt">project_id</span><span class="p">:</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Project</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">      </span><span class="nt">status</span><span class="p">:</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SampleStatus</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="nt">volume_ml</span><span class="p">:</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">float</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="nt">enums</span><span class="p">:</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="nt">SampleStatus</span><span class="p">:</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="nt">permissible_values</span><span class="p">:</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">      </span><span class="nt">active</span><span class="p">:</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">      </span><span class="nt">archived</span><span class="p">:</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">      </span><span class="nt">distributed</span><span class="p">:</span>
 </code></pre></div>
-<p>After installation, the loader appears in <code>hippo reference list</code>. No further registration steps are needed.</p>
-<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
-<h3 id="hippo-reference-list"><code>hippo reference list</code><a class="headerlink" href="#hippo-reference-list" title="Permanent link">&para;</a></h3>
-<p>List all discoverable loaders and show which version (if any) is installed in the current Hippo database.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hippo<span class="w"> </span>reference<span class="w"> </span>list
+<p>the served document contains, under <code>components/schemas</code>:</p>
+<ul>
+<li><strong>One component per exposed entity type</strong> (<code>Project</code>, <code>Sample</code>, ...):<ul>
+<li>User fields with JSON Schema types matching their LinkML ranges
+  (<code>float</code> → <code>number</code>, <code>datetime</code> → <code>string</code>/<code>date-time</code>, ...), with
+  schema-required fields listed in <code>required</code>.</li>
+<li>Enum-ranged slots as JSON Schema <code>enum</code>s
+  (<code>status: {"enum": ["active", "archived", "distributed"]}</code>).</li>
+<li>Reference slots (range is another entity class) as
+  <code>string</code>/<code>uuid</code> properties whose <code>description</code> names the target
+  type. Multivalued slots become arrays.</li>
+<li>The stored system fields <code>id</code> and <code>is_available</code>, and the
+  provenance-computed temporal fields <code>created_at</code>, <code>updated_at</code>,
+  <code>schema_version</code>, <code>created_by</code>, <code>updated_by</code> — all marked
+  <code>readOnly: true</code>, so generated clients exclude them from write
+  payloads.</li>
+</ul>
+</li>
+<li><strong><code>Entity</code></strong> — an umbrella <code>oneOf</code> over every per-type component.
+  Entity payloads carry no inline type property (the type travels in the
+  URL path on writes and in the envelope's <code>entity_type</code> field on reads),
+  so there is no OpenAPI <code>discriminator</code>; the class-name → component
+  mapping is documented in the umbrella's <code>description</code>.</li>
+<li><strong><code>EntityEnvelope</code></strong> — the read wrapper returned by entity endpoints:
+  <code>{id, entity_type, data, version, created_at, updated_at}</code> with <code>data</code>
+  referencing the <code>Entity</code> umbrella.</li>
+</ul>
+<p>The generic entity endpoints are wired to these components in the
+document: <code>PUT /entities/{entity_type}/{entity_id}</code> declares the umbrella
+as its request body, and the <code>GET</code> endpoints declare <code>EntityEnvelope</code>
+(single or paginated) as their <code>200</code> responses.</p>
+<p>All exposure and classification decisions come from
+<code>hippo.core.schema_typing</code> — the same shared LinkML→type model that
+drives the typed SDK — so the OpenAPI surface, the SDK accessors, and any
+other transport cannot drift apart. The rendering lives in
+<code>hippo.api.openapi</code>; the document is built once and cached
+(<code>app.openapi_schema</code>), and an app constructed without a client/registry
+serves the default, unenriched document.</p>
+<h2 id="browsing-the-typed-surface">Browsing the typed surface<a class="headerlink" href="#browsing-the-typed-surface" title="Permanent link">&para;</a></h2>
+<p>Start the server against your schema and open the interactive docs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hippo<span class="w"> </span>serve<span class="w"> </span>--config<span class="w"> </span>hippo.yaml
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Swagger UI: http://localhost:8000/docs</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Raw document: http://localhost:8000/openapi.json</span>
 </code></pre></div>
-<p>Example output:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>NAME       PACKAGE                   PKG VERSION  INSTALLED VERSION
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ensembl    hippo-reference-ensembl   0.3.1        homo_sapiens.GRCh38.110
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>fma        hippo-reference-fma       1.0.0        —
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>go         hippo-reference-go        2.1.0        2024-01-15
+<p>The per-type schemas appear in the Swagger UI "Schemas" panel, and the
+entity endpoints show typed request/response examples.</p>
+<h2 id="generating-typed-clients">Generating typed clients<a class="headerlink" href="#generating-typed-clients" title="Permanent link">&para;</a></h2>
+<p>Because the per-type shapes are ordinary OpenAPI components, standard
+generators produce typed models for your deployment's schema.</p>
+<h3 id="datamodel-code-generator-python-pydantic">datamodel-code-generator (Python / Pydantic)<a class="headerlink" href="#datamodel-code-generator-python-pydantic" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>datamodel-code-generator
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>datamodel-codegen<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--url<span class="w"> </span>http://localhost:8000/openapi.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--input-file-type<span class="w"> </span>openapi<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--output<span class="w"> </span>hippo_models.py
 </code></pre></div>
-<hr />
-<h3 id="hippo-reference-install"><code>hippo reference install</code><a class="headerlink" href="#hippo-reference-install" title="Permanent link">&para;</a></h3>
-<p>Install a reference dataset. This merges the loader's schema fragment, runs a schema migration, and ingests the data.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>&lt;name&gt;<span class="w"> </span><span class="o">[</span>--version<span class="w"> </span>&lt;v&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--flag<span class="w"> </span>...<span class="o">]</span>
+<p>This emits one Pydantic model per entity type (plus the envelope), with
+enums, optionality, and datetime fields matching your LinkML schema.</p>
+<h3 id="openapi-generator-many-languages">openapi-generator (many languages)<a class="headerlink" href="#openapi-generator-many-languages" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># e.g. a TypeScript client</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>openapi-generator-cli<span class="w"> </span>generate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-i<span class="w"> </span>http://localhost:8000/openapi.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-g<span class="w"> </span>typescript-fetch<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>-o<span class="w"> </span>./hippo-client
 </code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Argument / Option</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>&lt;name&gt;</code></td>
-<td>Loader name (matches the entry point key, e.g. <code>ensembl</code>)</td>
-</tr>
-<tr>
-<td><code>--version &lt;v&gt;</code></td>
-<td>Version slug to install. Defaults to the latest non-test version the loader reports.</td>
-</tr>
-<tr>
-<td><code>--&lt;param&gt; &lt;val&gt;</code></td>
-<td>Loader-specific flags auto-rendered from the loader's parameter schema (see below).</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Examples:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Install the latest Ensembl version</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>ensembl
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Install a specific organism + release</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>ensembl<span class="w"> </span>--version<span class="w"> </span>mus_musculus.GRCm39.115
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Pass loader-specific parameters</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>ensembl<span class="w"> </span>--organism<span class="w"> </span>homo_sapiens<span class="w"> </span>--gene-biotypes<span class="w"> </span>protein_coding,lncRNA
-</code></pre></div>
-<p>Re-installing the same name + version is a silent no-op (<code>status: already_installed</code>).</p>
-<hr />
-<h3 id="hippo-reference-upgrade"><code>hippo reference upgrade</code><a class="headerlink" href="#hippo-reference-upgrade" title="Permanent link">&para;</a></h3>
-<p>Upgrade an already-installed loader to a newer version.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hippo<span class="w"> </span>reference<span class="w"> </span>upgrade<span class="w"> </span>&lt;name&gt;<span class="w"> </span><span class="o">[</span>--version<span class="w"> </span>&lt;v&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--prune-old<span class="o">]</span><span class="w"> </span><span class="o">[</span>--flag<span class="w"> </span>...<span class="o">]</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--version &lt;v&gt;</code></td>
-<td>Target version slug. Defaults to the latest non-test version.</td>
-</tr>
-<tr>
-<td><code>--prune-old</code></td>
-<td>Deactivates the prior version's rows (sets <code>is_available = false</code>) so they no longer appear in default queries. The rows remain in the database and are recoverable via the provenance log. <strong>Opt-in — changes the default queryable surface.</strong> Without this flag the old rows remain queryable alongside the new ones.</td>
-</tr>
-<tr>
-<td><code>--&lt;param&gt; &lt;val&gt;</code></td>
-<td>Loader-specific flags (same as <code>install</code>).</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Default (additive) behavior:</strong> new entities are ingested alongside existing ones. Prior-version rows remain queryable — foreign-key references in your data that point at the old version continue to resolve. Use <code>--prune-old</code> only when you are certain no user data references the prior version's entities; it deactivates those rows (marks them unavailable and writes an <code>availability_change</code> provenance record) rather than removing them, so they remain auditable and recoverable.</p>
+<p><code>readOnly</code> fields are honored by both tools: generated request types omit
+the server-managed fields (<code>id</code>, <code>is_available</code>, temporal fields) while
+response types include them.</p>
 <div class="admonition note">
-<p class="admonition-title">Atomic gating guarantee</p>
-<p><code>--prune-old</code> only runs after a fully clean load completes. If the new version fails mid-ingestion, the prior rows stay queryable — no deactivation occurs. This makes the flag safe to use: partial upgrades cannot leave you with both the old and new versions partially deactivated.</p>
+<p class="admonition-title">The routes themselves stay generic</p>
+<p>Enrichment is documentation-only: requests are still dispatched
+through the generic <code>/entities/...</code> routes and validated by the SDK's
+schema-driven validation pipeline, not by FastAPI request models.
+Per-entity-type routes (one path per class) are a possible future
+step; the current design keeps the transport schema-agnostic at
+runtime.</p>
 </div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Additive upgrade — old rows stay</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>hippo<span class="w"> </span>reference<span class="w"> </span>upgrade<span class="w"> </span>ensembl<span class="w"> </span>--version<span class="w"> </span>homo_sapiens.GRCh38.111
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Opt-in: deactivate prior version&#39;s entities after successful install</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>hippo<span class="w"> </span>reference<span class="w"> </span>upgrade<span class="w"> </span>ensembl<span class="w"> </span>--version<span class="w"> </span>homo_sapiens.GRCh38.111<span class="w"> </span>--prune-old
-</code></pre></div>
-<hr />
-<h3 id="hippo-reference-clean-cache"><code>hippo reference clean-cache</code><a class="headerlink" href="#hippo-reference-clean-cache" title="Permanent link">&para;</a></h3>
-<p>Remove locally cached download files used by reference loaders.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Clear cache for a single loader</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>hippo<span class="w"> </span>reference<span class="w"> </span>clean-cache<span class="w"> </span>ensembl
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Clear the entire reference cache</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>hippo<span class="w"> </span>reference<span class="w"> </span>clean-cache
-</code></pre></div>
-<p>Clearing the cache does not uninstall any data from the Hippo database — it only removes the on-disk download cache so the next <code>install</code> or <code>upgrade</code> will re-fetch source files.</p>
-<hr />
-<h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Variable</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>HIPPO_CACHE_DIR</code></td>
-<td><code>~/.cache/hippo/references/</code></td>
-<td>Root directory for all reference loader download caches. Set this to a shared path (e.g., an NFS mount or CI cache volume) to avoid redundant downloads across machines.</td>
-</tr>
-</tbody>
-</table>
-<p>Each loader gets its own subdirectory under the cache root: <code>$HIPPO_CACHE_DIR/&lt;loader_name&gt;/</code>.</p>
-<hr />
-<h2 id="declaring-required-loaders-in-your-schema">Declaring required loaders in your schema<a class="headerlink" href="#declaring-required-loaders-in-your-schema" title="Permanent link">&para;</a></h2>
-<p>Add a <code>requires:</code> block to <code>schema.yaml</code> to declare which reference loaders your schema depends on:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># schema.yaml</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nt">requires</span><span class="p">:</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hippo-reference-fma==3.3</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hippo-reference-ensembl==mus_musculus.GRCm39.115</span>
-</code></pre></div>
-<p>Only exact-match pins (<code>==</code>) are supported in v1. If you need a minimum version, pin the lowest acceptable release and upgrade explicitly with <code>hippo reference upgrade</code>.</p>
-<p><code>hippo validate</code> fails fast with a clear install suggestion if a required loader is missing. <code>hippo migrate</code> also checks <code>requires:</code> before applying any schema changes.</p>
-<h3 id="referencing-loader-provided-entity-types">Referencing loader-provided entity types<a class="headerlink" href="#referencing-loader-provided-entity-types" title="Permanent link">&para;</a></h3>
-<p>Loader-provided types are namespaced by loader name. Reference them in your schema using <code>&lt;loader_name&gt;:&lt;TypeName&gt;</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># schema.yaml</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nt">classes</span><span class="p">:</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">SampleAnnotation</span><span class="p">:</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">      </span><span class="nt">ensembl_gene_id</span><span class="p">:</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ensembl:Gene</span><span class="w">     </span><span class="c1"># entity type provided by hippo-reference-ensembl</span>
-</code></pre></div>
-<hr />
-<h2 id="the-test-version-slug">The <code>"test"</code> version slug<a class="headerlink" href="#the-test-version-slug" title="Permanent link">&para;</a></h2>
-<p>Well-behaved loaders expose a <code>"test"</code> pseudo-version that installs a small, deterministic, network-free fixture dataset bundled with the package:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>ensembl<span class="w"> </span>--version<span class="w"> </span><span class="nb">test</span>
-</code></pre></div>
-<p>Use <code>--version test</code> in CI pipelines to avoid network dependencies and keep test runs hermetic and fast. The <code>"test"</code> slug is reserved — Hippo will never use it for a real release version.</p>
-<hr />
-<h2 id="tracking-installed-loaders">Tracking installed loaders<a class="headerlink" href="#tracking-installed-loaders" title="Permanent link">&para;</a></h2>
-<p>Hippo records installed loader versions in <code>hippo_meta</code> under the key <code>reference_versions</code>. <code>hippo status</code> surfaces this alongside other system information:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ hippo status
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>...
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>Reference loaders:
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  ensembl    homo_sapiens.GRCh38.110
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  go         2024-01-15
-</code></pre></div>
-<p>The recorded version is what Hippo uses as the <code>from_version</code> baseline when you later run <code>hippo reference upgrade</code>.</p>
-<p>Hippo's <strong>recipe system</strong> is a complementary, lower-level mechanism for sharing schema fragments — where Reference Loaders bring data into a deployment, recipes bring the schema that gives that data its shape. In v1, Reference Loaders and recipes coexist unchanged: loaders continue on their existing install path and are not yet recipe producers. Recipes can declare a loader as a precondition (via <code>requires.reference_loaders</code>) to ensure the loader is installed before schema import proceeds. For details, see <a href="../installing-recipes/">Installing Recipes</a> and <a href="../writing-a-recipe/">Writing a Recipe</a>.</p>
 
 
 
