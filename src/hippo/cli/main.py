@@ -1417,6 +1417,11 @@ def tui(
         "--db",
         help="Path to SQLite database (sdk mode only; falls back to config.json then hippo.db)",
     ),
+    schema: Optional[str] = typer.Option(
+        None,
+        "--schema",
+        help="Path to a LinkML schema file or directory (sdk mode only; falls back to schemas/ then the bundled hippo_core schema)",
+    ),
 ) -> None:
     """Launch the interactive TUI browser (requires 'pip install hippo[tui]')."""
     try:
@@ -1432,6 +1437,8 @@ def tui(
     if backend == "sdk":
         if db is not None:
             kwargs["db_path"] = db
+        if schema is not None:
+            kwargs["schema_path"] = schema
     elif backend == "rest":
         kwargs["url"] = url
         if token is not None:

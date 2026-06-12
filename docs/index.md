@@ -18,6 +18,7 @@ A runtime for LinkML schemas. Point it at a schema and you get a typed Python SD
 ## Use
 
 - **[CLI Reference](cli-reference.md)** — `hippo` command surface.
+- **[TUI](tui.md)** — interactive terminal browser (`hippo tui`) over the SDK or REST API.
 - **[API Reference](api-reference.md)** — `HippoClient` Python SDK.
 - **[Typed Client](reference_typed_client.md)** — schema-derived typed client.
 

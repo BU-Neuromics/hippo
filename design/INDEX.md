@@ -164,6 +164,7 @@ New decisions to be introduced in sec9 (preview):
 | Migration DAG with shortcut edges and floor | Multi-hop `evolve` uses a DAG of explicit `(from → to)` steps shipped with the current package version. Shortcut edges are preferred by the path-finder. Below-floor fails loud; no silent fallback. Version slugs are opaque — paths come from edges, not from sorting slugs. | sec11.3.2 |
 | deprovision asymmetry: ReferenceLoader prunes, DomainModule refuses | `ReferenceLoader.deprovision` soft-deletes `provided_by`-stamped rows (reconstructible from upstream). `DomainModule.deprovision` refuses by default when live domain data is present; requires `--force`. Dependents guard applies to all species. | sec11.4 |
 | hippo.schema_packages entry-point group | Supersedes `hippo.reference_loaders` as the discovery entry point; the old group becomes a subset/alias. No existing loader need change its entry-point declaration. | sec11.2.5 |
+| TUI is a backend-agnostic SDK/REST consumer | `hippo tui` reuses the SDK-first layering: all views talk to a `TUIBackend` protocol with two adapters — `SDKBackend` (wraps `HippoClient`; sync calls dispatched via `asyncio.to_thread` so the Textual event loop never blocks) and `RESTBackend` (`httpx` async client for `hippo serve`). Backends declare capabilities (structured filters, FTS) and views gate features accordingly; no business logic lives in the TUI. Availability transitions surface the six lifecycle statuses mapped onto `is_available` + provenance reason — no hard deletes in the UI. | sec2 |
 
 ---
 
