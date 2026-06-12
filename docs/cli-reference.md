@@ -80,6 +80,43 @@ hippo serve --workers 4
 
 ---
 
+## tui
+
+Launch the interactive terminal browser. Requires the `tui` extra
+(`pip install 'hippo[tui]'`). See the **[TUI guide](tui.md)** for screens
+and keyboard shortcuts.
+
+### Usage
+
+```bash
+hippo tui [OPTIONS]
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--backend`, `-b` | `string` | `"sdk"` | Backend mode: `sdk` (local database) or `rest` (remote `hippo serve`) |
+| `--db` | `string` | resolved | SQLite database path (sdk mode). Falls back to `config.json`, then `data/hippo.db`, then `hippo.db` |
+| `--schema` | `string` | resolved | LinkML schema file or directory (sdk mode). Falls back to `schemas/`, then the bundled `hippo_core` schema |
+| `--url` | `string` | `"http://127.0.0.1:8000"` | Base URL (rest mode) |
+| `--token` | `string` | env / `dev-token` | Bearer token (rest mode). Falls back to `HIPPO_TUI_TOKEN` |
+
+### Example
+
+```bash
+# Browse the local database in the current project
+hippo tui
+
+# Explicit database + schema
+hippo tui --db data/hippo.db --schema schemas/
+
+# Connect to a remote hippo serve instance
+hippo tui -b rest --url http://hippo.example.org:8000 --token "$HIPPO_TUI_TOKEN"
+```
+
+---
+
 ## migrate
 
 Run schema migrations based on YAML schema definitions.

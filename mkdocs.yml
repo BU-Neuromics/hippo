@@ -72,6 +72,7 @@ nav:
   - Data Model: data-model.md
   - Configuration: configuration.md
   - CLI Reference: cli-reference.md
+  - TUI: tui.md
   - API Reference: api-reference.md
   - Schema Packages:
       - Overview: reference-loaders.md
