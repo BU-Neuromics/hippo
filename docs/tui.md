@@ -10,6 +10,26 @@ pip install 'hippo[tui]'
 hippo tui
 ```
 
+## Try it now with the example dataset
+
+The repository ships a complete worked deployment under
+[`examples/bibliography/`](https://github.com/BU-Neuromics/hippo/tree/main/examples/bibliography) —
+a citation-graph schema (Author, the Publication hierarchy, Venue, Authorship,
+Citation) plus a seed script. Two commands give you something to browse:
+
+```bash
+cd examples/bibliography
+python sdk_example.py     # seeds ./data/hippo.db with the demo citation graph
+hippo tui                 # auto-detects config.json — no flags needed
+```
+
+`hippo tui` reads `config.json` in the current directory, so it picks up the
+example's database and schema automatically. You land in the entity browser
+with three Authors, a JournalArticle and Preprint of *"Attention Is All You
+Need"*, and a Citation between them. From there you can follow the Authorship
+relationships, inspect the preprint's supersession in its provenance history,
+and run a full-text search for `transformer` on the Query screen.
+
 ## Launching
 
 ### SDK mode (local database, default)

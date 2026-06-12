@@ -93,6 +93,22 @@ Preprint still in DB (include_unavailable=True): id=e941d21b…
 --- Done ---
 ```
 
+## Browse it in the TUI
+
+Once `sdk_example.py` has seeded `./data/hippo.db`, you can explore the same
+data interactively:
+
+```bash
+pip install -e '../../[tui]'   # or `pip install hippo[tui]`
+hippo tui                      # auto-detects config.json in this directory
+```
+
+`hippo tui` reads `config.json`, so it opens the example database and schema
+with no flags. Browse the entity types, follow Authorship and Citation
+relationships, inspect the preprint → article supersession in the provenance
+view, and full-text search for `transformer` on the Query screen. See
+[`docs/tui.md`](../../docs/tui.md) for the full TUI guide.
+
 ## Validate the schema
 
 `linkml-validate` cannot resolve the bundled `hippo_core` import without
