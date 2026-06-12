@@ -76,6 +76,31 @@ def _resolve_schema_path(schema_path: str | Path | None) -> Path | None:
     return None
 
 
+def _resolve_validators_path(validators_path: str | Path | None) -> Path | None:
+    """Resolve the CEL validators file for the write pipeline.
+
+    Priority: explicit *validators_path* argument > ``validators_path`` in
+    ``config.json`` (skipped when ``validation_enabled`` is ``false``) >
+    ``None``. ``None`` means no CEL business-rule validators are loaded;
+    schema-level validation via the registry still applies regardless.
+    """
+    if validators_path is not None:
+        return Path(validators_path)
+
+    config_file = Path("config.json")
+    if config_file.exists():
+        try:
+            cfg = json.loads(config_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            return None
+        if cfg.get("validation_enabled", True) is False:
+            return None
+        candidate = cfg.get("validators_path")
+        if candidate:
+            return Path(candidate)
+    return None
+
+
 class SDKBackend:
     """TUIBackend implementation that uses ``HippoClient`` directly.
 
@@ -86,15 +111,22 @@ class SDKBackend:
         schema_path: Path to a LinkML schema file or directory. If omitted,
             falls back to ``schemas/`` in the cwd, then the bundled
             ``hippo_core`` schema (framework classes only).
+        validators_path: Path to a CEL ``validators.yaml`` for the write
+            pipeline. If omitted, falls back to ``config.json``'s
+            ``validators_path`` (unless ``validation_enabled`` is false),
+            then ``None``. Mirrors how a deployment configures the SDK so
+            TUI writes honour the same business-rule validators.
     """
 
     def __init__(
         self,
         db_path: str | Path | None = None,
         schema_path: str | Path | None = None,
+        validators_path: str | Path | None = None,
     ) -> None:
         self._db_path = _resolve_db_path(db_path)
         self._schema_path = _resolve_schema_path(schema_path)
+        self._validators_path = _resolve_validators_path(validators_path)
         self._client: Any = None  # lazy-initialized on first use
         self._schema_view: SchemaView | None = None
 
@@ -118,6 +150,26 @@ class SDKBackend:
         )
         return SchemaRegistry(LinkMLSchemaView(str(hippo_core_path)))
 
+    def _build_pipeline(self) -> Any:
+        """Build the write-validation pipeline from the configured validators.
+
+        Without this, TUI writes would skip the CEL business-rule validators a
+        deployment declares (see the bibliography example). Returns ``None``
+        when none are configured, in which case ``HippoClient`` behaves exactly
+        as before (schema-level validation via the registry still applies).
+        """
+        if self._validators_path is None:
+            return None
+
+        from hippo.core.pipeline import ValidationPipeline
+        from hippo.core.validators.write_validator import CELWriteValidator
+
+        pipeline = ValidationPipeline()
+        pipeline.add_validator(
+            CELWriteValidator(validators_path=str(self._validators_path))
+        )
+        return pipeline
+
     def _get_client(self) -> Any:
         """Lazy-create and return the HippoClient + SQLiteAdapter."""
         if self._client is None:
@@ -129,7 +181,11 @@ class SDKBackend:
                 storage = SQLiteAdapter(
                     str(self._db_path), schema_registry=registry
                 )
-                self._client = HippoClient(storage=storage, registry=registry)
+                self._client = HippoClient(
+                    storage=storage,
+                    registry=registry,
+                    pipeline=self._build_pipeline(),
+                )
             except Exception as exc:  # noqa: BLE001 — surfaced as BackendError
                 raise BackendError(
                     f"Could not open Hippo instance at {self._db_path}: {exc}"

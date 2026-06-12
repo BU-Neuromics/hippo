@@ -1422,6 +1422,11 @@ def tui(
         "--schema",
         help="Path to a LinkML schema file or directory (sdk mode only; falls back to schemas/ then the bundled hippo_core schema)",
     ),
+    validators: Optional[str] = typer.Option(
+        None,
+        "--validators",
+        help="Path to a CEL validators.yaml for write validation (sdk mode only; falls back to config.json's validators_path)",
+    ),
 ) -> None:
     """Launch the interactive TUI browser (requires 'pip install hippo[tui]')."""
     try:
@@ -1439,6 +1444,8 @@ def tui(
             kwargs["db_path"] = db
         if schema is not None:
             kwargs["schema_path"] = schema
+        if validators is not None:
+            kwargs["validators_path"] = validators
     elif backend == "rest":
         kwargs["url"] = url
         if token is not None:
