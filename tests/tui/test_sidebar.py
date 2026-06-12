@@ -105,12 +105,19 @@ def test_sidebar_pilot_entity_type_selection():
 
             # Select first entity type item
             items = list(sidebar.query("ListItem"))
-            entity_items = [i for i in items if i.id != "schema-explorer-item"]
-            if entity_items:
-                sidebar.index = sidebar.query("ListItem").index(entity_items[0])
-                sidebar.action_select_cursor()
+            entity_items = [
+                i
+                for i in items
+                if i.id not in ("schema-explorer-item", "query-item")
+            ]
+            assert entity_items, "sidebar should contain entity type items"
+            sidebar.index = items.index(entity_items[0])
+            sidebar.action_select_cursor()
 
             await pilot.pause()
             await pilot.press("q")
 
     asyncio.run(run())
+    assert any(
+        isinstance(msg, EntityTypeSidebar.EntityTypeSelected) for msg in received
+    )

@@ -178,53 +178,49 @@ def test_entity_browser_filter_resets_to_page_1():
     asyncio.run(run())
 
 
-def test_entity_detail_panel_fields_display():
-    """EntityDetailPanel shows all user-defined and system fields."""
-    from hippo.tui.views.entity_browser import EntityDetailPanel
+def test_entity_browser_row_selection_opens_detail(seeded_fake_backend):
+    """Selecting a row pushes an EntityDetailScreen for that entity."""
+    from hippo.tui.app import HippoTUIApp
+    from hippo.tui.views.entity_browser import EntityBrowserView
+    from hippo.tui.views.entity_detail import EntityDetailScreen
 
-    entity = EntityDetail(
-        id="sample-1",
-        entity_type="Sample",
-        fields={
-            "id": "sample-1",
-            "is_available": True,
-            "tissue_type": "Brain",
-            "brain_region": "Hippocampus",
-        },
-        relationships=[RelatedEntityRef("donated_by", "Donor", "donor-1")],
-    )
-    provenance = [
-        ProvenanceEvent("CREATE", "2026-03-01T10:00:00Z", {}),
-        ProvenanceEvent("UPDATE", "2026-03-01T14:00:00Z", {}),
-    ]
-    panel = EntityDetailPanel(entity=entity, provenance=provenance)
-    assert panel._entity.id == "sample-1"
-    assert "id" in panel._entity.fields
-    assert "is_available" in panel._entity.fields
+    app = HippoTUIApp(backend=seeded_fake_backend)
 
+    async def run():
+        async with app.run_test(headless=True, size=(120, 40)) as pilot:
+            await pilot.pause()
+            await app.open_entity_browser("Sample")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
 
-def test_entity_detail_panel_provenance_truncation():
-    """EntityDetailPanel only keeps up to 10 provenance events."""
-    from hippo.tui.views.entity_browser import EntityDetailPanel
+            view = app.query_one(EntityBrowserView)
+            view.query_one("#entity-table").focus()
+            await pilot.press("enter")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
 
-    entity = EntityDetail(id="x", entity_type="Sample", fields={}, relationships=[])
-    provenance = [
-        ProvenanceEvent(f"EVENT_{i}", f"2026-03-01T{i:02d}:00:00Z", {})
-        for i in range(15)
-    ]
-    panel = EntityDetailPanel(entity=entity, provenance=provenance)
-    assert len(panel._provenance) == 10
+            assert isinstance(app.screen, EntityDetailScreen)
+            await pilot.press("escape")
+            await pilot.pause()
+
+    asyncio.run(run())
 
 
-def test_entity_detail_panel_relationships():
-    """EntityDetailPanel shows relationships with target type."""
-    from hippo.tui.views.entity_browser import EntityDetailPanel
+def test_entity_browser_empty_state(fake_backend):
+    """Empty entity types show the empty-state hint instead of the table."""
+    from hippo.tui.app import HippoTUIApp
+    from hippo.tui.views.entity_browser import EntityBrowserView
 
-    entity = EntityDetail(
-        id="s-1",
-        entity_type="Sample",
-        fields={},
-        relationships=[RelatedEntityRef("donated_by", "Donor", "d-1")],
-    )
-    panel = EntityDetailPanel(entity=entity, provenance=[])
-    assert panel._entity.relationships[0].target_type == "Donor"
+    app = HippoTUIApp(backend=fake_backend)
+
+    async def run():
+        async with app.run_test(headless=True, size=(120, 40)) as pilot:
+            await pilot.pause()
+            await app.open_entity_browser("Sample")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+
+            view = app.query_one(EntityBrowserView)
+            assert view.has_class("empty")
+
+    asyncio.run(run())

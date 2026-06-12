@@ -1,1 +1,1 @@
-"""TUI widgets — EntityTypeSidebar, StatusBar, CommandPalette, HelpOverlay."""
+"""TUI widgets — sidebar, status bar, command palette, help, availability dialog."""

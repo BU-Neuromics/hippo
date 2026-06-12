@@ -10,7 +10,14 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label, ListItem, ListView
 
 
-_BUILTIN_COMMANDS = ["Go to schema", "Search", "Refresh", "Quit"]
+_BUILTIN_COMMANDS = [
+    "Go to schema",
+    "Query",
+    "Refresh",
+    "Toggle theme",
+    "Help",
+    "Quit",
+]
 
 
 def _fuzzy_match(query: str, text: str) -> bool:
