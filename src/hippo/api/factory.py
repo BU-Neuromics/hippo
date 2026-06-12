@@ -144,4 +144,14 @@ def create_app(
         for router in routers:
             app.include_router(router)
 
+    # When the app is built around a schema-bearing client (as `hippo serve`
+    # does via the core factory), enrich the generated OpenAPI document with
+    # LinkML-derived per-entity-type components (issue #46). Apps without a
+    # client/registry keep the default document.
+    registry = getattr(hippo_client, "registry", None) if hippo_client else None
+    if registry is not None:
+        from hippo.api.openapi import install_typed_openapi
+
+        install_typed_openapi(app, registry)
+
     return app
