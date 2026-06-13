@@ -23,7 +23,13 @@ import enum
 from dataclasses import dataclass, field as dc_field
 from typing import Any, Optional
 
-from hippo.linkml_bridge import SchemaRegistry, class_accessor_name
+from hippo.linkml_bridge import (
+    HIPPO_EXTERNAL_XREF,
+    VALUE_TYPE_CLASSES,
+    SchemaRegistry,
+    annotation_value,
+    class_accessor_name,
+)
 
 #: hippo_core framework classes that transports never expose as domain
 #: entities. ``Entity`` is abstract; the rest are system concerns. This is
@@ -37,6 +43,13 @@ INFRASTRUCTURE_CLASSES: frozenset[str] = frozenset(
         "ReferenceLoader",
     }
 )
+
+# VALUE_TYPE_CLASSES (imported above) is re-exported here for transports:
+# framework-provided structured VALUE types (issue #48) — concrete LinkML
+# classes that are not entities (no id/lifecycle, stored inline on the slot
+# that ranges them). Not exposed as entity types; slots ranged against them
+# classify as ``SlotKind.STRUCTURED``. Single definition lives in
+# ``hippo.linkml_bridge``.
 
 #: System fields stored on the entity table (present as induced slots).
 SYSTEM_FIELDS: frozenset[str] = frozenset({"id", "is_available"})
@@ -59,6 +72,7 @@ class SlotKind(enum.Enum):
     SCALAR = "scalar"  # string/integer/float/boolean/date/datetime/...
     ENUM = "enum"  # range is a LinkML enum
     REFERENCE = "reference"  # range is another (non-infrastructure) class
+    STRUCTURED = "structured"  # range is an inline value type (issue #48)
 
 
 class FieldRole(enum.Enum):
@@ -81,9 +95,14 @@ class SlotModel:
     identifier: bool = False
     has_default: bool = False  # LinkML ``ifabsent`` present
     description: Optional[str] = None
-    target_class: Optional[str] = None  # set when kind is REFERENCE
+    target_class: Optional[str] = None  # set when kind is REFERENCE/STRUCTURED
     enum_name: Optional[str] = None  # set when kind is ENUM
     enum_values: tuple[str, ...] = ()
+    #: ``hippo_external_xref`` annotation present (issue #48): the slot's
+    #: ``(system, value)`` pairs are reverse-lookup keys with global
+    #: uniqueness among available entities. Only meaningful on
+    #: STRUCTURED slots ranged against ``ExternalReference``.
+    is_external_xref: bool = False
 
 
 @dataclass(frozen=True)
@@ -117,7 +136,7 @@ def exposed_class_names(registry: SchemaRegistry) -> list[str]:
     sv = registry.schema_view
     names: list[str] = []
     for name in registry.class_names():
-        if name in INFRASTRUCTURE_CLASSES:
+        if name in INFRASTRUCTURE_CLASSES or name in VALUE_TYPE_CLASSES:
             continue
         cls = sv.get_class(name)
         if cls is None or cls.abstract:
@@ -140,6 +159,11 @@ def _classify_slot(slot: Any, registry: SchemaRegistry, enums: dict[str, Any]) -
         kind = SlotKind.ENUM
         enum_name = rng
         enum_values = tuple(enums[rng].permissible_values.keys())
+    elif rng in VALUE_TYPE_CLASSES:
+        # Inline structured value (issue #48): the stored value is the
+        # object itself (JSON), not a UUID reference to another entity.
+        kind = SlotKind.STRUCTURED
+        target_class = rng
     elif registry.has_class(rng) and rng not in INFRASTRUCTURE_CLASSES:
         kind = SlotKind.REFERENCE
         target_class = rng
@@ -157,6 +181,7 @@ def _classify_slot(slot: Any, registry: SchemaRegistry, enums: dict[str, Any]) -
         target_class=target_class,
         enum_name=enum_name,
         enum_values=enum_values,
+        is_external_xref=bool(annotation_value(slot, HIPPO_EXTERNAL_XREF)),
     )
 
 

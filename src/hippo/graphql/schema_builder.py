@@ -34,6 +34,7 @@ from typing import Any, NewType, Optional
 
 import strawberry
 from strawberry.dataloader import DataLoader
+from strawberry.scalars import JSON
 from strawberry.types import Info
 
 # INFRASTRUCTURE_CLASSES is re-exported for callers/tests: the single
@@ -351,6 +352,28 @@ class GraphQLTypeBuilder:
                 has_default=slot.has_default,
                 enum_cls=self.enums[slot.enum_name],
                 description=slot.description or None,
+            )
+
+        if slot.kind is SlotKind.STRUCTURED:
+            # Inline value type (issue #48, e.g. ExternalReference): the
+            # stored value is the structured object itself, not a UUID —
+            # rendered as a JSON passthrough scalar in both directions.
+            description = f"Inline {slot.target_class or slot.range} value."
+            if slot.is_external_xref:
+                description += (
+                    " Reverse-lookup key (hippo_external_xref): "
+                    "(system, value) is globally unique among available "
+                    "entities; see the findByXref query."
+                )
+            return SlotSpec(
+                slot_name=slot.name,
+                attr_name=attr,
+                kind="scalar",
+                multivalued=slot.multivalued,
+                required=slot.required,
+                has_default=slot.has_default,
+                scalar_type=JSON,
+                description=description,
             )
 
         if slot.kind is SlotKind.REFERENCE:

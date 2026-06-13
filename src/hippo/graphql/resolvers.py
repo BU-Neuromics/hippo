@@ -103,6 +103,24 @@ class BulkAvailabilityResult:
     failures: list[BulkAvailabilityFailure]
 
 
+@strawberry.type(
+    description=(
+        "Entity resolved from an external reference (system, value) pair "
+        "via the hippo_external_xref reverse-lookup index (issue #48). "
+        "Generic envelope shape — the matching entity type is only known "
+        "at query time, so `data` carries the typed payload as JSON; use "
+        "`entityType` with the per-type queries for typed traversal."
+    )
+)
+class XrefMatch:
+    entity_id: strawberry.ID
+    entity_type: str
+    data: JSON
+    version: Optional[int]
+    created_at: Optional[ISODateTime]
+    updated_at: Optional[ISODateTime]
+
+
 @strawberry.type(description="Result of a supersede operation.")
 class SupersedeResult:
     entity_id: strawberry.ID
@@ -393,6 +411,34 @@ def _superseded_by_resolver(info: Info, id: strawberry.ID) -> SupersessionInfo: 
     )
 
 
+def _find_by_xref_resolver(
+    info: Info, system: str, value: str
+) -> Optional[XrefMatch]:
+    """Reverse lookup over hippo_external_xref-annotated slots.
+
+    Thin delegation to ``HippoClient.find_by_xref`` (mirrors REST
+    ``GET /xref/{system}/{value}``). Null when no available entity holds
+    the pair; (system, value) is globally unique among available
+    entities, so at most one entity can match.
+    """
+    try:
+        envelope = _client(info).find_by_xref(system, value)
+    except NotImplementedError as exc:
+        raise GraphQLError(
+            str(exc), extensions={"code": "NOT_IMPLEMENTED"}
+        ) from exc
+    if envelope is None:
+        return None
+    return XrefMatch(
+        entity_id=strawberry.ID(str(envelope.get("id"))),
+        entity_type=str(envelope.get("entity_type")),
+        data=envelope.get("data") or {},
+        version=envelope.get("version"),
+        created_at=envelope.get("created_at"),
+        updated_at=envelope.get("updated_at"),
+    )
+
+
 def _make_hippo_schema_resolver(builder: GraphQLTypeBuilder):
     def resolver(info: Info) -> list[HippoEntityTypeInfo]:
         return [
@@ -624,6 +670,9 @@ def build_query_type(builder: GraphQLTypeBuilder) -> type:
     )
     fields.append(
         strawberry.field(resolver=_superseded_by_resolver, name="supersededBy")
+    )
+    fields.append(
+        strawberry.field(resolver=_find_by_xref_resolver, name="findByXref")
     )
     fields.append(
         strawberry.field(

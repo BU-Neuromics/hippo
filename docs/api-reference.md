@@ -839,7 +839,36 @@ Get superseded external IDs for an entity.
 
 ---
 
-### External IDs
+### External References (xref)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/xref/{system}/{value}` | Resolve an external reference to its entity |
+
+**GET /xref/{system}/{value}**
+
+Reverse lookup over `hippo_external_xref`-annotated `ExternalReference`
+slots: returns the full envelope of the single AVAILABLE entity whose
+annotated slot carries the `(system, value)` pair. An entity's external
+references themselves are ordinary slot data on the entity endpoints.
+
+*Path Parameters:*
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `system` | string | External system name (e.g., "STARLIMS") |
+| `value` | string | Identifier value in that system |
+
+*Response:* Entity envelope (same shape as `GET /entities/{id}`)
+
+*Error Codes:* `404` - No available entity holds the pair; `501` - storage adapter does not implement the xref index (PostgreSQL)
+
+---
+
+### External IDs (deprecated)
+
+> **Deprecated (issue #48):** these endpoints are backed by the deprecated
+> `ExternalID` entity and are marked `deprecated` in OpenAPI. Use
+> `ExternalReference` slots and `GET /xref/{system}/{value}` instead.
 
 | Method | Path | Description |
 |--------|------|-------------|

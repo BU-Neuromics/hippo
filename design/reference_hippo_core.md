@@ -24,6 +24,8 @@ reference to the shipped file.
 | `Process` | class | Composite activity grouping atomic operations under one logical execution (reference loads, migrations, pipeline runs). `is_a: Entity`. |
 | `Validator` | class (placeholder) | Declarative validator definition; slot inventory finalized later. |
 | `ReferenceLoader` | class | Metadata for reference-data loader plugins. Full slot inventory: `name`, `entity_type` (multivalued), `source`, `schema_fragment`. |
+| `ExternalReference` | value type (class) | Inline structured cross-system identifier (`system`, `value`, optional `retrieved_at`/`version`). NOT `is_a: Entity` — no id/lifecycle; stored inline on the slot that ranges it (issue #48). |
+| `ExternalID` | class — **DEPRECATED** | Legacy entity-shaped cross-system identifier. Superseded by `ExternalReference` + `hippo_external_xref`; removal scoped to a future major. |
 | `Status` | enum | Lifecycle state of an entity. |
 | `Operation` | enum | Operation kinds recorded on a `ProvenanceRecord`. |
 
@@ -180,8 +182,8 @@ per-value PROV-O mapping and payload semantics.
 | `supersede` | Entity superseded by another; `derived_from_id` carries the predecessor. |
 | `relationship_add` | A relationship slot gained a value; `patch` carries `{slot, target_id}`. |
 | `relationship_remove` | A relationship slot lost a value; `patch` carries `{slot, target_id}`. |
-| `external_id_add` | An ExternalID was associated with the entity. |
-| `external_id_remove` | An ExternalID was disassociated. |
+| `external_id_add` | **DEPRECATED** with the ExternalID entity (issue #48) — `ExternalReference` slot changes are ordinary `update` operations. An ExternalID was associated with the entity. |
+| `external_id_remove` | **DEPRECATED** with the ExternalID entity (issue #48). An ExternalID was disassociated. |
 | `migration_applied` | A schema migration was applied (system event; `entity_id` is null). |
 | `reference_data_installed` | A reference loader installed data (system event; `entity_id` is null). |
 
@@ -256,9 +258,53 @@ in the merged schema that subclass `ReferenceLoader`. After a plugin's
 
 ---
 
+### `ExternalReference` (value type, issue #48)
+
+Structured **value type** describing a cross-system identifier. Deliberately
+NOT `is_a: Entity`: an `ExternalReference` has no `id`, no lifecycle, and no
+provenance of its own — it is stored **inline** on the entity slot that
+ranges it (relational adapters persist it as a JSON `TEXT` column, single-
+and multivalued alike), so changing an entity's external references is an
+ordinary entity update captured by normal provenance.
+
+| Slot | Type | Required | Semantics |
+|---|---|---|---|
+| `system` | string | yes | External system that owns the identifier (e.g., `STARLIMS`). Deployer-controlled vocabulary. |
+| `value` | string | yes | Identifier as it appears in `system`. |
+| `retrieved_at` | datetime | no | When the reference was captured. |
+| `version` | string | no | External record version the reference was captured against. |
+
+Slots ranged against `ExternalReference` may carry the
+`hippo_external_xref` annotation to become reverse-lookup keys — global
+`(system, value)` uniqueness among available entities plus
+`HippoClient.find_by_xref` / `GET /xref/{system}/{value}` / GraphQL
+`findByXref`, served by the `hippo_xref_index` side table. See
+`reference_hippo_ext.md` for the annotation contract.
+
+`ExternalReference` is excluded from every entity surface: no table, no
+typed-client accessor, no tree-root bundle slot, no GraphQL object type,
+no TUI listing (`VALUE_TYPE_CLASSES` in `hippo.linkml_bridge`).
+
+#### `ExternalID` deprecation
+
+`ExternalID` (entity-shaped cross-system identifier with its own
+`is_active` mapping lifecycle, dedicated client methods, REST router, and
+`external_id_add`/`external_id_remove` provenance ops) is **deprecated** in
+favor of the value-type + annotation pattern above:
+
+- The class stays in `hippo_core` and remains fully functional.
+- `HippoClient.register_external_id` / `get_by_external_id` /
+  `list_external_ids` / mapping-level `supersede` emit
+  `DeprecationWarning` (entity-level `supersede_entity` is unaffected).
+- The `/external-ids` REST endpoints are marked `deprecated` in OpenAPI.
+- Data migration tooling and removal of the class are scoped to a future
+  major release (issue #48 follow-ups).
+
+---
+
 ### Version and compatibility
 
-`hippo_core.version` is `0.4.0` (0.1.0 initial → 0.2.0 added `Process` → 0.3.0 added `ProvenanceRecord` → 0.4.0 finalized `ReferenceLoader` slot inventory). Bump rules (per sec9 §9.3):
+`hippo_core.version` is `0.6.0` (0.1.0 initial → 0.2.0 added `Process` → 0.3.0 added `ProvenanceRecord` → 0.4.0 finalized `ReferenceLoader` slot inventory → 0.5.0 added `ExternalID` → 0.6.0 added `ExternalReference` and deprecated `ExternalID`, issue #48). Bump rules (per sec9 §9.3):
 
 | Change | Bump |
 |---|---|

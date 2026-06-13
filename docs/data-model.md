@@ -119,54 +119,106 @@ Existing schemas with no `default_prefix` are unaffected. All unqualified entity
 
 ---
 
-## External IDs
+## External References
 
-External IDs connect Hippo entities to identifiers from upstream systems (LIMS, lab databases, etc.).
+External references connect Hippo entities to identifiers from upstream
+systems (LIMS, lab databases, registries, etc.). They are modeled with the
+framework-provided `ExternalReference` **value type**: a structured value
+(`system`, `value`, optional `retrieved_at` / `version`) stored *inline* on
+your entity — not a separately tracked entity. Changing a reference is an
+ordinary entity update captured by normal provenance.
 
-### Registering External IDs
+### Declaring an ExternalReference slot
 
-```python
-# Register an external ID for an entity
-record = client.register_external_id(
-    entity_id="abc-123",
-    external_id="SAMPLE-001"
-)
+Range any slot against `ExternalReference` (it ships with `hippo_core`).
+Add the `hippo_external_xref` annotation to make the slot a **reverse-lookup
+key**:
+
+```yaml
+classes:
+  Sample:
+    is_a: Entity
+    attributes:
+      starlims_ref:
+        range: ExternalReference
+        inlined: true
+        annotations:
+          hippo_external_xref: true     # reverse lookup + uniqueness
+      registry_refs:                    # multivalued works the same way
+        range: ExternalReference
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+        annotations:
+          hippo_external_xref: true
+      vendor_ref:                       # plain structured value — no lookup
+        range: ExternalReference
+        inlined: true
 ```
 
-### Lookup by External ID
+A slot *without* the annotation still carries the structured value; it is
+simply not indexed or uniqueness-constrained.
+
+### Writing references
+
+References are ordinary slot data on entity writes:
 
 ```python
-# Find an entity by its external ID
-entity = client.get_by_external_id("SAMPLE-001")
-
-# Include archived entities in search
-entity = client.get_by_external_id("SAMPLE-001", include_archived=True)
+sample = client.create("Sample", {
+    "name": "S-001",
+    "starlims_ref": {"system": "STARLIMS", "value": "BC-0001"},
+    "registry_refs": [
+        {"system": "DONOR_DB", "value": "D-17", "retrieved_at": "2026-06-12T00:00:00Z"},
+    ],
+})
 ```
 
-### Listing External IDs
+### Reverse lookup
+
+For annotated slots, `(system, value)` is **globally unique among available
+entities**, so a pair resolves to at most one entity:
 
 ```python
-# List all external IDs for an entity
-external_ids = client.list_external_ids(entity_id="abc-123")
+envelope = client.find_by_xref("STARLIMS", "BC-0001")   # entity envelope or None
 
-# Include superseded (replaced) IDs
-external_ids = client.list_external_ids(entity_id="abc-123", include_superseded=True)
+# Indexed pairs for one entity (full values live on the entity's slots)
+client.list_xrefs(sample["id"])
+# [{"slot": "starlims_ref", "system": "STARLIMS", "value": "BC-0001"}, ...]
 ```
 
-### External ID Immutability
+Over REST: `GET /xref/{system}/{value}` returns the entity envelope (404
+when no available entity holds the pair). Over GraphQL:
+`findByXref(system: "...", value: "...") { entityId entityType data }`.
 
-External IDs are immutable once written. To "correct" an external ID, supersede the old one with a new one:
+### Uniqueness and lifecycle
 
-```python
-# Replace an external ID with a corrected value
-new_record = client.supersede(
-    entity_id="abc-123",
-    old_external_id="SAMPLE-001-INCORRECT",
-    new_external_id="SAMPLE-001-CORRECTED"
-)
-```
+- Claiming a `(system, value)` pair already held by another available
+  entity fails the write with a clear error (REST 422 / GraphQL
+  `VALIDATION_FAILED`) naming the system, value, and conflicting entity.
+- The index follows entity availability: making an entity unavailable
+  (archive, soft delete, supersede) frees its pairs; making it available
+  again re-claims them — and fails loudly if another live entity claimed a
+  pair in the meantime.
+- Index maintenance happens in the same transaction as the entity write.
 
-This creates a new active external ID record and marks the old one as superseded. Both records are retained for audit purposes.
+!!! note "Adapter support"
+    The xref index is implemented on the SQLite adapter. On the
+    PostgreSQL adapter, the lookup APIs currently raise
+    `NotImplementedError`; parity is planned with that adapter's
+    per-class-table migration.
+
+### Legacy External IDs (deprecated)
+
+Earlier Hippo versions modeled external identifiers as a separate
+`ExternalID` *entity* with dedicated APIs
+(`client.register_external_id`, `client.get_by_external_id`,
+`client.list_external_ids`, mapping-level `client.supersede`, and the
+`/external-ids` REST endpoints). These remain functional but are
+**deprecated** — they emit `DeprecationWarning` and are marked deprecated
+in OpenAPI. Migrate by declaring `ExternalReference` slots as above;
+entity-level `client.supersede_entity` is unaffected. Removal of the
+`ExternalID` entity and data-migration tooling are scoped to a future
+major release.
 
 ---
 
