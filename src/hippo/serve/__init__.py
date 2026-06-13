@@ -14,6 +14,7 @@ from hippo.serve.routers import (
     schema,
     search,
     supersede,
+    xref,
 )
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "schema",
     "search",
     "supersede",
+    "xref",
 ]
 
 
@@ -68,6 +70,7 @@ def create_default_app(
         supersede.router,
         relationship.router,
         external_id.router,
+        xref.router,
         schema.router,
     ]
 

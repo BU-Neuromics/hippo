@@ -80,6 +80,37 @@ def _slot_schema(slot: SlotModel) -> dict[str, Any]:
             "format": "uuid",
             "description": f"Reference (entity id) to a {slot.target_class} entity.",
         }
+    elif slot.kind is SlotKind.STRUCTURED:
+        # Inline structured value type (issue #48). Currently the only
+        # value type is ExternalReference; render its known shape.
+        schema = {
+            "type": "object",
+            "title": slot.target_class or slot.range,
+            "properties": {
+                "system": {
+                    "type": "string",
+                    "description": "External system that owns the identifier.",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Identifier as it appears in `system`.",
+                },
+                "retrieved_at": {"type": "string", "format": "date-time"},
+                "version": {"type": "string"},
+            },
+            "required": ["system", "value"],
+            "description": (
+                f"Inline {slot.target_class or slot.range} value (stored on "
+                "the entity, not a separate entity)."
+                + (
+                    " Reverse-lookup key: (system, value) is globally unique "
+                    "among available entities and resolvable via "
+                    "GET /xref/{system}/{value}."
+                    if slot.is_external_xref
+                    else ""
+                )
+            ),
+        }
     else:
         schema = dict(_SCALAR_JSON.get(slot.range, {"type": "string"}))
 

@@ -770,6 +770,51 @@ class HippoClient:
             entity_id, include_superseded
         )
 
+    # -- External references (hippo_external_xref, issue #48) --
+
+    def find_by_xref(
+        self, system: str, value: str
+    ) -> Optional[dict[str, Any]]:
+        """Reverse-lookup the entity holding external reference ``(system, value)``.
+
+        Resolves through the ``hippo_xref_index`` side table maintained
+        for ``hippo_external_xref``-annotated ``ExternalReference`` slots.
+        ``(system, value)`` is globally unique among available entities,
+        so at most one entity can match.
+
+        Returns:
+            The full entity envelope (as returned by :meth:`get`) or
+            ``None`` when no available entity holds the pair (or the
+            storage adapter does not maintain an xref index).
+
+        Raises:
+            NotImplementedError: On adapters that declare the surface but
+                have not implemented it yet (PostgreSQL).
+        """
+        if self._storage is None or not hasattr(self._storage, "find_xref"):
+            return None
+        match = self._storage.find_xref(system, value)
+        if match is None:
+            return None
+        return self.get(match["entity_type"], match["entity_id"])
+
+    def list_xrefs(self, entity_id: str) -> list[dict[str, Any]]:
+        """List the indexed external-reference pairs for an entity.
+
+        Returns ``[{"slot", "system", "value"}, ...]`` from the
+        ``hippo_xref_index`` side table — i.e. only pairs from
+        ``hippo_external_xref``-annotated slots of an AVAILABLE entity.
+        The full ``ExternalReference`` values (including ``retrieved_at``
+        and ``version``) are ordinary slot data on the entity itself.
+
+        Raises:
+            NotImplementedError: On adapters that declare the surface but
+                have not implemented it yet (PostgreSQL).
+        """
+        if self._storage is None or not hasattr(self._storage, "list_xrefs"):
+            return []
+        return self._storage.list_xrefs(entity_id)
+
     def history(self, entity_id: str) -> list[dict[str, Any]]:
         """Get the change history for an entity."""
         return self._provenance_service.history(entity_id)
