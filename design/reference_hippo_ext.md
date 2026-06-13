@@ -36,12 +36,13 @@ annotations via the standard `annotations:` block on their own classes / slots.
 
 ### Vocabulary
 
-Five annotations are currently declared. `hippo_unique`, `hippo_index`,
-`hippo_index_partial`, and `hippo_search` landed with Wave 1
-(`hippo-ext-vocabulary`); `hippo_append_only` landed with Wave 2
-(`provenance-as-linkml-class`) as a declaration — adapter enforcement
-follows in `provenance-migration`. `hippo_accessor` joins the vocabulary
-with Wave 3's `typed-client` — see *Deferred annotations* below.
+`hippo_unique`, `hippo_index`, `hippo_index_partial`, and `hippo_search`
+landed with Wave 1 (`hippo-ext-vocabulary`); `hippo_append_only` landed
+with Wave 2 (`provenance-as-linkml-class`) as a declaration — adapter
+enforcement follows in `provenance-migration`. `hippo_accessor` joins the
+vocabulary with Wave 3's `typed-client` — see *Deferred annotations*
+below. `hippo_external_xref` landed with issue #48 (ExternalReference
+value type).
 
 #### `hippo_unique`
 
@@ -173,6 +174,70 @@ classes:
     is_a: Entity
     annotations:
       hippo_append_only: true
+```
+
+#### `hippo_external_xref`
+
+| Attribute | Value |
+|---|---|
+| Applies to | slot |
+| Value type | boolean |
+| Default | `false` |
+| Consumer | DDL generators + storage adapter write path; `HippoClient.find_by_xref` / `list_xrefs`; REST `GET /xref/{system}/{value}`; GraphQL `findByXref` |
+| Requires | `range: ExternalReference` on the same slot (DDL generation fails at startup otherwise) |
+
+Marks an `ExternalReference`-ranged slot as a **reverse-lookup key**
+(issue #48). The slot's `(system, value)` pairs are maintained in the
+`hippo_xref_index` side table:
+
+```
+hippo_xref_index(entity_id, entity_type, slot, system, value)
+UNIQUE (system, value)
+```
+
+- **Maintenance.** The SQLite adapter's per-class write helpers re-derive
+  the entity's index rows (delete-then-insert) on every create, update,
+  replace, availability transition, soft delete, and supersession — on the
+  same cursor, so index maintenance shares the entity write's transaction.
+  Works identically for single- and multivalued slots (the slot stores
+  inline JSON either way).
+- **Availability semantics.** Index rows exist ONLY for available
+  (`is_available = 1`) entities — the same "unique among live records"
+  semantics as `hippo_unique`'s partial index (PTS-348), realised by row
+  lifecycle instead of a `WHERE` predicate. Turning an entity unavailable
+  frees its pairs; turning it back available re-claims them (and fails
+  with a clear conflict if another live entity took a pair in between).
+- **Uniqueness.** `(system, value)` is globally unique among available
+  entities — across classes and slots. Violations raise
+  `XrefUniquenessError` (a `ValidationError`) naming the system, value,
+  and conflicting entity; the triggering write rolls back. Transports map
+  it to the standard validation path (REST 422, GraphQL
+  `VALIDATION_FAILED`).
+- **Without the annotation** a slot can still range `ExternalReference` —
+  it then carries the structured value but is not indexed, not
+  uniqueness-constrained, and not resolvable via the lookup APIs.
+- **Adapter support.** SQLite: full. PostgreSQL: the lookup surface raises
+  `NotImplementedError` (parity is scoped to that adapter's
+  per-class-table migration).
+
+**Example.**
+```yaml
+classes:
+  Sample:
+    is_a: Entity
+    attributes:
+      starlims_ref:
+        range: ExternalReference
+        inlined: true
+        annotations:
+          hippo_external_xref: true
+      donor_refs:                 # multivalued works the same way
+        range: ExternalReference
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+        annotations:
+          hippo_external_xref: true
 ```
 
 ---

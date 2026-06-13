@@ -4,6 +4,37 @@
 
 ### Added
 
+- **`ExternalReference` value type + `hippo_external_xref` annotation
+  (issue #48, non-breaking phase).** Cross-system identifiers are now a
+  framework value type plus a declarative behavior annotation instead of a
+  bespoke entity. `hippo_core` 0.6.0 ships `ExternalReference` (`system`,
+  `value`, optional `retrieved_at`/`version`; NOT `is_a: Entity` — no
+  id/lifecycle, stored inline as a JSON TEXT column on the slot that
+  ranges it, single- and multivalued). `hippo_ext` 0.4.0 declares
+  `hippo_external_xref`: annotating an `ExternalReference`-ranged slot
+  opts it into reverse lookup via the new `hippo_xref_index` side table
+  (`entity_id`, `entity_type`, `slot`, `system`, `value`;
+  `UNIQUE(system, value)`), maintained by the SQLite adapter's per-class
+  write hooks in the same transaction as the entity write across
+  create/update/replace/availability/supersede. Index rows exist only for
+  available entities (the PTS-348 "unique among live records" semantics),
+  so `(system, value)` is globally unique among live entities; violations
+  raise the new `XrefUniquenessError` (a `ValidationError` — REST 422,
+  GraphQL `VALIDATION_FAILED`) naming the system, value, and conflicting
+  entity, rolling back the write. Reverse-lookup surface:
+  `HippoClient.find_by_xref(system, value)` (entity envelope or `None`)
+  and `HippoClient.list_xrefs(entity_id)`; REST
+  `GET /xref/{system}/{value}`; GraphQL `findByXref(system, value)`
+  returning a generic `XrefMatch` envelope. Typing core (additive):
+  `SlotKind.STRUCTURED` for value-type-ranged slots,
+  `SlotModel.is_external_xref`, and `VALUE_TYPE_CLASSES` —
+  `ExternalReference` is excluded from every entity surface (typed
+  client, GraphQL, OpenAPI components, TUI, tree-root bundle). The
+  PostgreSQL adapter raises `NotImplementedError` on the lookup surface
+  pending its per-class-table migration. Docs:
+  `docs/data-model.md` (External References),
+  `design/reference_hippo_ext.md`, `design/reference_hippo_core.md`.
+
 - **LinkML-derived OpenAPI components (issue #46, approach A).** When the
   REST app is built around a schema-bearing client (as `hippo serve` does),
   `/openapi.json` now carries one JSON Schema component per exposed entity
@@ -48,6 +79,20 @@
   design: sec4 §4.7.
 - `hippo.core.schema_typing.SlotModel` gained `has_default` (LinkML `ifabsent`
   present), so transports can derive nullability without re-walking the schema.
+
+### Deprecated
+
+- **The `ExternalID` entity pattern (issue #48).** The `ExternalID` class
+  stays in `hippo_core` and remains fully functional, but is deprecated in
+  favor of `ExternalReference` + `hippo_external_xref`.
+  `HippoClient.register_external_id`, `get_by_external_id`,
+  `list_external_ids`, and the mapping-level `supersede` now emit
+  `DeprecationWarning` (entity-level `supersede_entity` is unaffected);
+  the `/external-ids` REST endpoints are marked `deprecated` in OpenAPI;
+  the `external_id_add`/`external_id_remove` provenance operations are
+  documented as deprecated (`ExternalReference` changes are ordinary
+  `update` operations). Data migration tooling and removal of the entity
+  are scoped to a future major release.
 
 ### Fixed
 
