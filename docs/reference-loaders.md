@@ -155,7 +155,7 @@ ann  = client.put("DEResult", {"gene": gene_id, ...})    # your own type, linkin
 
 ### Referencing loader-provided entity types
 
-Reference a loader-provided class from your own schema by its class name once it is merged in via `requires:`:
+Reference a loader-provided class from your own schema using the loader-prefixed form `<loader_name>:<TypeName>` — or the bare class name. Both resolve against the loader classes merged in via `requires:`:
 
 ```yaml
 # schema.yaml
@@ -165,10 +165,11 @@ classes:
   SampleAnnotation:
     attributes:
       gene:
-        range: Gene             # class provided by hippo-reference-ensembl
+        range: ensembl:Gene     # class provided by hippo-reference-ensembl
+        # equivalently: range: Gene
 ```
 
-A slot ranged on a merged loader class is recognized as a cross-loader reference and participates in joins and expansion. The loader-prefixed form `range: ensembl:Gene` is reserved for a future release; for now use the bare class name.
+A slot ranged on a merged loader class is recognized as a cross-loader reference: it participates in joins and expansion and is validated against the loader class, rather than treated as an opaque value. The loader-prefixed form resolves only when the named class was actually provided by that loader. References *between* installed loaders remain advisory in v1.
 
 ---
 

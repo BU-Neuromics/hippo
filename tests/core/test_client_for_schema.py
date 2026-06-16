@@ -187,3 +187,93 @@ class TestClientForSchema:
                 consumer_schema, database_url=str(tmp_path / "x.db")
             )
         assert exc.value.error_code == "HIPPO_REQUIRES_UNSATISFIED"
+
+
+# ---------------------------------------------------------------------------
+# Layer 3 — loader-prefixed CURIE ranges (`range: <loader>:<Class>`)
+# ---------------------------------------------------------------------------
+
+
+# Consumer schema using the documented loader-prefixed CURIE range form.
+_CURIE_SCHEMA = """\
+id: https://example.org/consumer
+name: consumer
+prefixes:
+  linkml: https://w3id.org/linkml/
+imports:
+  - linkml:types
+  - hippo_core
+default_range: string
+requires:
+  - fake==v1
+classes:
+  Annotation:
+    is_a: Entity
+    attributes:
+      term:
+        range: fake:FakeTerm
+"""
+
+
+class TestLoaderPrefixedRanges:
+    def test_curie_range_resolves_to_merged_class(
+        self, tmp_path: Path, fake_installed: None
+    ):
+        schema = tmp_path / "schema.yaml"
+        schema.write_text(_CURIE_SCHEMA)
+        registry = build_schema_registry(schema, merge_requires=True)
+
+        # `range: fake:FakeTerm` is rewritten to the bare merged class, so the
+        # slot is now a recognized cross-loader reference (non-advisory).
+        assert registry.has_class("FakeTerm")
+        assert ("term", "FakeTerm") in registry.reference_slots("Annotation")
+        # The CURIE form no longer leaks through as an opaque range.
+        term_slot = next(
+            s for s in registry.induced_slots("Annotation") if s.name == "term"
+        )
+        assert term_slot.range == "FakeTerm"
+
+    def test_loader_to_loader_curie_stays_advisory(self):
+        # A loader-owned slot referencing another loader's class keeps its
+        # CURIE range untouched — cross-loader FKs are advisory in v1
+        # (decision D2.14.H). Drive the resolver directly with a synthetic
+        # merged schema: a consumer class plus two provided_by-stamped loader
+        # classes that reference each other by CURIE.
+        from linkml_runtime.utils.schemaview import SchemaView
+
+        from hippo.linkml_bridge import _resolve_loader_prefixed_ranges
+
+        merged = """\
+id: https://example.org/merged
+name: merged
+prefixes:
+  linkml: https://w3id.org/linkml/
+default_range: string
+classes:
+  Annotation:                       # consumer class — no provided_by
+    attributes:
+      gene:
+        range: ensembl:Gene
+  Gene:                             # loader-owned (ensembl)
+    annotations:
+      provided_by: {value: 'ensembl@1'}
+    attributes:
+      region:
+        range: fma:Region           # loader-to-loader CURIE — stays advisory
+  Region:                           # loader-owned (fma)
+    annotations:
+      provided_by: {value: 'fma@1'}
+"""
+        resolved = _resolve_loader_prefixed_ranges(SchemaView(merged))
+        classes = resolved.schema.classes
+        # Consumer reference is rewritten to the bare merged class.
+        assert classes["Annotation"].attributes["gene"].range == "Gene"
+        # Loader-owned reference to another loader's class is untouched.
+        assert classes["Gene"].attributes["region"].range == "fma:Region"
+
+    def test_bare_range_unaffected(
+        self, consumer_schema: Path, fake_installed: None
+    ):
+        # The bare-class-name form keeps working (no CURIE to resolve).
+        registry = build_schema_registry(consumer_schema, merge_requires=True)
+        assert ("term", "FakeTerm") in registry.reference_slots("Annotation")
