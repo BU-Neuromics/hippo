@@ -30,8 +30,10 @@ instantiating a full client.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sqlite3
+import warnings
 from collections import Counter
 from collections.abc import Sequence
 from importlib.metadata import (
@@ -1101,6 +1103,96 @@ def _merge_fragment_into(
 
     merged_sv = merge_loader_fragment(deployed_registry._sv, spec)
     return SchemaRegistry(merged_sv)
+
+
+def _normalize_dist_name(name: str) -> str:
+    """PEP 503-style normalization for matching distribution names.
+
+    ``Hippo-Reference-Ensembl``, ``hippo_reference_ensembl``, and
+    ``hippo-reference-ensembl`` all collapse to the same key so a
+    ``requires:`` pin matches the discovered package regardless of the
+    dash/underscore/case spelling each side happens to use.
+    """
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def fragment_specs_for_requires(
+    schema_path: str | Path,
+    *,
+    check_versions: bool = True,
+) -> list["LoaderFragmentSpec"]:
+    """Resolve a schema's ``requires:`` pins to installed loader fragments.
+
+    The public bridge between the ``requires:`` directive
+    (:mod:`hippo.requires`) and schema-package discovery, closing the
+    "no public path to a spanning client" gap (issue #67). It:
+
+    1. reads the ``requires:`` pins declared in ``schema_path`` (file or
+       directory) via :func:`hippo.requires.extract_requires`;
+    2. optionally re-runs the installed-version gate
+       (:func:`hippo.requires.check_requires`) — the same check
+       ``hippo validate`` applies — raising on a missing loader or
+       version mismatch;
+    3. resolves each pin to a discoverable, installed schema package
+       (matched by distribution name first, then by entry-point/short
+       name) and builds its :class:`~hippo.linkml_bridge.LoaderFragmentSpec`.
+
+    The returned list is ready to hand to
+    :meth:`SchemaRegistry.with_loader_fragments`, so a consumer's client
+    registry can span its own schema *and* every reference loader it
+    declares — with no hand-assembled registry code.
+
+    Returns an empty list when the schema declares no ``requires:``.
+    Raises :class:`~hippo.core.exceptions.SchemaError` when the version
+    gate fails (loader missing or version mismatch).
+
+    A pin that passes the version gate but exposes no discoverable schema
+    package (the distribution is installed yet registers no
+    ``hippo.schema_packages`` / ``hippo.reference_loaders`` entry point)
+    contributes no fragment and emits a :class:`UserWarning`. The version
+    gate is the authoritative ``requires:`` contract (sec2 §2.14.1); a
+    distribution may legitimately be pinned without shipping a mergeable
+    fragment, so this is a warning rather than a hard error.
+    """
+    from hippo.requires import check_requires, extract_requires
+    from hippo.core.exceptions import SchemaError
+
+    pins = extract_requires(schema_path)
+    if not pins:
+        return []
+
+    if check_versions:
+        errors = check_requires(pins)
+        if errors:
+            raise SchemaError(
+                f"{len(errors)} unsatisfied `requires:` pin(s):\n  - "
+                + "\n  - ".join(errors),
+                field_name="requires",
+                error_code="HIPPO_REQUIRES_UNSATISFIED",
+            )
+
+    discovered = discover_schema_packages()
+    by_dist = {_normalize_dist_name(info["package_name"]): info for info in discovered}
+    by_name = {info["name"]: info for info in discovered}
+
+    specs: list[LoaderFragmentSpec] = []
+    for pin in pins:
+        info = by_dist.get(_normalize_dist_name(pin.package_name)) or by_name.get(
+            pin.short_name
+        )
+        if info is None:
+            warnings.warn(
+                f"`requires:` pins {pin.package_name!r}, which is installed but "
+                f"registers no discoverable schema package (no "
+                f"`hippo.schema_packages` / `hippo.reference_loaders` entry point "
+                f"under that distribution or name {pin.short_name!r}); its classes "
+                f"will not be merged into the registry.",
+                UserWarning,
+                stacklevel=2,
+            )
+            continue
+        specs.append(_build_fragment_spec(info, info["instance"]))
+    return specs
 
 
 def _build_client(

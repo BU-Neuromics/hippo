@@ -132,20 +132,43 @@ requires:
 
 Only exact-match pins (`==`) are supported in v1. If you need a minimum version, pin the lowest acceptable release and upgrade explicitly with `hippo reference upgrade`.
 
-`hippo validate` fails fast with a clear install suggestion if a required loader is missing. `hippo migrate` also checks `requires:` before applying any schema changes.
+`hippo validate` and `hippo migrate` both check `requires:` before doing anything else — each fails fast with a clear install suggestion if a required loader is missing or its installed version disagrees with the pin.
+
+### Getting a client that spans your schema + its loaders
+
+When your schema declares `requires:`, Hippo automatically merges every pinned loader's classes into the registry, so a single client knows both your own entity types **and** the reference loaders' types — with no registry-assembly code. Every transport (the CLI, `hippo serve`, the TUI) does this for you.
+
+From the SDK, build a spanning client in one call:
+
+```python
+import hippo
+
+# Resolves `requires:`, merges the installed loaders' fragments, returns a client.
+client = hippo.client_for_schema("schema.yaml", database_url="data/de.db")
+
+# Look up a reference entity and a consumer entity through the same client:
+gene = client.get("Gene", gene_id)                       # loader-provided type
+ann  = client.put("DEResult", {"gene": gene_id, ...})    # your own type, linking to it
+```
+
+`hippo.registry_for_schema("schema.yaml")` returns just the spanning `SchemaRegistry` if you only need schema introspection. Both raise a `SchemaError` (the same gate as `hippo validate`) when a declared loader is not installed.
 
 ### Referencing loader-provided entity types
 
-Loader-provided types are namespaced by loader name. Reference them in your schema using `<loader_name>:<TypeName>`:
+Reference a loader-provided class from your own schema by its class name once it is merged in via `requires:`:
 
 ```yaml
 # schema.yaml
+requires:
+  - hippo-reference-ensembl==mus_musculus.GRCm39.115
 classes:
   SampleAnnotation:
     attributes:
-      ensembl_gene_id:
-        range: ensembl:Gene     # entity type provided by hippo-reference-ensembl
+      gene:
+        range: Gene             # class provided by hippo-reference-ensembl
 ```
+
+A slot ranged on a merged loader class is recognized as a cross-loader reference and participates in joins and expansion. The loader-prefixed form `range: ensembl:Gene` is reserved for a future release; for now use the bare class name.
 
 ---
 
