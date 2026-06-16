@@ -1143,6 +1143,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#getting-a-client-that-spans-your-schema-its-loaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting a client that spans your schema + its loaders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#referencing-loader-provided-entity-types" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1660,6 +1671,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#getting-a-client-that-spans-your-schema-its-loaders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting a client that spans your schema + its loaders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#referencing-loader-provided-entity-types" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1849,30 +1871,47 @@
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hippo-reference-ensembl==mus_musculus.GRCm39.115</span>
 </code></pre></div>
 <p>Only exact-match pins (<code>==</code>) are supported in v1. If you need a minimum version, pin the lowest acceptable release and upgrade explicitly with <code>hippo reference upgrade</code>.</p>
-<p><code>hippo validate</code> fails fast with a clear install suggestion if a required loader is missing. <code>hippo migrate</code> also checks <code>requires:</code> before applying any schema changes.</p>
-<h3 id="referencing-loader-provided-entity-types">Referencing loader-provided entity types<a class="headerlink" href="#referencing-loader-provided-entity-types" title="Permanent link">&para;</a></h3>
-<p>Loader-provided types are namespaced by loader name. Reference them in your schema using <code>&lt;loader_name&gt;:&lt;TypeName&gt;</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># schema.yaml</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nt">classes</span><span class="p">:</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">SampleAnnotation</span><span class="p">:</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">      </span><span class="nt">ensembl_gene_id</span><span class="p">:</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ensembl:Gene</span><span class="w">     </span><span class="c1"># entity type provided by hippo-reference-ensembl</span>
+<p><code>hippo validate</code> and <code>hippo migrate</code> both check <code>requires:</code> before doing anything else — each fails fast with a clear install suggestion if a required loader is missing or its installed version disagrees with the pin.</p>
+<h3 id="getting-a-client-that-spans-your-schema-its-loaders">Getting a client that spans your schema + its loaders<a class="headerlink" href="#getting-a-client-that-spans-your-schema-its-loaders" title="Permanent link">&para;</a></h3>
+<p>When your schema declares <code>requires:</code>, Hippo automatically merges every pinned loader's classes into the registry, so a single client knows both your own entity types <strong>and</strong> the reference loaders' types — with no registry-assembly code. Every transport (the CLI, <code>hippo serve</code>, the TUI) does this for you.</p>
+<p>From the SDK, build a spanning client in one call:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">hippo</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># Resolves `requires:`, merges the installed loaders&#39; fragments, returns a client.</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">hippo</span><span class="o">.</span><span class="n">client_for_schema</span><span class="p">(</span><span class="s2">&quot;schema.yaml&quot;</span><span class="p">,</span> <span class="n">database_url</span><span class="o">=</span><span class="s2">&quot;data/de.db&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># Look up a reference entity and a consumer entity through the same client:</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">gene</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Gene&quot;</span><span class="p">,</span> <span class="n">gene_id</span><span class="p">)</span>                       <span class="c1"># loader-provided type</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="n">ann</span>  <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;DEResult&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;gene&quot;</span><span class="p">:</span> <span class="n">gene_id</span><span class="p">,</span> <span class="o">...</span><span class="p">})</span>    <span class="c1"># your own type, linking to it</span>
 </code></pre></div>
+<p><code>hippo.registry_for_schema("schema.yaml")</code> returns just the spanning <code>SchemaRegistry</code> if you only need schema introspection. Both raise a <code>SchemaError</code> (the same gate as <code>hippo validate</code>) when a declared loader is not installed.</p>
+<h3 id="referencing-loader-provided-entity-types">Referencing loader-provided entity types<a class="headerlink" href="#referencing-loader-provided-entity-types" title="Permanent link">&para;</a></h3>
+<p>Reference a loader-provided class from your own schema using the loader-prefixed form <code>&lt;loader_name&gt;:&lt;TypeName&gt;</code> — or the bare class name. Both resolve against the loader classes merged in via <code>requires:</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># schema.yaml</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nt">requires</span><span class="p">:</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hippo-reference-ensembl==mus_musculus.GRCm39.115</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nt">classes</span><span class="p">:</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="nt">SampleAnnotation</span><span class="p">:</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">      </span><span class="nt">gene</span><span class="p">:</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ensembl:Gene</span><span class="w">     </span><span class="c1"># class provided by hippo-reference-ensembl</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">        </span><span class="c1"># equivalently: range: Gene</span>
+</code></pre></div>
+<p>A slot ranged on a merged loader class is recognized as a cross-loader reference: it participates in joins and expansion and is validated against the loader class, rather than treated as an opaque value. The loader-prefixed form resolves only when the named class was actually provided by that loader. References <em>between</em> installed loaders remain advisory in v1.</p>
 <hr />
 <h2 id="the-test-version-slug">The <code>"test"</code> version slug<a class="headerlink" href="#the-test-version-slug" title="Permanent link">&para;</a></h2>
 <p>Well-behaved loaders expose a <code>"test"</code> pseudo-version that installs a small, deterministic, network-free fixture dataset bundled with the package:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>ensembl<span class="w"> </span>--version<span class="w"> </span><span class="nb">test</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>hippo<span class="w"> </span>reference<span class="w"> </span>install<span class="w"> </span>ensembl<span class="w"> </span>--version<span class="w"> </span><span class="nb">test</span>
 </code></pre></div>
 <p>Use <code>--version test</code> in CI pipelines to avoid network dependencies and keep test runs hermetic and fast. The <code>"test"</code> slug is reserved — Hippo will never use it for a real release version.</p>
 <hr />
 <h2 id="tracking-installed-loaders">Tracking installed loaders<a class="headerlink" href="#tracking-installed-loaders" title="Permanent link">&para;</a></h2>
 <p>Hippo records installed loader versions in <code>hippo_meta</code> under the key <code>reference_versions</code>. <code>hippo status</code> surfaces this alongside other system information:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ hippo status
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>...
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>Reference loaders:
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  ensembl    homo_sapiens.GRCh38.110
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  go         2024-01-15
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ hippo status
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>...
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Reference loaders:
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>  ensembl    homo_sapiens.GRCh38.110
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  go         2024-01-15
 </code></pre></div>
 <p>The recorded version is what Hippo uses as the <code>from_version</code> baseline when you later run <code>hippo reference upgrade</code>.</p>
 <p>Hippo's <strong>recipe system</strong> is a complementary, lower-level mechanism for sharing schema fragments — where Reference Loaders bring data into a deployment, recipes bring the schema that gives that data its shape. In v1, Reference Loaders and recipes coexist unchanged: loaders continue on their existing install path and are not yet recipe producers. Recipes can declare a loader as a precondition (via <code>requires.reference_loaders</code>) to ensure the loader is installed before schema import proceeds. For details, see <a href="../installing-recipes/">Installing Recipes</a> and <a href="../writing-a-recipe/">Writing a Recipe</a>.</p>
