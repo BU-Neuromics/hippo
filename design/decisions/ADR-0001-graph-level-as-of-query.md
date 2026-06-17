@@ -1,7 +1,7 @@
 # ADR-0001: Graph-level / query-spanning as-of reconstruction
 
-- **Status:** Proposed
-- **Date:** 2026-06-17
+- **Status:** Accepted
+- **Date:** 2026-06-17 (ratified; design merged as sec6 §6.8)
 - **Deciders:** labadorf, design session
 - **Related:** **sec6 §6.8 (the design this ADR drives)**, sec6 §6.4/§6.6/§6.7 (temporal fields, provenance storage, history/`state_at`), sec4 §4.3/§4.7 (REST/GraphQL `as_of`), sec3/sec3b (data model & storage), `docs/data-model.md` (`client.state_at`, history); **Aperture ADR-0023** (data-story reproducibility) + Aperture `instruction-path-model.md` §9 (the requirement origin)
 
@@ -95,8 +95,9 @@ The design that resolves these is **sec6 §6.8 (Graph-Level As-Of Reconstruction
 
 ## Notes / remaining items before ratify
 
-- **Status is still `Proposed`** — recommended for ratification (`Accepted`) by the decider on
-  review of sec6 §6.8.
+- **Ratified `Accepted` 2026-06-17** after review of the sec6 §6.8 design. Implementation is
+  decomposed into 5 increments (§6.8.6), tracked in BU-Neuromics/hippo#71 and sequenced via
+  OpenSpec.
 - **Reconstruction contract to verify in implementation (§6.8.2):** confirm, per `operation`,
   whether each provenance `patch` is a full post-image (latest-record-≤-`T` suffices) or a sparse
   delta (must replay from `create`). Today's `state_at` takes the latest patch; §6.7 intends
