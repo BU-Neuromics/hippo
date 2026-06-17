@@ -1,8 +1,8 @@
-# Hippo — Metadata Tracking Service
+# Hippo — LinkML Runtime (the structured domain graph)
 ## Specification Index
 
 **Codename:** Hippo  
-**Component:** Metadata Tracking Service (MTS)  
+**Component:** LinkML runtime — the platform's structured domain graph (metadata tracking is its reference application)  
 **Version:** 0.1 — Implementation Ready  
 **Status:** Ready for implementation  
 **LinkML-centric redesign:** Approved 2026-04-18. See `sec9_linkml_redesign.md` (authoritative design) and `sec9_decisions.md` (drafting decision log). Pre-redesign state preserved at git tag `design-pre-linkml`. Section revisions land coordinated with each OpenSpec change per 9.12.
