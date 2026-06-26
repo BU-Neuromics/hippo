@@ -183,6 +183,24 @@ must cause DDL generation (adapter startup) or the write to **raise** — never 
   edge; the `source_id` scoping already prevents cross-class collisions. Revisit if
   hand-authored edges colliding with slot names proves to be a real problem.
 
+## Implementation
+
+Shipped for the SQLite backend:
+
+- `SchemaRegistry.multivalued_reference_slots(class_name)` classifies the slots
+  (`src/hippo/linkml_bridge.py`).
+- `DDLGenerator._rewrite_multivalued_scalar_slots` collapses non-reference multivalued
+  slots to a single JSON TEXT column (`src/hippo/core/storage/ddl_generator.py`); reference
+  multivalued slots keep generating (and discarding) their linktable.
+- `SQLiteAdapter._materialize_multivalued_refs` writes/reconciles edges inside the
+  `create`/`update_data` transactions; `_hydrate_multivalued_refs_batch` restores them on
+  `_read_per_class`/`_find_per_class` (`src/hippo/core/storage/adapters/sqlite_adapter.py`).
+- Tests: `tests/core/test_multivalued_refs.py`.
+
+**PostgreSQL parity is a follow-up** (the adapter in
+`src/hippo/core/storage/adapters/postgres_adapter.py` needs the same materialize/hydrate
+hooks), mirroring how ADR-0001 sequenced SQLite then PostgreSQL increments.
+
 ## Notes / open sub-questions
 
 - **Reconciliation granularity:** replace-all (soft-delete every slot-named edge from the
