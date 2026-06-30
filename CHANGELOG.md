@@ -2,6 +2,43 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Graph-level / query-spanning as-of reconstruction (ADR-0001, sec6 §6.8;
+  issue #71, increments #73–#77).** Queries can now be evaluated as the graph
+  stood at a transaction-time `T`, reconstructed from the append-only
+  provenance log (no materialized snapshots; transaction-time only, valid-time
+  deferred). `HippoClient.query(as_of=...)` reconstructs the matching entity
+  set as of `T` (candidates created `<= T`, each rebuilt via `get_state_at`,
+  filters/pagination applied to the reconstructed data) and binds the computed
+  temporal fields to `T`; `client.relationships.traverse(..., as_of=T)` walks
+  only edges live at `T`, replayed from `relationship_add`/`remove` events
+  rather than the relationships table's current flag. Exposed additively on the
+  read transports — REST `GET /entities?as_of=<ISO-8601>` and GraphQL
+  `asOf: String` on generated list queries (omitted = current state). Backed by
+  a new `idx_ProvenanceRecord_type_timestamp` index, and brought to parity on
+  both the SQLite and PostgreSQL adapters. As-of resolution of nested
+  resolved-relationship fields and a `client.snapshot()` handle remain
+  follow-ups (sec6 §6.8.6).
+
+- **Batch unit-of-work: whole-set validation + atomic multi-entity write
+  (issue #84, increments #85–#87).** Commit a set of related entities
+  all-or-nothing, or dry-run validate the whole set first.
+  `HippoClient.validate_batch(operations, *, assign_ids=True)` runs the standard
+  per-entity pipeline (LinkML → CEL → Python) over every operation and
+  **aggregates** per-entity outcomes (not fail-fast), assigning provisional ids
+  on copies and writing nothing (`BatchValidationResult`).
+  `HippoClient.batch_put(operations, *, relationships=None, dry_run=False)`
+  assigns real ids up front (caller data untouched), validates the whole set,
+  and wraps all entity writes — then relationships — in one
+  `staged_transaction()` so the group commits or rolls back together
+  (`BatchWriteResult`); intra-batch relationship forward references resolve
+  naturally because staged reads observe staged writes. Exposed over the
+  transports for non-SDK clients: REST `POST /ingest/validate` (always 200 with
+  the batch envelope, never writes) and `POST /ingest/batch` (422 on validation
+  failure, 200 on dry-run plan or commit); GraphQL `validateBatch` /
+  `ingestBatch` root mutations with tier-annotated failure types.
+
 ### Fixed
 
 - **Multivalued slots no longer silently dropped on ingest (issue #79 /
