@@ -1,4 +1,4 @@
-# Hippo — BASS metadata tracking service
+# Hippo — DataHelix metadata tracking service
 # Multi-stage build: install deps -> slim runtime
 
 FROM python:3.12-slim AS builder
@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir --prefix=/install .
 FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="hippo" \
-      org.opencontainers.image.description="BASS metadata tracking service"
+      org.opencontainers.image.description="DataHelix metadata tracking service"
 
 RUN groupadd -r bass && useradd -r -g bass -d /app bass
 WORKDIR /app
