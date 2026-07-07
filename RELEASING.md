@@ -30,6 +30,11 @@ ledger (`certification/composition.lock.json`) has evidence to pin.
    git push origin vX.Y.Z
    ```
 
+   Equivalently, dispatch the **Release** workflow (Actions → Release →
+   Run workflow) on `main` with the tag name as input — the workflow
+   creates the tag at the dispatched ref. Useful when tag pushes aren't
+   available (e.g. sandboxed sessions).
+
 ## What automation does on tag push
 
 | Job | Output |

@@ -2,7 +2,8 @@ name: Release
 
 # Release pipeline (DataHelix 1.0 epic P1.1, issue #97).
 #
-# Pushing a `vX.Y.Z` tag produces:
+# Pushing a `vX.Y.Z` tag — or dispatching this workflow with that tag name,
+# which creates the tag at the dispatched ref — produces:
 #   - a wheel + sdist, attached to a GitHub Release (and published to PyPI
 #     when the `PYPI_PUBLISH` repository variable is "true" — see RELEASING.md
 #     for the distribution-name decision that gates this),
@@ -13,6 +14,12 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z; must match pyproject.toml). Created at the dispatched ref if it doesn't exist."
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -31,10 +38,11 @@ jobs:
       - name: Check tag matches pyproject.toml version
         id: version
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          TAG_NAME="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG_VERSION="${TAG_NAME#v}"
           PKG_VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match pyproject.toml version $PKG_VERSION"
+            echo "::error::Tag $TAG_NAME does not match pyproject.toml version $PKG_VERSION"
             exit 1
           fi
           echo "version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
@@ -78,8 +86,10 @@ jobs:
         id: meta
         with:
           images: ghcr.io/bu-neuromics/hippo
+          # Explicit version (not type=semver) so workflow_dispatch runs, which
+          # aren't on a tag ref, tag the image identically.
           tags: |
-            type=semver,pattern={{version}}
+            type=raw,value=${{ needs.validate.outputs.version }}
             type=raw,value=latest
 
       - uses: docker/build-push-action@v6
@@ -135,6 +145,9 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          # On workflow_dispatch the tag doesn't exist yet — this creates it
+          # at the checked-out ref.
+          tag_name: v${{ needs.validate.outputs.version }}
           name: v${{ needs.validate.outputs.version }}
           body_path: release-notes.md
           files: |
