@@ -1,4 +1,4 @@
-# Releasing Hippo
+# Releasing Mosaic (formerly Hippo)
 
 Releases are cut by pushing a `vX.Y.Z` git tag. The `Release` workflow
 (`.github/workflows/release.yml`) does the rest — see "What automation does"
@@ -51,7 +51,7 @@ reads to move the `composition.lock.json` pin to
 
 ```json
 {
-  "component": "hippo",
+  "component": "hippo",   <!-- stays "hippo" until the coordinated repo rename (ADR-0004) -->
   "repo": "BU-Neuromics/hippo",
   "version": "X.Y.Z",
   "image": "ghcr.io/bu-neuromics/hippo",
@@ -62,13 +62,12 @@ reads to move the `composition.lock.json` pin to
 
 ## PyPI publish gate ([HUMAN] decision pending)
 
-The name `hippo` is **already taken on PyPI** by an unrelated project, so the
-`pypi` job is disabled until two things happen:
+The distribution-name question is settled: the package ships as
+**`datahelix-mosaic`** (platform ADR-0002 prefixed-dist convention +
+ADR-0004 rename; the import package is `mosaic`, with a deprecated `hippo`
+alias). The `pypi` job stays disabled until:
 
-1. A distribution name is settled — e.g. `hippo-linkml` (verified available);
-   the import package stays `hippo` either way. Rename via
-   `project.name` in `pyproject.toml`.
-2. A [trusted publisher](https://docs.pypi.org/trusted-publishers/) is
+1. A [trusted publisher](https://docs.pypi.org/trusted-publishers/) is
    configured on PyPI for this repository (workflow `release.yml`,
    environment `pypi`).
 
@@ -85,7 +84,7 @@ artifacts are published for them retroactively.
 
 ## LinkML pin coupling
 
-Hippo's public behavior tracks its LinkML pins (`linkml`, `linkml-runtime`,
+Mosaic's public behavior tracks its LinkML pins (`linkml`, `linkml-runtime`,
 `linkml-store` in `pyproject.toml`): a LinkML patch bump can change validation
 or generation behavior, so **any pin change forces at least a patch release**,
 and the CHANGELOG entry must name the old and new pins (see the Key Decisions
