@@ -4,7 +4,7 @@ Implements the loader-driven ``mosaic reference install`` and
 ``mosaic reference upgrade`` verbs. The flow is:
 
 1. Resolve a registered :class:`ReferenceLoader` from the
-   ``hippo.reference_loaders`` entry-point group (PTS-224).
+   ``mosaic.reference_loaders`` entry-point group (PTS-224).
 2. Merge the loader's :meth:`schema_fragment` into the deployed schema
    via :func:`mosaic.linkml_bridge.merge_loader_fragment` (PTS-226).
 3. Apply the resulting schema additively against the DB (the same
@@ -139,38 +139,56 @@ def get_references_dir() -> Path:
     return refs_dir
 
 
+# ``mosaic.reference_loader_cli`` is canonical; the legacy ``hippo.*``
+# spelling stays resolved for the ADR-0004 deprecation window (dedup by
+# entry-point name, mosaic wins on collision).
+REFERENCE_LOADER_CLI_GROUPS = (
+    "mosaic.reference_loader_cli",
+    "hippo.reference_loader_cli",  # legacy spelling (ADR-0004)
+)
+
+
 def discover_reference_loader_subapps() -> list[tuple[str, "typer.Typer"]]:
     """Discover loader-provided Typer sub-apps via the
-    ``hippo.reference_loader_cli`` entry-point group (D2.14.A).
+    ``mosaic.reference_loader_cli`` entry-point group (D2.14.A) — or its
+    legacy ``hippo.reference_loader_cli`` spelling (ADR-0004).
 
     Each entry point must resolve to a :class:`typer.Typer` instance.
     Anything else raises :class:`ReferenceLoaderRegistrationError` —
     consistent with the strict reference-loader registration on the
     sibling group (PTS-224). Sub-app registration is *optional*: a
-    loader registered only under ``hippo.reference_loaders`` simply
+    loader registered only under ``mosaic.reference_loaders`` simply
     won't surface here, leaving ``mosaic reference <name>`` to be served
-    by the parent group's install/upgrade/list verbs.
+    by the parent group's install/upgrade/list verbs. Entries are
+    deduplicated by name, so a dual-registered sub-app mounts once.
     """
     import typer
     from importlib.metadata import entry_points
 
-    try:
-        eps = entry_points()
-        cli_eps = eps.select(group="hippo.reference_loader_cli")
-        eps_list = list(cli_eps)
-    except (TypeError, AttributeError):
+    eps_list = []
+    seen: set[str] = set()
+    for group in REFERENCE_LOADER_CLI_GROUPS:
         try:
             eps = entry_points()
-            eps_list = list(eps["hippo.reference_loader_cli"])
-        except (KeyError, TypeError):
-            eps_list = []
+            group_eps = list(eps.select(group=group))
+        except (TypeError, AttributeError):
+            try:
+                eps = entry_points()
+                group_eps = list(eps[group])
+            except (KeyError, TypeError):
+                group_eps = []
+        for ep in group_eps:
+            if ep.name in seen:
+                continue
+            seen.add(ep.name)
+            eps_list.append(ep)
 
     subapps: list[tuple[str, typer.Typer]] = []
     for ep in eps_list:
         loaded = ep.load()
         if not isinstance(loaded, typer.Typer):
             raise ReferenceLoaderRegistrationError(
-                f"Entry point 'hippo.reference_loader_cli:{ep.name}' "
+                f"Entry point 'mosaic.reference_loader_cli:{ep.name}' "
                 f"({ep.value}) is not a typer.Typer instance"
             )
         subapps.append((ep.name, loaded))
@@ -182,7 +200,7 @@ def mount_reference_loader_subapps(reference_app: "typer.Typer") -> None:
 
     Called at CLI startup so ``mosaic reference <loader> --help`` and
     ``mosaic reference <loader> <subcmd> ...`` reflect the loader's own
-    Typer surface. Loaders without a ``hippo.reference_loader_cli``
+    Typer surface. Loaders without a ``mosaic.reference_loader_cli``
     entry are silently skipped — the install/upgrade/list verbs remain
     available on the parent group regardless.
     """

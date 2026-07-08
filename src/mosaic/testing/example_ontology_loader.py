@@ -6,7 +6,7 @@ sec11 §11.2.3; PTS-337 S1).
 
 Where :class:`~mosaic.testing.fake_reference_loader.FakeReferenceLoader`
 is a purely in-memory stub, ``OboDemoLoader`` simulates a real ontology
-reference package (``hippo-reference-*``): it ships versioned releases as
+reference package (``mosaic-reference-*``): it ships versioned releases as
 content-addressed artifacts and ingests them as ``OntologyTerm`` rows.
 It is bundled in ``mosaic.testing`` (alongside ``fake``/``rich``/``bare``)
 so the test suite has a concrete, hermetic species that drives the real

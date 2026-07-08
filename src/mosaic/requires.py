@@ -5,8 +5,8 @@ A user schema declares the reference-loader packages it depends on::
 
     # schema.yaml
     requires:
-      - hippo-reference-fma==3.3
-      - hippo-reference-ensembl==mus_musculus.GRCm39.115
+      - mosaic-reference-fma==3.3
+      - mosaic-reference-ensembl==mus_musculus.GRCm39.115
 
 v1 accepts only exact-match (``==``) pins. Range comparators (``>=``,
 ``~=``, ``^=``, ``<``, ``>``, ``<=``, ``!=``) raise :class:`SchemaError`.
@@ -18,7 +18,7 @@ hint when a loader is missing or its version disagrees with the pin.
 v1 deferral — installed-version source
 --------------------------------------
 The v1 check compares the pin's RHS against ``importlib.metadata.version
-(<package>)``. That works for pins of the form ``hippo-reference-fma==3.3``
+(<package>)``. That works for pins of the form ``mosaic-reference-fma==3.3``
 where the package version *is* the load-bearing version. Spec §2.14 step 5
 ultimately wants pins to be matched against the **data version slug**
 recorded in ``hippo_meta.reference_versions`` at install time (e.g.,
@@ -46,9 +46,12 @@ V1_RANGE_REJECT_MESSAGE = (
     "use ==<version> and pin the lowest acceptable version"
 )
 
-# Pip package distributing a reference loader follows this convention. The
-# matching short name is what ``mosaic reference install`` accepts.
-_LOADER_PACKAGE_PREFIX = "hippo-reference-"
+# Pip packages distributing a reference loader follow this convention
+# (``mosaic-reference-<name>`` going forward; the legacy
+# ``hippo-reference-<name>`` prefix remains recognized for the ADR-0004
+# deprecation window). The matching short name is what
+# ``mosaic reference install`` accepts.
+_LOADER_PACKAGE_PREFIXES = ("mosaic-reference-", "hippo-reference-")
 
 # Tokens that introduce a non-exact-match comparator. ``==`` is the only
 # accepted operator. ``<=`` and ``!=`` are not in the spec's enumeration
@@ -79,11 +82,13 @@ class RequirePin:
     def short_name(self) -> str:
         """Name accepted by ``mosaic reference install``.
 
-        Strips the ``hippo-reference-`` convention prefix if present;
-        otherwise returns the package name unchanged.
+        Strips the ``mosaic-reference-`` convention prefix (or its legacy
+        ``hippo-reference-`` spelling) if present; otherwise returns the
+        package name unchanged.
         """
-        if self.package_name.startswith(_LOADER_PACKAGE_PREFIX):
-            return self.package_name[len(_LOADER_PACKAGE_PREFIX):]
+        for prefix in _LOADER_PACKAGE_PREFIXES:
+            if self.package_name.startswith(prefix):
+                return self.package_name[len(prefix):]
         return self.package_name
 
 

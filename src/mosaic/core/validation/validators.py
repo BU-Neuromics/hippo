@@ -292,14 +292,20 @@ class WriteValidator(ABC):
         ...
 
 
-ENTRY_POINT_GROUP = "hippo.write_validators"
+# ``mosaic.write_validators`` is canonical; the legacy ``hippo.*`` spelling
+# is still resolved during the ADR-0004 deprecation window (dedup by
+# entry-point name, mosaic wins on collision).
+ENTRY_POINT_GROUPS = ("mosaic.write_validators", "hippo.write_validators")
+#: Canonical group name (kept for backwards compatibility).
+ENTRY_POINT_GROUP = ENTRY_POINT_GROUPS[0]
 
 
 class ValidatorRegistry:
     """Registry for discovering and managing write validators via entry points.
 
-    Discovers validators registered via the 'hippo.write_validators' entry point group
-    and orders them by priority (highest first).
+    Discovers validators registered via the 'mosaic.write_validators' entry
+    point group (or the legacy 'hippo.write_validators' spelling) and orders
+    them by priority (highest first).
     """
 
     def __init__(self) -> None:
@@ -310,13 +316,21 @@ class ValidatorRegistry:
         """Discover validators from entry points."""
         self._validators = []
         eps = entry_points()
-        try:
-            if hasattr(eps, "select"):
-                validator_eps = eps.select(group=ENTRY_POINT_GROUP)
-            else:
-                validator_eps = list(eps.get(ENTRY_POINT_GROUP, []))  # type: ignore[union-attr]
-        except TypeError:
-            validator_eps = []
+        validator_eps = []
+        seen: set[str] = set()
+        for group in ENTRY_POINT_GROUPS:
+            try:
+                if hasattr(eps, "select"):
+                    group_eps = list(eps.select(group=group))
+                else:
+                    group_eps = list(eps.get(group, []))  # type: ignore[union-attr]
+            except TypeError:
+                group_eps = []
+            for ep in group_eps:
+                if ep.name in seen:
+                    continue
+                seen.add(ep.name)
+                validator_eps.append(ep)
 
         for ep in validator_eps:
             try:

@@ -7,7 +7,7 @@ dependency (no ``typer``/``argparse``); the ``mosaic reference`` CLI verbs
 and the config-driven client factory both build on top of them.
 
 Discovery resolves two entry-point groups (Doc 2 §2A): the broad
-``hippo.schema_packages`` genus group and the ``hippo.reference_loaders``
+``mosaic.schema_packages`` genus group and the ``mosaic.reference_loaders``
 subset/alias carrying the external-data species. ``fragment_specs_for_requires``
 is the bridge between the ``requires:`` directive (:mod:`mosaic.requires`) and
 this discovery surface — it is what lets a consumer obtain a registry/client
@@ -36,21 +36,28 @@ from pydantic import BaseModel
 
 from mosaic.core.loaders.reference import ReferenceLoader, SchemaPackage
 
-# Entry-point groups (Doc 2 §2A). ``hippo.schema_packages`` is the broad
-# genus group; ``hippo.reference_loaders`` is a subset/alias carrying the
+# Entry-point groups (Doc 2 §2A). ``mosaic.schema_packages`` is the broad
+# genus group; ``mosaic.reference_loaders`` is a subset/alias carrying the
 # external-data species. Discovery resolves both so a package registered
 # under either is found, and dedups by name (genus group canonical).
-SCHEMA_PACKAGES_GROUP = "hippo.schema_packages"
-REFERENCE_LOADERS_GROUP = "hippo.reference_loaders"
+#
+# ADR-0004: each group also has a legacy ``hippo.*`` spelling that stays
+# resolved for the deprecation window — mosaic spellings are scanned first,
+# so a plugin dual-registered under both spellings loads exactly once.
+SCHEMA_PACKAGES_GROUPS = ("mosaic.schema_packages", "hippo.schema_packages")
+REFERENCE_LOADERS_GROUPS = ("mosaic.reference_loaders", "hippo.reference_loaders")
+#: Canonical group names (kept for backwards compatibility).
+SCHEMA_PACKAGES_GROUP = SCHEMA_PACKAGES_GROUPS[0]
+REFERENCE_LOADERS_GROUP = REFERENCE_LOADERS_GROUPS[0]
 
 
 class SchemaPackageRegistrationError(TypeError):
-    """Raised when a ``hippo.schema_packages`` entry point does not
+    """Raised when a ``mosaic.schema_packages`` entry point does not
     resolve to a concrete :class:`SchemaPackage` subclass."""
 
 
 class ReferenceLoaderRegistrationError(SchemaPackageRegistrationError):
-    """Raised when a ``hippo.reference_loaders`` entry point does not
+    """Raised when a ``mosaic.reference_loaders`` entry point does not
     resolve to a concrete :class:`ReferenceLoader` subclass.
 
     Subclasses :class:`SchemaPackageRegistrationError` so callers that
@@ -126,40 +133,50 @@ def _build_package_info(
 def discover_reference_loaders() -> list[dict[str, Any]]:
     """Discover and instantiate reference loaders via entry points.
 
-    Each entry point in the ``hippo.reference_loaders`` group must point
+    Each entry point in the ``mosaic.reference_loaders`` group (or its
+    legacy ``hippo.reference_loaders`` spelling — ADR-0004) must point
     at a concrete :class:`ReferenceLoader` subclass. The class is
     instantiated eagerly so that callers receive a ready-to-use loader
     surface; an entry point pointing at anything else raises
     :class:`ReferenceLoaderRegistrationError` with a message identifying
-    the offending entry point.
+    the offending entry point. Entries are deduplicated by name with the
+    mosaic spelling canonical, so a dual-registered loader loads once.
     """
-    return [
-        _build_package_info(
-            ep,
-            group=REFERENCE_LOADERS_GROUP,
-            base=ReferenceLoader,
-            base_fqn="mosaic.core.loaders.reference.ReferenceLoader",
-            error_cls=ReferenceLoaderRegistrationError,
-        )
-        for ep in _resolve_group_eps(REFERENCE_LOADERS_GROUP)
-    ]
+    loaders: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for group in REFERENCE_LOADERS_GROUPS:
+        for ep in _resolve_group_eps(group):
+            if ep.name in seen:
+                continue
+            seen.add(ep.name)
+            loaders.append(
+                _build_package_info(
+                    ep,
+                    group=group,
+                    base=ReferenceLoader,
+                    base_fqn="mosaic.core.loaders.reference.ReferenceLoader",
+                    error_cls=ReferenceLoaderRegistrationError,
+                )
+            )
+    return loaders
 
 
 def discover_schema_packages() -> list[dict[str, Any]]:
     """Discover and instantiate every :class:`SchemaPackage` via entry points.
 
-    Resolves the broad ``hippo.schema_packages`` group **and** the
-    ``hippo.reference_loaders`` subset/alias (Doc 2 §2A), so a package
-    registered under either group is found. Entries are deduplicated by
-    name with the genus group canonical: ``hippo.schema_packages`` is
-    scanned first, then ``hippo.reference_loaders`` contributes only the
+    Resolves the broad ``mosaic.schema_packages`` group **and** the
+    ``mosaic.reference_loaders`` subset/alias (Doc 2 §2A) — plus their
+    legacy ``hippo.*`` spellings (ADR-0004) — so a package registered
+    under any of them is found. Entries are deduplicated by name with the
+    genus group canonical: the ``schema_packages`` groups are scanned
+    first, then the ``reference_loaders`` groups contribute only the
     names not already seen. Each entry point must resolve to a concrete
     :class:`SchemaPackage` subclass; anything else raises
     :class:`SchemaPackageRegistrationError`.
     """
     packages: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for group in (SCHEMA_PACKAGES_GROUP, REFERENCE_LOADERS_GROUP):
+    for group in (*SCHEMA_PACKAGES_GROUPS, *REFERENCE_LOADERS_GROUPS):
         for ep in _resolve_group_eps(group):
             if ep.name in seen:
                 continue
@@ -179,8 +196,8 @@ def discover_schema_packages() -> list[dict[str, Any]]:
 def find_loader(name: str) -> dict[str, Any]:
     """Look up a single schema-package info dict by entry-point name.
 
-    Resolves both the ``hippo.schema_packages`` group and its
-    ``hippo.reference_loaders`` subset/alias, so reference loaders and
+    Resolves both the ``mosaic.schema_packages`` group and its
+    ``mosaic.reference_loaders`` subset/alias, so reference loaders and
     pure-schema packages are equally discoverable. Raises
     :class:`ReferenceLoaderNotFoundError` with a clear message when no
     package is registered under ``name``.
@@ -191,7 +208,7 @@ def find_loader(name: str) -> dict[str, Any]:
     raise ReferenceLoaderNotFoundError(
         f"No schema package registered under name {name!r}. "
         f"Install the corresponding package or check the "
-        f"``hippo.schema_packages`` / ``hippo.reference_loaders`` entry "
+        f"``mosaic.schema_packages`` / ``mosaic.reference_loaders`` entry "
         f"point in its pyproject.toml."
     )
 
@@ -344,7 +361,7 @@ def fragment_specs_for_requires(
 
     A pin that passes the version gate but exposes no discoverable schema
     package (the distribution is installed yet registers no
-    ``hippo.schema_packages`` / ``hippo.reference_loaders`` entry point)
+    ``mosaic.schema_packages`` / ``mosaic.reference_loaders`` entry point)
     contributes no fragment and emits a :class:`UserWarning`. The version
     gate is the authoritative ``requires:`` contract (sec2 §2.14.1); a
     distribution may legitimately be pinned without shipping a mergeable
@@ -380,7 +397,7 @@ def fragment_specs_for_requires(
             warnings.warn(
                 f"`requires:` pins {pin.package_name!r}, which is installed but "
                 f"registers no discoverable schema package (no "
-                f"`hippo.schema_packages` / `hippo.reference_loaders` entry point "
+                f"`mosaic.schema_packages` / `mosaic.reference_loaders` entry point "
                 f"under that distribution or name {pin.short_name!r}); its classes "
                 f"will not be merged into the registry.",
                 UserWarning,

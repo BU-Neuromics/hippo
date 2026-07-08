@@ -706,7 +706,7 @@ app.add_typer(reference_app, name="reference")
 
 # Mount loader-provided Typer sub-apps under `mosaic reference <name>`
 # (D2.14.A / PTS-228). Loaders register a typer.Typer instance via the
-# `hippo.reference_loader_cli` entry point group; optional registration
+# `mosaic.reference_loader_cli` entry point group; optional registration
 # means loaders without one still work via the parent install/upgrade/
 # list verbs.
 from mosaic.cli.commands.reference import mount_reference_loader_subapps
@@ -1253,8 +1253,8 @@ def reference_list(
         loaders = list_reference_loaders(db_path=db_path)
         if not loaders:
             typer.echo(
-                "No reference loaders registered. Install a hippo-reference-* package "
-                "to expose one via the hippo.reference_loaders entry point group."
+                "No reference loaders registered. Install a mosaic-reference-* package "
+                "to expose one via the mosaic.reference_loaders entry point group."
             )
             return
 

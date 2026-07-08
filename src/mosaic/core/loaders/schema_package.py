@@ -55,8 +55,8 @@ class SchemaPackage(ABC):
     """Genus: a versioned, pinnable contributor of a LinkML schema fragment.
 
     Concrete packages are distributed as Python distributions and
-    registered via the ``hippo.schema_packages`` entry-point group (with
-    ``hippo.reference_loaders`` as a subset/alias — see
+    registered via the ``mosaic.schema_packages`` entry-point group (with
+    ``mosaic.reference_loaders`` as a subset/alias — see
     :func:`mosaic.core.loaders.discovery.discover_schema_packages`).
 
     A pure-schema package implements only the two abstract methods
@@ -73,7 +73,7 @@ class SchemaPackage(ABC):
 
     # Optional Typer sub-app mounted under ``mosaic reference <name> ...``
     # (D2.14.A). Registered separately via the
-    # ``hippo.reference_loader_cli`` entry-point group.
+    # ``mosaic.reference_loader_cli`` entry-point group.
     subcommands_app: typer.Typer | None = None
 
     # Optional Pydantic v2 model describing ``provision``/``load`` params

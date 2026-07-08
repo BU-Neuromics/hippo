@@ -6,7 +6,7 @@ backend, and ``mosaic serve`` so every transport opens the *same* deployment
 the *same* way — there is no longer one construction path for the SDK and
 another (or none) for REST.
 
-The storage backend is resolved through the ``hippo.storage_adapters``
+The storage backend is resolved through the ``mosaic.storage_adapters``
 entry-point group (``storage_backend`` in config, default ``"sqlite"``), so a
 deployment can swap adapters by configuration without code changes. Every
 registered adapter shares the construction contract
@@ -23,8 +23,13 @@ from mosaic.core.storage import EntityStore
 
 #: Backend assumed when config does not specify ``storage_backend``.
 DEFAULT_BACKEND = "sqlite"
-#: Entry-point group registering storage adapters (see ``pyproject.toml``).
-STORAGE_ADAPTERS_GROUP = "hippo.storage_adapters"
+#: Entry-point groups registering storage adapters (see ``pyproject.toml``).
+#: ``mosaic.storage_adapters`` is canonical; the legacy ``hippo.*`` spelling
+#: is still resolved during the ADR-0004 deprecation window. Resolution
+#: dedups by entry-point name with mosaic winning on collision.
+STORAGE_ADAPTERS_GROUPS = ("mosaic.storage_adapters", "hippo.storage_adapters")
+#: Canonical group name (kept for backwards compatibility).
+STORAGE_ADAPTERS_GROUP = STORAGE_ADAPTERS_GROUPS[0]
 #: Where a SQLite deployment lands when config gives no ``database_url``.
 DEFAULT_SQLITE_PATH = "data/hippo.db"
 #: Config filenames auto-detected in the cwd, in priority order.
@@ -90,7 +95,8 @@ def _merge_required_loaders(registry: Any, schema_path: PathLike) -> Any:
 
 
 def resolve_storage_adapter_class(backend: str) -> type[EntityStore]:
-    """Resolve a storage-adapter class from ``hippo.storage_adapters``.
+    """Resolve a storage-adapter class from ``mosaic.storage_adapters``
+    (or the legacy ``hippo.storage_adapters`` group — ADR-0004).
 
     Raises:
         AdapterError: if *backend* is not registered, fails to import (e.g.
@@ -99,10 +105,18 @@ def resolve_storage_adapter_class(backend: str) -> type[EntityStore]:
     """
     from importlib.metadata import entry_points
 
-    try:
-        eps = list(entry_points(group=STORAGE_ADAPTERS_GROUP))
-    except TypeError:  # importlib.metadata < 3.10 dict-style API
-        eps = list(entry_points().get(STORAGE_ADAPTERS_GROUP, []))  # type: ignore[attr-defined]
+    eps: list[Any] = []
+    seen: set[str] = set()
+    for group in STORAGE_ADAPTERS_GROUPS:
+        try:
+            group_eps = list(entry_points(group=group))
+        except TypeError:  # importlib.metadata < 3.10 dict-style API
+            group_eps = list(entry_points().get(group, []))  # type: ignore[attr-defined]
+        for ep in group_eps:
+            if ep.name in seen:
+                continue
+            seen.add(ep.name)
+            eps.append(ep)
 
     match = next((ep for ep in eps if ep.name == backend), None)
     if match is None:

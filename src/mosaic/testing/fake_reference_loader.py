@@ -297,7 +297,7 @@ class BareReferenceLoader(ReferenceLoader):
 
 # ---------------------------------------------------------------------------
 # Pure-schema ``SchemaPackage`` (genus, no data hooks) — Doc 2 §2A / S0.
-# Registered under the ``hippo.schema_packages`` entry-point group only,
+# Registered under the ``mosaic.schema_packages`` entry-point group only,
 # so the test suite can prove the genus path: discovery resolves it, its
 # fragment merges, and it pins via ``requires:`` — all with **no**
 # hand-written ``load()`` / ``provision()`` (the lifecycle hooks stay the
@@ -341,7 +341,7 @@ class FakeSchemaPackage(SchemaPackage):
 
 # ---------------------------------------------------------------------------
 # Loader-provided Typer sub-app (D2.14.A / PTS-228). Registered via the
-# ``hippo.reference_loader_cli`` entry point under the same key as the
+# ``mosaic.reference_loader_cli`` entry point under the same key as the
 # loader (`fake`), Mosaic mounts it as ``mosaic reference fake ...``.
 # ---------------------------------------------------------------------------
 

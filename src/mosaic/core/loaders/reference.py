@@ -3,8 +3,8 @@
 ``ReferenceLoader`` is the *external-data* species of the
 :class:`~mosaic.core.loaders.schema_package.SchemaPackage` genus (Mosaic
 Migration & Extension Design, Doc 2 §2A). It is the surface for
-reference-data plugins (e.g. ``hippo-reference-fma``,
-``hippo-reference-ensembl``). The contract is fixed by Mosaic design
+reference-data plugins (e.g. ``mosaic-reference-fma``,
+``mosaic-reference-ensembl``). The contract is fixed by Mosaic design
 spec §2.14 (`hippo/design/sec2_architecture.md`) and decisions D2.14.A–I
 in `hippo/design/sec9_decisions.md`.
 
@@ -95,9 +95,9 @@ class LoadResult:
 class ReferenceLoader(SchemaPackage):
     """External-data species of :class:`SchemaPackage`.
 
-    Concrete subclasses are distributed as ``hippo-reference-<name>``
-    packages and registered via the ``hippo.reference_loaders`` entry
-    point group (a subset/alias of ``hippo.schema_packages``). See spec
+    Concrete subclasses are distributed as ``mosaic-reference-<name>``
+    packages and registered via the ``mosaic.reference_loaders`` entry
+    point group (a subset/alias of ``mosaic.schema_packages``). See spec
     §2.14 for lifecycle, caching, schema-fragment merge rules, and
     upgrade semantics.
 

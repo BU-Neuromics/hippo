@@ -525,7 +525,7 @@ class LoaderFragmentSpec:
 
     ``loader_name`` is the loader's stable identifier (``ReferenceLoader.name``).
     ``package_name`` is the Python distribution that ships the loader
-    (e.g., ``hippo-reference-fma``) — surfaced in collision error messages.
+    (e.g., ``mosaic-reference-fma``) — surfaced in collision error messages.
     ``package_version`` is the installed package version, recorded in the
     injected ``provided_by`` attribution.  ``fragment`` is the dict returned
     by ``ReferenceLoader.schema_fragment()``.
