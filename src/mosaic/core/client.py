@@ -1167,3 +1167,8 @@ class MosaicClient:
         each digest against the freshly-fetched bytes.
         """
         return self._recipe_service.install_from_lockfile(lockfile)
+
+
+# Deprecated alias (ADR-0004): the class was renamed with the component.
+# Assignment alias so ``isinstance`` / ``issubclass`` hold across spellings.
+HippoClient = MosaicClient  # deprecated

@@ -50,6 +50,9 @@ all = [
 
 [project.scripts]
 mosaic = "mosaic.cli.main:app"
+# Deprecated alias (ADR-0004): prints a stderr notice, then delegates to
+# the mosaic CLI. Removal gated on a future ADR after the deprecation window.
+hippo = "mosaic.cli.compat:legacy_main"
 
 [project.entry-points."hippo.storage_adapters"]
 sqlite = "mosaic.core.storage.adapters.sqlite_adapter:SQLiteAdapter"
@@ -74,8 +77,10 @@ obodemo = "mosaic.testing.example_ontology_loader:OboDemoLoader"
 [project.entry-points."hippo.reference_loader_cli"]
 fake = "mosaic.testing.fake_reference_loader:fake_cli_app"
 
+# ``src/hippo`` is the one-file deprecated alias package (WP-H2): the wheel
+# ships both so ``import hippo`` keeps working during the deprecation window.
 [tool.hatch.build.targets.wheel]
-packages = ["src/mosaic"]
+packages = ["src/mosaic", "src/hippo"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

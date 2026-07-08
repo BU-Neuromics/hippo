@@ -108,3 +108,10 @@ __all__ = [
     "ValidationResult",
     "WriteOperation",
 ]
+
+# Deprecated aliases (ADR-0004) — kept importable from mosaic.core (and, via
+# the ``hippo`` shim package, from hippo.core) during the deprecation window.
+from mosaic.core.client import HippoClient  # noqa: E402  # deprecated
+from mosaic.core.exceptions import HippoError  # noqa: E402  # deprecated
+
+__all__ += ["HippoClient", "HippoError"]  # deprecated aliases

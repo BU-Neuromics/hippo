@@ -769,3 +769,8 @@ class OrchestrationError(MosaicError):
         context["cycle"] = self.cycle
         context["missing"] = self.missing
         super().__init__(message, **context)
+
+
+# Deprecated alias (ADR-0004): the base exception was renamed with the
+# component. Assignment alias so existing ``except HippoError`` keeps working.
+HippoError = MosaicError  # deprecated
