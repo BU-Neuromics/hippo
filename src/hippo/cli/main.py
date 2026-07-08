@@ -522,6 +522,9 @@ def ingest(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show what would be written without writing"
     ),
+    db_path: str = typer.Option(
+        None, "--db-path", help="Path to SQLite database (default: data/hippo.db)"
+    ),
 ) -> None:
     """Ingest a LinkML-native instance YAML bundle into Hippo.
 
@@ -536,6 +539,8 @@ def ingest(
         hippo ingest --file bundle.yaml --validate-schema schema.yaml --dry-run
 
         hippo ingest --type csv --file donors.csv --config donors_mapping.yaml
+
+        hippo ingest --file bundle.yaml --validate-schema schema.yaml --db-path data/store-0/hippo.db
     """
     from hippo.cli.commands.ingest import IngestError, ingest_linkml_yaml
 
@@ -585,7 +590,7 @@ def ingest(
             typer.echo(f"[dry-run] {file_path.name}: bundle validates.")
             return
 
-        client = _get_client(schema_path=validate_schema)
+        client = _get_client(db_path=db_path, schema_path=validate_schema)
         try:
             result = ingest_linkml_yaml(file_path, client, registry)
         except IngestError as e:

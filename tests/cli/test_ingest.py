@@ -328,6 +328,36 @@ class TestIngestCLI:
         assert result.exit_code == 1
         assert "not found" in result.output
 
+    def test_cli_db_path_targets_explicit_store(
+        self, runner, tmp_hippo, schema_file, monkeypatch
+    ):
+        """--db-path (issue #89) writes to the named store, not data/hippo.db."""
+        bundle = _write_bundle(
+            tmp_hippo,
+            {"projects": [{"id": "p1", "name": "Project One", "is_available": True}]},
+        )
+        store_path = tmp_hippo / "store-0" / "hippo.db"
+        store_path.parent.mkdir()
+        # Guard against the pre-fix fallback silently writing to CWD's
+        # data/hippo.db instead of --db-path.
+        monkeypatch.chdir(tmp_hippo)
+        result = runner.invoke(
+            app,
+            [
+                "ingest",
+                "--file",
+                str(bundle),
+                "--validate-schema",
+                str(schema_file),
+                "--db-path",
+                str(store_path),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "created=1" in result.output
+        assert store_path.exists()
+        assert not (tmp_hippo / "data" / "hippo.db").exists()
+
 
 # ---------------------------------------------------------------------------
 # IngestResult

@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`hippo ingest` accepts `--db-path`** (issue #89). Every sibling command
+  (`migrate`, `query`, `get`, ...) already accepted `--db-path`; `ingest`
+  silently always wrote to the factory-default `data/hippo.db`, so a store
+  created by `hippo migrate --db-path` and then ingested into without the
+  (nonexistent) flag would diverge — `migrate` reports success against one
+  store while the data lands in another.
+- **`test_cli_deprovision_not_installed_exits_nonzero` no longer errors**
+  (issue #70). The test asserted on `result.stderr`, which raises
+  `ValueError` under click 8.1's default `mix_stderr=True`; the test now
+  constructs its `CliRunner` with `mix_stderr=False`.
+
+### Docs
+
+- **`docs/reference-loaders.md` `requires:` examples now match v1 behavior**
+  (issue #78). The pin's right-hand side is matched against the installed
+  *pip package version*, not a data-version slug — the docs previously
+  showed the slug form (`==mus_musculus.GRCm39.115`), which fails with
+  `HIPPO_REQUIRES_UNSATISFIED`. Examples now use the pip-version form, with
+  a note that slug-aware pins are a planned v2 surface.
+
 ## v0.10.6 — 2026-07-08 (Postgres write parity: updates, availability, boolean filters)
 
 ### Fixed

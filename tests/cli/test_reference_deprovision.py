@@ -260,7 +260,9 @@ class TestDeprovisionCli:
         assert "fake" not in _installed_versions(db)
 
     def test_cli_deprovision_not_installed_exits_nonzero(self, hippo_workspace):
-        runner = CliRunner()
+        # click 8.1 merges stderr into stdout by default (`mix_stderr=True`);
+        # `result.stderr` is only accessible when explicitly disabled.
+        runner = CliRunner(mix_stderr=False)
         result = runner.invoke(
             app,
             [
