@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Polymorphic Ingest - Hippo</title>
+        <title>Polymorphic Ingest - Mosaic</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -893,10 +893,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-hippo-refuses-instead-of-guessing" class="md-nav__link">
+  <a href="#why-mosaic-refuses-instead-of-guessing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Hippo refuses instead of guessing
+        Why Mosaic refuses instead of guessing
       
     </span>
   </a>
@@ -1639,10 +1639,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-hippo-refuses-instead-of-guessing" class="md-nav__link">
+  <a href="#why-mosaic-refuses-instead-of-guessing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Hippo refuses instead of guessing
+        Why Mosaic refuses instead of guessing
       
     </span>
   </a>
@@ -1681,7 +1681,7 @@
 
 
 <h1 id="polymorphic-ingest">Polymorphic Ingest<a class="headerlink" href="#polymorphic-ingest" title="Permanent link">&para;</a></h1>
-<p>This guide explains how Hippo ingests <strong>polymorphic collections</strong> — collections
+<p>This guide explains how Mosaic ingests <strong>polymorphic collections</strong> — collections
 whose members can be one of several subtypes of a common base class — and how to
 fix the most common error you may hit when authoring them.</p>
 <p>If you landed here from an ingest error like <em>"…would silently drop those
@@ -1689,11 +1689,11 @@ field(s)…"</em> or <em>"…is an abstract base class…"</em>, jump to
 <a href="#fixing-the-dispatch-error">Fixing the dispatch error</a>.</p>
 <hr />
 <h2 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h2>
-<p>Hippo stores <strong>one table per concrete class</strong>. A <code>SolidSample</code> is stored in the
+<p>Mosaic stores <strong>one table per concrete class</strong>. A <code>SolidSample</code> is stored in the
 <code>SolidSample</code> table, an <code>RNASeqAssay</code> in the <code>RNASeqAssay</code> table, and so on. An
 entity only keeps its class-specific fields if it is stored as that class — there
 is no shared "samples" table that could hold every subtype's columns.</p>
-<p>When you <code>hippo ingest</code> a bundle, each top-level key is a <strong>collection accessor</strong>
+<p>When you <code>mosaic ingest</code> a bundle, each top-level key is a <strong>collection accessor</strong>
 and its value is a list of instances:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">samples</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">S1</span>
@@ -1705,17 +1705,17 @@ and its value is a list of instances:</p>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Illumina</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">read_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">150</span>
 </code></pre></div>
-<p>The question Hippo must answer for every instance is: <strong>which concrete class do I
+<p>The question Mosaic must answer for every instance is: <strong>which concrete class do I
 store this as?</strong> For a collection of a single concrete type the answer is obvious.
 For a <em>polymorphic</em> collection — <code>samples:</code> holding both <code>SolidSample</code> and
-<code>LiquidSample</code>, or <code>assays:</code> holding <code>RNASeqAssay</code> — Hippo needs a signal in the
+<code>LiquidSample</code>, or <code>assays:</code> holding <code>RNASeqAssay</code> — Mosaic needs a signal in the
 data that names each instance's real type. That signal is the LinkML
 <strong>type designator</strong>.</p>
 <hr />
 <h2 id="the-idiomatic-pattern-designates_type">The idiomatic pattern: <code>designates_type</code><a class="headerlink" href="#the-idiomatic-pattern-designates_type" title="Permanent link">&para;</a></h2>
 <p>Mark one slot on the base class with <code>designates_type: true</code>. Its value on each
 instance names the concrete subclass that instance should be stored as. This is
-standard LinkML — <code>linkml-validate</code> understands it, and so does Hippo.</p>
+standard LinkML — <code>linkml-validate</code> understands it, and so does Mosaic.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">classes</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">Sample</span><span class="p">:</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">is_a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Entity</span>
@@ -1751,7 +1751,7 @@ then its <code>class_uri</code>, then the CURIE/short form of that URI. Using th
 name (<code>category: SolidSample</code>) is the simplest and recommended form.</p>
 <div class="admonition note">
 <p class="admonition-title">Accessor names</p>
-<p>Collection keys follow Hippo's accessor convention — <code>snake_case(ClassName)</code>
+<p>Collection keys follow Mosaic's accessor convention — <code>snake_case(ClassName)</code>
 pluralized (e.g. <code>Sample</code> → <code>samples</code>, <code>RNASeqAssay</code> → <code>rna_seq_assays</code>),
 overridable per class with the <code>hippo_accessor</code> annotation. Both the <strong>base</strong>
 accessor (<code>samples:</code>, dispatched by <code>category</code>) and the <strong>concrete</strong> accessors
@@ -1759,12 +1759,12 @@ accessor (<code>samples:</code>, dispatched by <code>category</code>) and the <s
 </div>
 <hr />
 <h2 id="fixing-the-dispatch-error">Fixing the dispatch error<a class="headerlink" href="#fixing-the-dispatch-error" title="Permanent link">&para;</a></h2>
-<p>Hippo refuses to ingest an instance when it cannot determine the concrete class to
+<p>Mosaic refuses to ingest an instance when it cannot determine the concrete class to
 store it as — rather than silently dropping the subtype's fields. You will see one
 of these messages:</p>
 <h3 id="carries-fields-that-does-not-define-declares-no-type-designator">"…carries field(s) […] that '<Base>' does not define …declares no type designator"<a class="headerlink" href="#carries-fields-that-does-not-define-declares-no-type-designator" title="Permanent link">&para;</a></h3>
 <p>The collection's base class has subclasses, and your instance has fields that only
-exist on a subclass — but the base declares no <code>designates_type</code> slot, so Hippo
+exist on a subclass — but the base declares no <code>designates_type</code> slot, so Mosaic
 can't tell which subclass you mean. <strong>Two ways to fix it:</strong></p>
 <ol>
 <li>
@@ -1796,7 +1796,7 @@ can't tell which subclass you mean. <strong>Two ways to fix it:</strong></p>
 </li>
 </ol>
 <h3 id="is-an-abstract-base-class-and-is-never-stored-directly">"…is an abstract base class and is never stored directly…"<a class="headerlink" href="#is-an-abstract-base-class-and-is-never-stored-directly" title="Permanent link">&para;</a></h3>
-<p>You ingested an instance under an <strong>abstract</strong> base accessor but Hippo couldn't
+<p>You ingested an instance under an <strong>abstract</strong> base accessor but Mosaic couldn't
 route it to a concrete subclass — either the base declares no designator, or this
 instance is missing the designator value. Fix it by setting the designator slot on
 each instance to a concrete subclass name (the error lists the valid options), or
@@ -1805,18 +1805,18 @@ by ingesting under a concrete accessor as above.</p>
 <p>The discriminator value doesn't match any subclass. Check for a typo and set it to
 one of the concrete subclass names listed in the error (matched by class name).</p>
 <hr />
-<h2 id="why-hippo-refuses-instead-of-guessing">Why Hippo refuses instead of guessing<a class="headerlink" href="#why-hippo-refuses-instead-of-guessing" title="Permanent link">&para;</a></h2>
+<h2 id="why-mosaic-refuses-instead-of-guessing">Why Mosaic refuses instead of guessing<a class="headerlink" href="#why-mosaic-refuses-instead-of-guessing" title="Permanent link">&para;</a></h2>
 <p>Storing a subtype instance as its base class would compile and "succeed" — but the
 subtype's columns don't exist on the base table, so those values would vanish with
 no error. Because that silent data loss is exactly the failure mode this behavior
-prevents, Hippo fails loudly with a fix instead. Declaring the <code>designates_type</code>
+prevents, Mosaic fails loudly with a fix instead. Declaring the <code>designates_type</code>
 discriminator (or using the concrete accessor) is the idiomatic, lossless path.</p>
 <h2 id="references-to-a-polymorphic-base">References to a polymorphic base<a class="headerlink" href="#references-to-a-polymorphic-base" title="Permanent link">&para;</a></h2>
 <p>A slot whose range <strong>is</strong> a polymorphic base — e.g. <code>Sighting.animal</code> ranged on
 <code>Animal</code>, or <code>Measurement.person</code> ranged on a <code>Person</code> base — points at a
 referent that may be any of the base's concrete subtypes. Because each subtype
 is dispatched into its own table (above), the base table is not where those
-referents live, so Hippo stores such a reference as a plain id value rather
+referents live, so Mosaic stores such a reference as a plain id value rather
 than a table-level foreign key: the id resolves across the subtype tables at
 read time. This applies to both abstract bases and concrete bases that have
 concrete subclasses. A reference to a concrete <em>leaf</em> class (no subclasses)

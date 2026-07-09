@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Installing Recipes - Hippo</title>
+        <title>Installing Recipes - Mosaic</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -1708,7 +1708,7 @@
 
 
 <h1 id="installing-recipes">Installing Recipes<a class="headerlink" href="#installing-recipes" title="Permanent link">&para;</a></h1>
-<p>Recipes are declarative LinkML schema bundles that extend a Hippo deployment's schema. This guide covers how to inspect, install, and reproduce recipe deployments.</p>
+<p>Recipes are declarative LinkML schema bundles that extend a Mosaic deployment's schema. This guide covers how to inspect, install, and reproduce recipe deployments.</p>
 <hr />
 <h2 id="recipe-sources">Recipe sources<a class="headerlink" href="#recipe-sources" title="Permanent link">&para;</a></h2>
 <p>A recipe author distributes their recipe as one of:</p>
@@ -1719,8 +1719,8 @@
 </ul>
 <hr />
 <h2 id="inspecting-a-recipe">Inspecting a recipe<a class="headerlink" href="#inspecting-a-recipe" title="Permanent link">&para;</a></h2>
-<p>Before installing, use <code>hippo recipe inspect</code> to examine what a recipe declares — without writing any state:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./scrnaseq-1.2.0.tar.gz
+<p>Before installing, use <code>mosaic recipe inspect</code> to examine what a recipe declares — without writing any state:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./scrnaseq-1.2.0.tar.gz
 </code></pre></div>
 <p>Example output:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>id:           org.broad.scrnaseq
@@ -1735,31 +1735,31 @@
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>slots:        0
 </code></pre></div>
 <p>To list every class and slot the recipe declares, add <code>--show-elements</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./scrnaseq-1.2.0.tar.gz<span class="w"> </span>--show-elements
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./scrnaseq-1.2.0.tar.gz<span class="w"> </span>--show-elements
 </code></pre></div>
 <p><code>inspect</code> accepts a directory path, tarball path, <code>file:</code> URI, or <code>https:</code> URI. No DB writes, no cache writes, no provenance records are created.</p>
 <hr />
 <h2 id="installing-a-recipe">Installing a recipe<a class="headerlink" href="#installing-a-recipe" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>&lt;source&gt;<span class="w"> </span><span class="o">[</span>--digest<span class="w"> </span>&lt;hash&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>&lt;source&gt;<span class="w"> </span><span class="o">[</span>--digest<span class="w"> </span>&lt;hash&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span>
 </code></pre></div>
 <p><strong>From a local directory or tarball:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>./scrnaseq-1.2.0/
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>/path/to/scrnaseq-1.2.0.tar.gz
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>./scrnaseq-1.2.0/
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>/path/to/scrnaseq-1.2.0.tar.gz
 </code></pre></div>
 <p><strong>From an HTTPS URL:</strong></p>
-<p><code>--digest</code> is required for <code>https:</code> sources. Obtain the digest from the recipe author's release notes or by running <code>hippo recipe inspect</code> on a local copy:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>https://zenodo.org/record/12345/files/scrnaseq-1.2.0.tar.gz<span class="w"> </span><span class="se">\</span>
+<p><code>--digest</code> is required for <code>https:</code> sources. Obtain the digest from the recipe author's release notes or by running <code>mosaic recipe inspect</code> on a local copy:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>https://zenodo.org/record/12345/files/scrnaseq-1.2.0.tar.gz<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span>--digest<span class="w"> </span>sha256:f3a8c9b...
 </code></pre></div>
 <p><strong>Dry run:</strong></p>
 <p>A dry run resolves and validates all dependencies, checks the <code>hippo_version</code> specifier, and checks Reference Loader preconditions — but writes nothing to the database:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>./scrnaseq-1.2.0/<span class="w"> </span>--dry-run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>./scrnaseq-1.2.0/<span class="w"> </span>--dry-run
 </code></pre></div>
 <h3 id="what-happens-during-import">What happens during import<a class="headerlink" href="#what-happens-during-import" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Hippo resolves every <code>parent</code> and <code>requires.recipes</code> dependency bottom-up, recursively.</li>
-<li><code>hippo_version</code> is checked against the running Hippo version; import fails if the specifier excludes it.</li>
-<li>Every <code>requires.reference_loaders</code> pin is checked against installed loader versions; import fails if any pin is unmet (Hippo does not install loaders automatically).</li>
+<li>Mosaic resolves every <code>parent</code> and <code>requires.recipes</code> dependency bottom-up, recursively.</li>
+<li><code>hippo_version</code> is checked against the running Mosaic version; import fails if the specifier excludes it.</li>
+<li>Every <code>requires.reference_loaders</code> pin is checked against installed loader versions; import fails if any pin is unmet (Mosaic does not install loaders automatically).</li>
 <li>Each schema fragment is merged through <code>SchemaManager</code>, verifying no prefix collisions and no in-place redefinition of upstream classes.</li>
 <li>An <code>installed_recipes</code> entry and a <code>recipe_imported</code> provenance event are written for each recipe — all in a single storage transaction.</li>
 </ol>
@@ -1767,13 +1767,13 @@
 <h3 id="prefix-collision">Prefix collision<a class="headerlink" href="#prefix-collision" title="Permanent link">&para;</a></h3>
 <p>If a recipe's <code>name</code>/<code>default_prefix</code> matches a prefix already installed by another recipe, a Reference Loader, or a hand-authored class, import fails immediately with <code>RecipePrefixCollisionError</code>. The error message identifies the conflicting prefix and its source. No state is changed.</p>
 <h3 id="digest-mismatch">Digest mismatch<a class="headerlink" href="#digest-mismatch" title="Permanent link">&para;</a></h3>
-<p>For <code>https:</code> sources, Hippo verifies the fetched bytes' canonical content hash against the declared <code>--digest</code>. A mismatch aborts with <code>RecipeDigestMismatchError</code>. The cache is not polluted — the fetch result is discarded.</p>
+<p>For <code>https:</code> sources, Mosaic verifies the fetched bytes' canonical content hash against the declared <code>--digest</code>. A mismatch aborts with <code>RecipeDigestMismatchError</code>. The cache is not polluted — the fetch result is discarded.</p>
 <hr />
 <h2 id="content-addressable-cache">Content-addressable cache<a class="headerlink" href="#content-addressable-cache" title="Permanent link">&para;</a></h2>
 <p><code>HttpsResolver</code> caches fetched recipes at <code>~/.hippo/recipe-cache/&lt;sha256&gt;/</code>. A cache hit skips the network entirely on subsequent installs of the same digest. Cache eviction is not implemented in v1.</p>
-<p>To use a different cache directory, set <code>HIPPO_RECIPE_CACHE</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">HIPPO_RECIPE_CACHE</span><span class="o">=</span>/shared/hippo-recipe-cache
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>https://zenodo.org/record/12345/files/scrnaseq-1.2.0.tar.gz<span class="w"> </span><span class="se">\</span>
+<p>To use a different cache directory, set <code>MOSAIC_RECIPE_CACHE</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">MOSAIC_RECIPE_CACHE</span><span class="o">=</span>/shared/mosaic-recipe-cache
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>import<span class="w"> </span>https://zenodo.org/record/12345/files/scrnaseq-1.2.0.tar.gz<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span>--digest<span class="w"> </span>sha256:f3a8c9b...
 </code></pre></div>
 <hr />
@@ -1784,7 +1784,7 @@
 </div>
 <p>A <strong>lockfile</strong> captures the exact set of installed recipes — id, version, source URI, and verified digest — so a peer instance can reproduce the same schema state.</p>
 <p><strong>Export the lockfile from an existing instance:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>export-lockfile<span class="w"> </span>--out<span class="w"> </span>recipe.lock.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>export-lockfile<span class="w"> </span>--out<span class="w"> </span>recipe.lock.yaml
 </code></pre></div>
 <p>This serialises <code>hippo_meta.installed_recipes</code> as a portable YAML document:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">lockfile_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
@@ -1798,9 +1798,9 @@
 <a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">    </span><span class="nt">parent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
 </code></pre></div>
 <p><strong>Reproduce on a fresh instance:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>install-from-lockfile<span class="w"> </span>recipe.lock.yaml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>install-from-lockfile<span class="w"> </span>recipe.lock.yaml
 </code></pre></div>
-<p>Hippo re-fetches each entry via its <code>source</code>, verifies each <code>digest</code>, and installs in dependency order. The round-trip guarantee: the restored instance will have identical <code>id</code>, <code>version</code>, and <code>digest</code> values for every entry.</p>
+<p>Mosaic re-fetches each entry via its <code>source</code>, verifies each <code>digest</code>, and installs in dependency order. The round-trip guarantee: the restored instance will have identical <code>id</code>, <code>version</code>, and <code>digest</code> values for every entry.</p>
 <p>Relative paths in a lockfile resolve against the lockfile's directory, so a lockfile alongside local tarballs is fully portable.</p>
 <hr />
 <h2 id="v1-limitations">v1 limitations<a class="headerlink" href="#v1-limitations" title="Permanent link">&para;</a></h2>
@@ -1815,7 +1815,7 @@
 <tbody>
 <tr>
 <td><strong>URL availability</strong></td>
-<td>Hippo cannot guarantee that <code>source</code> URIs remain resolvable over time. Use DOI-minted releases (Zenodo, figshare) for maximum link stability.</td>
+<td>Mosaic cannot guarantee that <code>source</code> URIs remain resolvable over time. Use DOI-minted releases (Zenodo, figshare) for maximum link stability.</td>
 </tr>
 <tr>
 <td><strong>No signing</strong></td>
@@ -1823,7 +1823,7 @@
 </tr>
 <tr>
 <td><strong>No uninstall</strong></td>
-<td>Recipes cannot be removed from an instance, consistent with Hippo's no-hard-deletes principle. Schema elements contributed by a recipe may be referenced by existing entities. <strong>Workaround:</strong> rebuild the instance from a lockfile that omits the unwanted recipe.</td>
+<td>Recipes cannot be removed from an instance, consistent with Mosaic's no-hard-deletes principle. Schema elements contributed by a recipe may be referenced by existing entities. <strong>Workaround:</strong> rebuild the instance from a lockfile that omits the unwanted recipe.</td>
 </tr>
 <tr>
 <td><strong>Bootstrap-only install</strong></td>
@@ -1831,7 +1831,7 @@
 </tr>
 <tr>
 <td><strong>No registry or discovery</strong></td>
-<td>There is no <code>hippo recipe search</code> command. Find recipes via READMEs, lab wikis, or DOI-minted releases.</td>
+<td>There is no <code>mosaic recipe search</code> command. Find recipes via READMEs, lab wikis, or DOI-minted releases.</td>
 </tr>
 </tbody>
 </table>

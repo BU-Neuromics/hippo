@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>API Reference - Hippo</title>
+        <title>API Reference - Mosaic</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hippo-api-reference" class="md-skip">
+        <a href="#mosaic-api-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -979,10 +979,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hippoclient" class="md-nav__link">
+  <a href="#mosaicclient" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HippoClient
+        MosaicClient
       
     </span>
   </a>
@@ -1750,10 +1750,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hippoclient" class="md-nav__link">
+  <a href="#mosaicclient" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HippoClient
+        MosaicClient
       
     </span>
   </a>
@@ -2000,13 +2000,13 @@
   
 
 
-<h1 id="hippo-api-reference">Hippo API Reference<a class="headerlink" href="#hippo-api-reference" title="Permanent link">&para;</a></h1>
+<h1 id="mosaic-api-reference">Mosaic API Reference<a class="headerlink" href="#mosaic-api-reference" title="Permanent link">&para;</a></h1>
 <h2 id="sdk-validation-api">SDK Validation API<a class="headerlink" href="#sdk-validation-api" title="Permanent link">&para;</a></h2>
-<p>Validation runs automatically when you call <code>create</code>, <code>update</code>, or <code>delete</code> on <code>HippoClient</code>. The pipeline executes registered validators in order and raises <code>ValidationFailure</code> on the first failure. You do not need to call validators directly unless you are building custom validation logic.</p>
+<p>Validation runs automatically when you call <code>create</code>, <code>update</code>, or <code>delete</code> on <code>MosaicClient</code>. The pipeline executes registered validators in order and raises <code>ValidationFailure</code> on the first failure. You do not need to call validators directly unless you are building custom validation logic.</p>
 <h3 id="validationpipeline">ValidationPipeline<a class="headerlink" href="#validationpipeline" title="Permanent link">&para;</a></h3>
 <p>The <code>ValidationPipeline</code> class provides sequential execution of validators with fail-fast behavior.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationPipeline</span><span class="p">,</span> <span class="n">create_pipeline</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">WriteOperation</span><span class="p">,</span> <span class="n">WriteValidator</span><span class="p">,</span> <span class="n">ValidationResult</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationPipeline</span><span class="p">,</span> <span class="n">create_pipeline</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">WriteOperation</span><span class="p">,</span> <span class="n">WriteValidator</span><span class="p">,</span> <span class="n">ValidationResult</span>
 </code></pre></div>
 <p><strong>Core Methods:</strong></p>
 <table>
@@ -2076,12 +2076,12 @@
 <p><strong>Fail-Fast Behavior:</strong>
 - <code>execute()</code> stops on first validation failure and returns immediately
 - <code>execute_all()</code> runs all validators and aggregates all errors</p>
-<h3 id="hippoclient">HippoClient<a class="headerlink" href="#hippoclient" title="Permanent link">&para;</a></h3>
-<p>The main SDK client for Hippo with integrated validation pipeline support.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoClient</span>
+<h3 id="mosaicclient">MosaicClient<a class="headerlink" href="#mosaicclient" title="Permanent link">&para;</a></h3>
+<p>The main SDK client for Mosaic with integrated validation pipeline support.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicClient</span>
 </code></pre></div>
 <p><strong>Constructor:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">HippoClient</span><span class="p">(</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">MosaicClient</span><span class="p">(</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">pipeline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>           <span class="c1"># Optional ValidationPipeline instance</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">bypass_validation</span><span class="o">=</span><span class="kc">False</span>  <span class="c1"># DEPRECATED: Skip validation</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">)</span>
@@ -2118,14 +2118,14 @@
 </tbody>
 </table>
 <p><strong>Usage Example:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoClient</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationPipeline</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">WriteOperation</span><span class="p">,</span> <span class="n">WriteValidator</span><span class="p">,</span> <span class="n">ValidationResult</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicClient</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationPipeline</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">WriteOperation</span><span class="p">,</span> <span class="n">WriteValidator</span><span class="p">,</span> <span class="n">ValidationResult</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1"># Create a client with a pipeline</span>
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">ValidationPipeline</span><span class="p">()</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">pipeline</span><span class="o">.</span><span class="n">add_validator</span><span class="p">(</span><span class="n">MyCustomValidator</span><span class="p">())</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">client</span> <span class="o">=</span> <span class="n">HippoClient</span><span class="p">(</span><span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline</span><span class="p">)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">client</span> <span class="o">=</span> <span class="n">MosaicClient</span><span class="p">(</span><span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline</span><span class="p">)</span>
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
 <a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># Create an entity (validation runs automatically)</span>
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">try</span><span class="p">:</span>
@@ -2149,7 +2149,7 @@
 </code></pre></div>
 <h3 id="validationfailure">ValidationFailure<a class="headerlink" href="#validationfailure" title="Permanent link">&para;</a></h3>
 <p>Exception raised when a write operation fails validation.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationFailure</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationFailure</span>
 </code></pre></div>
 <p><strong>Attributes:</strong></p>
 <table>
@@ -2204,7 +2204,7 @@
 </tbody>
 </table>
 <p><strong>Usage Example:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationFailure</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationFailure</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">client</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;Sample&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">})</span>
@@ -2216,7 +2216,7 @@
 </code></pre></div>
 <h3 id="relationshipmanager">RelationshipManager<a class="headerlink" href="#relationshipmanager" title="Permanent link">&para;</a></h3>
 <p>The <code>RelationshipManager</code> class provides methods for managing relationships between entities.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelationshipManager</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelationshipManager</span>
 </code></pre></div>
 <p><strong>Constructor:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">manager</span> <span class="o">=</span> <span class="n">RelationshipManager</span><span class="p">(</span>
@@ -2224,10 +2224,10 @@
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">user_context</span><span class="o">=</span><span class="s2">&quot;user-123&quot;</span>   <span class="c1"># Optional: User ID for audit</span>
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">)</span>
 </code></pre></div>
-<p><strong>Access via HippoClient:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoClient</span>
+<p><strong>Access via MosaicClient:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicClient</span>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">HippoClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">sqlite_adapter</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">MosaicClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">sqlite_adapter</span><span class="p">)</span>
 <a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">manager</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">relationships</span>
 </code></pre></div>
 <p><strong>Methods:</strong></p>
@@ -2306,7 +2306,7 @@
 </tbody>
 </table>
 <h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
-<p>All Hippo SDK exceptions inherit from <code>HippoError</code>. Catch the base class to handle any SDK error, or catch specific subclasses for finer-grained control.</p>
+<p>All Mosaic SDK exceptions inherit from <code>MosaicError</code>. Catch the base class to handle any SDK error, or catch specific subclasses for finer-grained control.</p>
 <p><strong>Exception Hierarchy:</strong></p>
 <table>
 <thead>
@@ -2318,53 +2318,53 @@
 </thead>
 <tbody>
 <tr>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td><code>Exception</code></td>
-<td>Base class for all Hippo SDK errors</td>
+<td>Base class for all Mosaic SDK errors</td>
 </tr>
 <tr>
 <td><code>ConfigError</code></td>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td>Configuration loading and validation errors</td>
 </tr>
 <tr>
 <td><code>SchemaError</code></td>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td>Schema parsing and processing errors</td>
 </tr>
 <tr>
 <td><code>ValidationError</code></td>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td>Internal data validation errors</td>
 </tr>
 <tr>
 <td><code>EntityNotFoundError</code></td>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td>Entity not found in the system</td>
 </tr>
 <tr>
 <td><code>AdapterError</code></td>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td>Storage or external adapter errors</td>
 </tr>
 <tr>
 <td><code>ValidationFailure</code></td>
-<td><code>HippoError</code></td>
+<td><code>MosaicError</code></td>
 <td>Write operation failed validation pipeline</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Example:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoClient</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoError</span><span class="p">,</span> <span class="n">EntityNotFoundError</span><span class="p">,</span> <span class="n">ValidationFailure</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicClient</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicError</span><span class="p">,</span> <span class="n">EntityNotFoundError</span><span class="p">,</span> <span class="n">ValidationFailure</span>
 <a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">HippoClient</span><span class="p">()</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">MosaicClient</span><span class="p">()</span>
 <a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
 <a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="c1"># Catch any SDK error</span>
 <a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">entity</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Sample&quot;</span><span class="p">,</span> <span class="s2">&quot;sample-123&quot;</span><span class="p">)</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="k">except</span> <span class="n">HippoError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hippo error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="k">except</span> <span class="n">MosaicError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mosaic error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
 <a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="c1"># Catch specific errors</span>
 <a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="k">try</span><span class="p">:</span>
@@ -2396,12 +2396,12 @@
 </thead>
 <tbody>
 <tr>
-<td><code>X-Hippo-Actor</code></td>
+<td><code>X-Mosaic-Actor</code></td>
 <td>Required on writes</td>
 <td>Identity of the actor performing the write. Defaults to <code>"anonymous"</code> in v0.1 if omitted</td>
 </tr>
 <tr>
-<td><code>X-Hippo-Context</code></td>
+<td><code>X-Mosaic-Context</code></td>
 <td>Optional</td>
 <td>JSON-encoded provenance context (e.g., <code>{"pipeline": "rnaseq-v2", "run_id": "abc"}</code>)</td>
 </tr>
@@ -2410,8 +2410,8 @@
 <p><strong>Example:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/ingest<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer dev-token&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Hippo-Actor: pipeline-run-789&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Hippo-Context: {\&quot;pipeline\&quot;: \&quot;rnaseq-v2\&quot;, \&quot;run_id\&quot;: \&quot;abc\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Mosaic-Actor: pipeline-run-789&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Mosaic-Context: {\&quot;pipeline\&quot;: \&quot;rnaseq-v2\&quot;, \&quot;run_id\&quot;: \&quot;abc\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;entity_type&quot;: &quot;Sample&quot;, &quot;data&quot;: {...}}&#39;</span>
 </code></pre></div>
@@ -2494,7 +2494,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="p">{</span>
 <a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hippo&quot;</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mosaic&quot;</span>
 <a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">  </span><span class="p">},</span>
 <a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">  </span><span class="nt">&quot;meta&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;request_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid&quot;</span><span class="w"> </span><span class="p">}</span>
@@ -2505,7 +2505,7 @@
 <p><em>Response:</em>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="p">{</span>
 <a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hippo API&quot;</span><span class="p">,</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Mosaic API&quot;</span><span class="p">,</span>
 <a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.5.0&quot;</span><span class="p">,</span>
 <a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">    </span><span class="nt">&quot;docs&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/docs&quot;</span>
 <a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">  </span><span class="p">},</span>
@@ -2651,8 +2651,8 @@
 <p><em>Request Headers:</em>
 | Header | Required | Description |
 |--------|----------|-------------|
-| <code>X-Hippo-Actor</code> | Required | Identity of the actor performing the update |
-| <code>X-Hippo-Context</code> | Optional | JSON-encoded provenance context |</p>
+| <code>X-Mosaic-Actor</code> | Required | Identity of the actor performing the update |
+| <code>X-Mosaic-Context</code> | Optional | JSON-encoded provenance context |</p>
 <p><em>Request Body:</em>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="p">{</span>
 <a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3172,8 +3172,8 @@ references themselves are ordinary slot data on the entity endpoints.</p>
 <p><em>Request Headers:</em>
 | Header | Required | Description |
 |--------|----------|-------------|
-| <code>X-Hippo-Actor</code> | Required | Identity of the actor performing the operation |
-| <code>X-Hippo-Context</code> | Optional | JSON-encoded provenance context |</p>
+| <code>X-Mosaic-Actor</code> | Required | Identity of the actor performing the operation |
+| <code>X-Mosaic-Context</code> | Optional | JSON-encoded provenance context |</p>
 <p><em>Request Body:</em>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="p">{</span>
 <a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a><span class="w">  </span><span class="nt">&quot;entity_ids&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;sample-1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sample-2&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sample-3&quot;</span><span class="p">],</span>

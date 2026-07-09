@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Data Model - Hippo</title>
+        <title>Data Model - Mosaic</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hippo-data-model" class="md-skip">
+        <a href="#mosaic-data-model" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -2746,17 +2746,17 @@
   
 
 
-<h1 id="hippo-data-model">Hippo Data Model<a class="headerlink" href="#hippo-data-model" title="Permanent link">&para;</a></h1>
-<p>This document describes Hippo's data model for users of the SDK. For the full engineering specification, see <a href="../design/sec3_data_model.md">Data Model design spec</a>.</p>
+<h1 id="mosaic-data-model">Mosaic Data Model<a class="headerlink" href="#mosaic-data-model" title="Permanent link">&para;</a></h1>
+<p>This document describes Mosaic's data model for users of the SDK. For the full engineering specification, see <a href="../design/sec3_data_model.md">Data Model design spec</a>.</p>
 <hr />
 <h2 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
 <h3 id="entities">Entities<a class="headerlink" href="#entities" title="Permanent link">&para;</a></h3>
-<p>An <strong>entity</strong> is a typed data object in Hippo. Every entity has:</p>
+<p>An <strong>entity</strong> is a typed data object in Mosaic. Every entity has:</p>
 <ul>
 <li>A unique internal identifier (UUID)</li>
 <li>An entity type (e.g., <code>Sample</code>, <code>Subject</code>, <code>Datafile</code>)</li>
 <li>User-defined fields as declared in the schema</li>
-<li>System fields managed automatically by Hippo</li>
+<li>System fields managed automatically by Mosaic</li>
 </ul>
 <p>Entity types (called <strong>classes</strong> in LinkML) and their attributes are defined in the schema configuration (LinkML YAML or JSON), not hardcoded in the SDK.</p>
 <h3 id="system-fields">System Fields<a class="headerlink" href="#system-fields" title="Permanent link">&para;</a></h3>
@@ -2806,7 +2806,7 @@
 <p>The <code>created_at</code>, <code>updated_at</code>, and <code>schema_version</code> fields are derived at read time from the provenance log. The current implementation caches <code>created_at</code> and <code>updated_at</code> directly on the entity record for performance, but the provenance log is authoritative — <code>client.get()</code> reads from provenance when available and falls back to the cached values.</p>
 <hr />
 <h2 id="availability-semantics">Availability Semantics<a class="headerlink" href="#availability-semantics" title="Permanent link">&para;</a></h2>
-<p>Hippo uses <strong>soft deletes</strong> — there are no hard deletes. Every entity carries an <code>is_available</code> boolean field:</p>
+<p>Mosaic uses <strong>soft deletes</strong> — there are no hard deletes. Every entity carries an <code>is_available</code> boolean field:</p>
 <ul>
 <li><code>is_available = true</code>: Entity appears in default query results</li>
 <li><code>is_available = false</code>: Entity is hidden from default queries but retained in storage</li>
@@ -2823,7 +2823,7 @@
 </code></pre></div>
 <hr />
 <h2 id="entity-namespaces-fqns">Entity Namespaces (FQNs)<a class="headerlink" href="#entity-namespaces-fqns" title="Permanent link">&para;</a></h2>
-<p>Entity type strings in Hippo are optionally namespace-qualified. Namespaces allow multiple subsystems to define their own <code>Sample</code> or <code>Subject</code> types without collision.</p>
+<p>Entity type strings in Mosaic are optionally namespace-qualified. Namespaces allow multiple subsystems to define their own <code>Sample</code> or <code>Subject</code> types without collision.</p>
 <h3 id="namespace-syntax">Namespace Syntax<a class="headerlink" href="#namespace-syntax" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Root namespace</strong> (no prefix): <code>"Sample"</code>, <code>"Donor"</code> — entity types declared without a namespace key</li>
@@ -2866,7 +2866,7 @@
 <p>Existing schemas with no <code>default_prefix</code> are unaffected. All unqualified entity type strings continue to resolve to the root namespace; no data migration is required.</p>
 <hr />
 <h2 id="external-references">External References<a class="headerlink" href="#external-references" title="Permanent link">&para;</a></h2>
-<p>External references connect Hippo entities to identifiers from upstream
+<p>External references connect Mosaic entities to identifiers from upstream
 systems (LIMS, lab databases, registries, etc.). They are modeled with the
 framework-provided <code>ExternalReference</code> <strong>value type</strong>: a structured value
 (<code>system</code>, <code>value</code>, optional <code>retrieved_at</code> / <code>version</code>) stored <em>inline</em> on
@@ -2939,7 +2939,7 @@ PostgreSQL adapter, the lookup APIs currently raise
 per-class-table migration.</p>
 </div>
 <h3 id="legacy-external-ids-deprecated">Legacy External IDs (deprecated)<a class="headerlink" href="#legacy-external-ids-deprecated" title="Permanent link">&para;</a></h3>
-<p>Earlier Hippo versions modeled external identifiers as a separate
+<p>Earlier Mosaic versions modeled external identifiers as a separate
 <code>ExternalID</code> <em>entity</em> with dedicated APIs
 (<code>client.register_external_id</code>, <code>client.get_by_external_id</code>,
 <code>client.list_external_ids</code>, mapping-level <code>client.supersede</code>, and the
@@ -3177,10 +3177,10 @@ major release.</p>
 <p>Both the SQLite adapter (<code>sqlite_adapter.py:1634</code>) and the Postgres adapter (<code>postgres_adapter.py:1243</code>) implement soft delete: <code>delete()</code> sets <code>is_available = false</code> on the entity row and writes an <code>availability_change</code> provenance record carrying the full payload snapshot. The row remains physically present and is recoverable by replaying provenance.</p>
 <hr />
 <h2 id="sdk-types-reference">SDK Types Reference<a class="headerlink" href="#sdk-types-reference" title="Permanent link">&para;</a></h2>
-<p>This section documents the user-facing types exported from <code>hippo.core.types</code>.</p>
+<p>This section documents the user-facing types exported from <code>mosaic.core.types</code>.</p>
 <h3 id="filtercondition">FilterCondition<a class="headerlink" href="#filtercondition" title="Permanent link">&para;</a></h3>
 <p>A single filter condition for queries.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterCondition</span><span class="p">,</span> <span class="n">FilterOperator</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterCondition</span><span class="p">,</span> <span class="n">FilterOperator</span>
 <a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>
 <a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="n">condition</span> <span class="o">=</span> <span class="n">FilterCondition</span><span class="p">(</span>
 <a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="n">field</span><span class="o">=</span><span class="s2">&quot;tissue_type&quot;</span><span class="p">,</span>
@@ -3190,7 +3190,7 @@ major release.</p>
 </code></pre></div>
 <h3 id="filtergroup">FilterGroup<a class="headerlink" href="#filtergroup" title="Permanent link">&para;</a></h3>
 <p>A group of conditions combined with a logical operator. Supports nested groups via the <code>groups</code> field.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterGroup</span><span class="p">,</span> <span class="n">FilterCondition</span><span class="p">,</span> <span class="n">FilterOperator</span><span class="p">,</span> <span class="n">LogicalOperator</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterGroup</span><span class="p">,</span> <span class="n">FilterCondition</span><span class="p">,</span> <span class="n">FilterOperator</span><span class="p">,</span> <span class="n">LogicalOperator</span>
 <a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
 <a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="n">group</span> <span class="o">=</span> <span class="n">FilterGroup</span><span class="p">(</span>
 <a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="n">conditions</span><span class="o">=</span><span class="p">[</span>
@@ -3202,19 +3202,19 @@ major release.</p>
 </code></pre></div>
 <h3 id="filter">Filter<a class="headerlink" href="#filter" title="Permanent link">&para;</a></h3>
 <p>Top-level filter container supporting nested groups.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Filter</span><span class="p">,</span> <span class="n">FilterGroup</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Filter</span><span class="p">,</span> <span class="n">FilterGroup</span>
 <a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
 <a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="n">filter_obj</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">FilterGroup</span><span class="p">(</span><span class="n">conditions</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">]))</span>
 </code></pre></div>
 <h3 id="filteroperator">FilterOperator<a class="headerlink" href="#filteroperator" title="Permanent link">&para;</a></h3>
 <p>Enum of supported comparison operators.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterOperator</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterOperator</span>
 <a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>
 <a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="c1"># EQ, NE, GT, GTE, LT, LTE, IN, NOT_IN, CONTAINS, STARTS_WITH, ENDS_WITH, IS_NULL, IS_NOT_NULL</span>
 </code></pre></div>
 <h3 id="logicaloperator">LogicalOperator<a class="headerlink" href="#logicaloperator" title="Permanent link">&para;</a></h3>
 <p>Enum for combining filter conditions.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogicalOperator</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogicalOperator</span>
 <a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>
 <a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="c1"># AND, OR</span>
 </code></pre></div>
@@ -3251,7 +3251,7 @@ major release.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaginatedResult</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaginatedResult</span>
 <a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
 <a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Sample&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>
@@ -3288,7 +3288,7 @@ major release.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScoredMatch</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScoredMatch</span>
 <a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
 <a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="n">match</span> <span class="o">=</span> <span class="n">ScoredMatch</span><span class="p">(</span>
 <a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    <span class="n">score</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
@@ -3334,7 +3334,7 @@ major release.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">WriteOperation</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">WriteOperation</span>
 <a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>
 <a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="n">operation</span> <span class="o">=</span> <span class="n">WriteOperation</span><span class="p">(</span>
 <a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -3392,11 +3392,11 @@ major release.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProvenanceRecord</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProvenanceRecord</span>
 <a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>
 <a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="n">record</span> <span class="o">=</span> <span class="n">ProvenanceRecord</span><span class="p">(</span>
-<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    <span class="n">source</span><span class="o">=</span><span class="s2">&quot;hippo-sdk&quot;</span><span class="p">,</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    <span class="n">source</span><span class="o">=</span><span class="s2">&quot;mosaic-sdk&quot;</span><span class="p">,</span>
 <a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>    <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
 <a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>    <span class="n">operation</span><span class="o">=</span><span class="s2">&quot;create&quot;</span><span class="p">,</span>
 <a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>    <span class="n">entity_type</span><span class="o">=</span><span class="s2">&quot;Sample&quot;</span><span class="p">,</span>
@@ -3407,7 +3407,7 @@ major release.</p>
 </code></pre></div>
 <h3 id="ingeststatus">IngestStatus<a class="headerlink" href="#ingeststatus" title="Permanent link">&para;</a></h3>
 <p>Status enum for bulk ingestion operations.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">IngestStatus</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">IngestStatus</span>
 <a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>
 <a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="c1"># IngestStatus.SUCCESS  — all items processed successfully</span>
 <a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c1"># IngestStatus.PARTIAL  — some items failed</span>
@@ -3456,7 +3456,7 @@ major release.</p>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">IngestResult</span><span class="p">,</span> <span class="n">IngestStatus</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">IngestResult</span><span class="p">,</span> <span class="n">IngestStatus</span>
 <a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>
 <a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">IngestResult</span><span class="p">(</span>
 <a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>    <span class="n">status</span><span class="o">=</span><span class="n">IngestStatus</span><span class="o">.</span><span class="n">PARTIAL</span><span class="p">,</span>

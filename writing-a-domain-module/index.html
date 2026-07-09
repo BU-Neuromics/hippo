@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Writing a Domain Module - Hippo</title>
+        <title>Writing a Domain Module - Mosaic</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -1150,10 +1150,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-a-domain-migration-differs-from-hippo-migrate" class="md-nav__link">
+  <a href="#how-a-domain-migration-differs-from-mosaic-migrate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How a domain migration differs from hippo migrate
+        How a domain migration differs from mosaic migrate
       
     </span>
   </a>
@@ -1588,10 +1588,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-a-domain-migration-differs-from-hippo-migrate" class="md-nav__link">
+  <a href="#how-a-domain-migration-differs-from-mosaic-migrate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How a domain migration differs from hippo migrate
+        How a domain migration differs from mosaic migrate
       
     </span>
   </a>
@@ -1718,22 +1718,22 @@
 
 
 <h1 id="writing-a-domain-module">Writing a Domain Module<a class="headerlink" href="#writing-a-domain-module" title="Permanent link">&para;</a></h1>
-<p>This guide walks through building a <strong><code>DomainModule</code></strong> — the first-party, mutable-data species of <code>SchemaPackage</code> — and authoring a versioned data migration that Hippo runs with full provenance behind a hard validation gate.</p>
+<p>This guide walks through building a <strong><code>DomainModule</code></strong> — the first-party, mutable-data species of <code>SchemaPackage</code> — and authoring a versioned data migration that Mosaic runs with full provenance behind a hard validation gate.</p>
 <blockquote>
 <p><strong>Who this is for:</strong> Python developers who own a deployment's locally authored operational data (samples, donors, projects — the lab's authoritative records) and need to evolve its <em>shape</em> across schema versions. If you distribute externally maintained reference datasets instead, read <a href="../writing-a-reference-loader/">Writing a Reference Loader</a>.</p>
-<p><strong><code>DomainModule</code> is one kind of <code>SchemaPackage</code>.</strong> Both <code>DomainModule</code> and <code>ReferenceLoader</code> are <em>species</em> of the genus <code>SchemaPackage</code> (<code>hippo.core.loaders.schema_package</code>), which captures the reusable part — <em>"contribute a versioned, pinnable schema fragment"</em> (<code>name</code>, <code>description</code>, <code>versions()</code>, <code>schema_fragment()</code>, <code>depends_on()</code>, optional <code>validate()</code>, and the <code>provision</code>/<code>evolve</code>/<code>deprovision</code> lifecycle hooks).</p>
+<p><strong><code>DomainModule</code> is one kind of <code>SchemaPackage</code>.</strong> Both <code>DomainModule</code> and <code>ReferenceLoader</code> are <em>species</em> of the genus <code>SchemaPackage</code> (<code>mosaic.core.loaders.schema_package</code>), which captures the reusable part — <em>"contribute a versioned, pinnable schema fragment"</em> (<code>name</code>, <code>description</code>, <code>versions()</code>, <code>schema_fragment()</code>, <code>depends_on()</code>, optional <code>validate()</code>, and the <code>provision</code>/<code>evolve</code>/<code>deprovision</code> lifecycle hooks).</p>
 <ul>
 <li>A <strong>reference loader</strong> wraps <em>external, reconstructible</em> data; its <code>deprovision</code> prunes willingly.</li>
 <li>A <strong>domain module</strong> owns <em>first-party, mutable</em> data and migrates it <strong>in place</strong>. Because those records are the deployment's authoritative data, the migration is append-only, id-keyed, and provenanced — every step is auditable and replay-recoverable.</li>
 </ul>
 </blockquote>
 <hr />
-<h2 id="how-a-domain-migration-differs-from-hippo-migrate">How a domain migration differs from <code>hippo migrate</code><a class="headerlink" href="#how-a-domain-migration-differs-from-hippo-migrate" title="Permanent link">&para;</a></h2>
+<h2 id="how-a-domain-migration-differs-from-mosaic-migrate">How a domain migration differs from <code>mosaic migrate</code><a class="headerlink" href="#how-a-domain-migration-differs-from-mosaic-migrate" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th></th>
-<th><code>hippo migrate</code> (DDL)</th>
+<th><code>mosaic migrate</code> (DDL)</th>
 <th><code>DomainModule.evolve</code> (data)</th>
 </tr>
 </thead>
@@ -1758,7 +1758,7 @@
 <p>They are complementary. Reach for a <code>DomainModule</code> migration only when the <em>data</em> must change shape, not just the table.</p>
 <hr />
 <h2 id="project-layout">Project layout<a class="headerlink" href="#project-layout" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>hippo-domain-mylab/
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mosaic-domain-mylab/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── pyproject.toml
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>└── src/
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    └── hippo_domain_mylab/
@@ -1767,9 +1767,9 @@
 </code></pre></div>
 <hr />
 <h2 id="1-the-module-class">1. The module class<a class="headerlink" href="#1-the-module-class" title="Permanent link">&para;</a></h2>
-<p>Subclass <code>DomainModule</code> from <code>hippo.core.loaders.domain_module</code>. Implement the two genus abstract methods (<code>versions()</code>, <code>schema_fragment()</code>) plus <code>migration_steps()</code>. <code>provision</code> is an inherited genus no-op — domain data arrives via <code>hippo ingest</code>, not at schema-install time. <code>deprovision</code> is overridden to <strong>refuse by default</strong> when the module owns live data (see §7).</p>
+<p>Subclass <code>DomainModule</code> from <code>mosaic.core.loaders.domain_module</code>. Implement the two genus abstract methods (<code>versions()</code>, <code>schema_fragment()</code>) plus <code>migration_steps()</code>. <code>provision</code> is an inherited genus no-op — domain data arrives via <code>mosaic ingest</code>, not at schema-install time. <code>deprovision</code> is overridden to <strong>refuse by default</strong> when the module owns live data (see §7).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># src/hippo_domain_mylab/module.py</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.loaders.domain_module</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.loaders.domain_module</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">DomainModule</span><span class="p">,</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">MigrationContext</span><span class="p">,</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">MigrationStep</span><span class="p">,</span>
@@ -1825,7 +1825,7 @@
 <a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>                <span class="p">{</span><span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">),</span> <span class="s2">&quot;kind&quot;</span><span class="p">:</span> <span class="n">_infer_kind</span><span class="p">(</span><span class="n">data</span><span class="p">)},</span>
 <a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>            <span class="p">)</span>
 </code></pre></div>
-<p>The <code>schema_fragment()</code> contract is identical to a reference loader's: <code>default_prefix</code> <strong>must</strong> equal <code>name</code>, and Hippo auto-injects <code>provided_by: &lt;name&gt;@&lt;version&gt;</code> on every introduced element.</p>
+<p>The <code>schema_fragment()</code> contract is identical to a reference loader's: <code>default_prefix</code> <strong>must</strong> equal <code>name</code>, and Mosaic auto-injects <code>provided_by: &lt;name&gt;@&lt;version&gt;</code> on every introduced element.</p>
 <hr />
 <h2 id="2-the-migration-model-read-old-write-new-supersede-old">2. The migration model: read-old → write-new → supersede-old<a class="headerlink" href="#2-the-migration-model-read-old-write-new-supersede-old" title="Permanent link">&para;</a></h2>
 <p>A migration <strong>transform</strong> receives a <code>MigrationContext</code> and stages its intended changes onto <code>ctx.plan</code>. It must <strong>not</strong> write to the client directly — staging is what keeps the validation gate ahead of every committed write.</p>
@@ -1862,10 +1862,10 @@
 <hr />
 <h2 id="3-the-staged-dry-run-validation-gate">3. The staged dry-run validation gate<a class="headerlink" href="#3-the-staged-dry-run-validation-gate" title="Permanent link">&para;</a></h2>
 <p><code>DomainModule.evolve</code> runs the matching step, then — <strong>before any committed write</strong> — stages the transform's new-shape records and validates them against the <strong>fully merged schema</strong>. This is the in-process equivalent of:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hippo<span class="w"> </span>ingest<span class="w"> </span>--validate-schema<span class="w"> </span>&lt;merged-dir&gt;<span class="w"> </span>--dry-run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mosaic<span class="w"> </span>ingest<span class="w"> </span>--validate-schema<span class="w"> </span>&lt;merged-dir&gt;<span class="w"> </span>--dry-run
 </code></pre></div>
 <p>The migration <strong>commits only on green</strong>. If the staged output does not validate, <code>evolve</code> raises <code>MigrationGateError</code> and the deployment's data is left exactly as it was — no new rows, no supersessions, no provenance events.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MigrationGateError</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">MigrationGateError</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">module</span> <span class="o">=</span> <span class="n">MyLabModule</span><span class="p">()</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">try</span><span class="p">:</span>
@@ -1891,14 +1891,14 @@
 <p>Inspect it with <code>client.history(entity_id)</code> or by following the <code>superseded_by</code> field (<code>client.get(entity_id, include_unavailable=True)</code>).</p>
 <hr />
 <h2 id="5-declaring-the-entry-point">5. Declaring the entry point<a class="headerlink" href="#5-declaring-the-entry-point" title="Permanent link">&para;</a></h2>
-<p>Register the module under the genus group <code>hippo.schema_packages</code> (a <code>DomainModule</code> is not a reference loader, so it does <strong>not</strong> use <code>hippo.reference_loaders</code>):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;hippo.schema_packages&quot;</span><span class="k">]</span>
+<p>Register the module under the genus group <code>mosaic.schema_packages</code> (a <code>DomainModule</code> is not a reference loader, so it does <strong>not</strong> use <code>mosaic.reference_loaders</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">[project.entry-points.</span><span class="s2">&quot;mosaic.schema_packages&quot;</span><span class="k">]</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">mylab</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hippo_domain_mylab.module:MyLabModule&quot;</span>
 </code></pre></div>
 <p>The entry-point key must match <code>DomainModule.name</code>.</p>
 <hr />
 <h2 id="6-multi-hop-migration-chains">6. Multi-hop migration chains<a class="headerlink" href="#6-multi-hop-migration-chains" title="Permanent link">&para;</a></h2>
-<p><code>evolve(client, from_version, to_version)</code> resolves a <strong>path</strong> through your declared migration DAG, not a single edge. Declare one <code>MigrationStep</code> per consecutive hop and Hippo composes them:</p>
+<p><code>evolve(client, from_version, to_version)</code> resolves a <strong>path</strong> through your declared migration DAG, not a single edge. Declare one <code>MigrationStep</code> per consecutive hop and Mosaic composes them:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">migration_steps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">MigrationStep</span><span class="p">]:</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="k">return</span> <span class="p">[</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        <span class="n">MigrationStep</span><span class="p">(</span><span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span> <span class="s2">&quot;1.1.0&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_kind</span><span class="p">),</span>
@@ -1919,12 +1919,12 @@
 </blockquote>
 <hr />
 <h2 id="7-deprovisioning-refuse-by-default">7. Deprovisioning: refuse by default<a class="headerlink" href="#7-deprovisioning-refuse-by-default" title="Permanent link">&para;</a></h2>
-<p><code>hippo reference deprovision &lt;name&gt;</code> tears a package down. A <code>DomainModule</code> owns the deployment's <strong>authoritative</strong> records, so <code>DomainModule.deprovision</code> <strong>refuses by default</strong> when any <code>populates_types()</code> class still holds live rows — silently soft-deleting them on uninstall would be a data-loss event. Export first, then re-run with <code>--force</code> to soft-delete (the standard availability transition; the provenance trail is kept). With no live data it is a quiet no-op.</p>
+<p><code>mosaic reference deprovision &lt;name&gt;</code> tears a package down. A <code>DomainModule</code> owns the deployment's <strong>authoritative</strong> records, so <code>DomainModule.deprovision</code> <strong>refuses by default</strong> when any <code>populates_types()</code> class still holds live rows — silently soft-deleting them on uninstall would be a data-loss event. Export first, then re-run with <code>--force</code> to soft-delete (the standard availability transition; the provenance trail is kept). With no live data it is a quiet no-op.</p>
 <p>The orchestrator also <strong>refuses to deprovision a package that any installed package still <code>depends_on</code></strong> (it names the dependents — deprovision those first). Both guards are the asymmetry with reference loaders, whose external, reconstructible rows are pruned willingly.</p>
 <hr />
 <h2 id="checklist">Checklist<a class="headerlink" href="#checklist" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[ ] <code>DomainModule.name</code> matches the <code>hippo.schema_packages</code> entry-point key</li>
+<li>[ ] <code>DomainModule.name</code> matches the <code>mosaic.schema_packages</code> entry-point key</li>
 <li>[ ] <code>schema_fragment()</code> declares <code>default_prefix: &lt;name&gt;</code></li>
 <li>[ ] Each <code>MigrationStep</code> covers one consecutive <code>(from_version → to_version)</code> hop; ship every step back to your supported floor</li>
 <li>[ ] The transform reads via <code>ctx.client</code> and stages via <code>ctx.plan</code> — it never writes to the client directly</li>

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="why-hippo/">
+        <link rel="next" href="why-mosaic/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Hippo</title>
+        <title>Mosaic</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hippo" class="md-skip">
+        <a href="#mosaic" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +90,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href="." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -104,7 +104,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="why-hippo/" class="md-tabs__link">
+      <a href="why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -567,13 +567,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href="." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -726,14 +726,14 @@
   
   
     <li class="md-nav__item">
-      <a href="why-hippo/" class="md-nav__link">
+      <a href="why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -1600,12 +1600,21 @@
   
 
 
-<h1 id="hippo">Hippo<a class="headerlink" href="#hippo" title="Permanent link">&para;</a></h1>
-<p>A runtime for LinkML schemas. Point it at a schema and you get a typed Python SDK, a REST API, a relational database with append-only PROV-O provenance, and CEL-based dynamic validation — without writing any of that infrastructure yourself. <strong>The schema defines the application; Hippo runs it.</strong></p>
+<h1 id="mosaic">Mosaic<a class="headerlink" href="#mosaic" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Formerly Hippo.</strong> The component was renamed to <strong>Mosaic</strong> (ADR-0004): the
+distribution is <code>datahelix-mosaic</code>, the import package is <code>mosaic</code>, and the
+CLI is <code>mosaic</code>. Existing code and deployments keep working through a
+deprecation window — <code>import hippo</code>, the <code>hippo</code> command, <code>hippo.yaml</code>,
+<code>HIPPO_*</code> environment variables, and <code>hippo.*</code> entry-point groups are all
+still honored (with deprecation warnings). See
+<a href="installation/#upgrading-from-hippo">Installation</a> for the upgrade notes.</p>
+</blockquote>
+<p>A runtime for LinkML schemas. Point it at a schema and you get a typed Python SDK, a REST API, a relational database with append-only PROV-O provenance, and CEL-based dynamic validation — without writing any of that infrastructure yourself. <strong>The schema defines the application; Mosaic runs it.</strong></p>
 <h2 id="start-here">Start here<a class="headerlink" href="#start-here" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="why-hippo/">Why Hippo?</a></strong> — the elevator pitch and core idea.</li>
-<li><strong><a href="introduction/">Introduction</a></strong> — what Hippo does and how it fits together.</li>
+<li><strong><a href="why-mosaic/">Why Mosaic?</a></strong> — the elevator pitch and core idea.</li>
+<li><strong><a href="introduction/">Introduction</a></strong> — what Mosaic does and how it fits together.</li>
 <li><strong><a href="installation/">Installation</a></strong> — install from PyPI or source.</li>
 <li><strong><a href="quickstart/">Quick Start</a></strong> — your first schema, store, and query in 10 minutes.</li>
 </ul>
@@ -1613,27 +1622,27 @@
 <ul>
 <li><strong><a href="schema-guide/">Schema Guide</a></strong> — author entities, attributes, and relationships in LinkML.</li>
 <li><strong><a href="data-model/">Data Model</a></strong> — how schemas map to relational storage and the graph-shaped API.</li>
-<li><strong><a href="configuration/">Configuration</a></strong> — <code>hippo.yaml</code>, storage backends, and adapters.</li>
+<li><strong><a href="configuration/">Configuration</a></strong> — <code>mosaic.yaml</code>, storage backends, and adapters.</li>
 </ul>
 <h2 id="use">Use<a class="headerlink" href="#use" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="cli-reference/">CLI Reference</a></strong> — <code>hippo</code> command surface.</li>
-<li><strong><a href="tui/">TUI</a></strong> — interactive terminal browser (<code>hippo tui</code>) over the SDK or REST API.</li>
-<li><strong><a href="api-reference/">API Reference</a></strong> — <code>HippoClient</code> Python SDK.</li>
+<li><strong><a href="cli-reference/">CLI Reference</a></strong> — <code>mosaic</code> command surface.</li>
+<li><strong><a href="tui/">TUI</a></strong> — interactive terminal browser (<code>mosaic tui</code>) over the SDK or REST API.</li>
+<li><strong><a href="api-reference/">API Reference</a></strong> — <code>MosaicClient</code> Python SDK.</li>
 <li><strong><a href="reference_typed_client/">Typed Client</a></strong> — schema-derived typed client.</li>
 </ul>
 <h2 id="extend">Extend<a class="headerlink" href="#extend" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="reference-loaders/">Reference Loaders</a></strong> and <strong><a href="writing-a-reference-loader/">Writing a Reference Loader</a></strong> — pull static reference data into Hippo.</li>
+<li><strong><a href="reference-loaders/">Reference Loaders</a></strong> and <strong><a href="writing-a-reference-loader/">Writing a Reference Loader</a></strong> — pull static reference data into Mosaic.</li>
 <li><strong><a href="writing-a-recipe/">Writing a Recipe</a></strong>, <strong><a href="installing-recipes/">Installing Recipes</a></strong>, <strong><a href="recipe-reference/">Recipe Reference</a></strong> — package and share schema fragments.</li>
 </ul>
 <h2 id="background">Background<a class="headerlink" href="#background" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><a href="design-principles/">Design Principles</a></strong> — what Hippo is opinionated about, and why.</li>
-<li><strong><a href="comparison/">Comparison</a></strong> — how Hippo relates to LinkML, Datasette, and friends.</li>
+<li><strong><a href="design-principles/">Design Principles</a></strong> — what Mosaic is opinionated about, and why.</li>
+<li><strong><a href="comparison/">Comparison</a></strong> — how Mosaic relates to LinkML, Datasette, and friends.</li>
 </ul>
 <hr />
-<p>Hippo is open source under the MIT license. Source at <a href="https://github.com/BU-Neuromics/hippo">github.com/BU-Neuromics/hippo</a>.</p>
+<p>Mosaic is open source under the MIT license. Source at <a href="https://github.com/BU-Neuromics/hippo">github.com/BU-Neuromics/hippo</a>.</p>
 
 
 

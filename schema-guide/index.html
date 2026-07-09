@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Schema Guide - Hippo</title>
+        <title>Schema Guide - Mosaic</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hippo-schema-writers-guide" class="md-skip">
+        <a href="#mosaic-schema-writers-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -938,15 +938,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hippo-extensions-annotations" class="md-nav__link">
+  <a href="#mosaic-extensions-annotations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hippo Extensions (Annotations)
+        Mosaic Extensions (Annotations)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hippo Extensions (Annotations)">
+    <nav class="md-nav" aria-label="Mosaic Extensions (Annotations)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1900,15 +1900,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hippo-extensions-annotations" class="md-nav__link">
+  <a href="#mosaic-extensions-annotations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hippo Extensions (Annotations)
+        Mosaic Extensions (Annotations)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hippo Extensions (Annotations)">
+    <nav class="md-nav" aria-label="Mosaic Extensions (Annotations)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2058,7 +2058,7 @@
   
 
 
-<h1 id="hippo-schema-writers-guide">Hippo Schema Writer's Guide<a class="headerlink" href="#hippo-schema-writers-guide" title="Permanent link">&para;</a></h1>
+<h1 id="mosaic-schema-writers-guide">Mosaic Schema Writer's Guide<a class="headerlink" href="#mosaic-schema-writers-guide" title="Permanent link">&para;</a></h1>
 <p>A practical guide for writing LinkML schema files for your lab. This document covers the most common schema patterns with real examples. For the full field reference, see <a href="../configuration/">Configuration Reference</a>.</p>
 <hr />
 <h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
@@ -2098,13 +2098,13 @@
 <a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Donor</span><span class="w">          </span><span class="c1"># links this attribute to the Donor class</span>
 <a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">        </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p>Save this as <code>schema.yaml</code>, then point your <code>HippoConfig</code> at it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoConfig</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">config</span> <span class="o">=</span> <span class="n">HippoConfig</span><span class="p">(</span><span class="n">schema_path</span><span class="o">=</span><span class="s2">&quot;schema.yaml&quot;</span><span class="p">,</span> <span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;my_lab.db&quot;</span><span class="p">)</span>
+<p>Save this as <code>schema.yaml</code>, then point your <code>MosaicConfig</code> at it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicConfig</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">config</span> <span class="o">=</span> <span class="n">MosaicConfig</span><span class="p">(</span><span class="n">schema_path</span><span class="o">=</span><span class="s2">&quot;schema.yaml&quot;</span><span class="p">,</span> <span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;my_lab.db&quot;</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="schema-header">Schema Header<a class="headerlink" href="#schema-header" title="Permanent link">&para;</a></h2>
-<p>Every LinkML schema file needs a header with metadata and imports. This tells Hippo (and any LinkML tooling) how to interpret the schema.</p>
+<p>Every LinkML schema file needs a header with metadata and imports. This tells Mosaic (and any LinkML tooling) how to interpret the schema.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.org/brain-study</span><span class="w">     </span><span class="c1"># unique schema identifier (URI)</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brain_study</span><span class="w">                         </span><span class="c1"># short name (alphanumeric, underscores, dashes)</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">prefixes</span><span class="p">:</span>
@@ -2123,7 +2123,7 @@
 </ul>
 <hr />
 <h2 id="classes">Classes<a class="headerlink" href="#classes" title="Permanent link">&para;</a></h2>
-<p>Each class defines an entity type in Hippo. Classes are defined under the top-level <code>classes:</code> key as a dictionary keyed by class name.</p>
+<p>Each class defines an entity type in Mosaic. Classes are defined under the top-level <code>classes:</code> key as a dictionary keyed by class name.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">classes</span><span class="p">:</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">SequencingDataset</span><span class="p">:</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;An</span><span class="nv"> </span><span class="s">RNA-seq</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">ATAC-seq</span><span class="nv"> </span><span class="s">dataset&quot;</span>
@@ -2270,13 +2270,13 @@
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Donor</span><span class="w">              </span><span class="c1"># the class this attribute points to</span>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p>When the <code>range</code> is a class (not a built-in type like <code>string</code>), Hippo treats the attribute as an entity reference. This enables:
-- Schema introspection (<code>HippoClient.schema_references()</code>)
+<p>When the <code>range</code> is a class (not a built-in type like <code>string</code>), Mosaic treats the attribute as an entity reference. This enables:
+- Schema introspection (<code>MosaicClient.schema_references()</code>)
 - Cappella collection resolver entity graph traversal
 - Documentation and tooling</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Reference attributes hold Hippo internal IDs (UUIDs), not user-facing identifiers. User-facing identifiers belong in a plain <code>string</code> attribute (such as <code>external_id</code>) or as an ExternalID.</p>
+<p>Reference attributes hold Mosaic internal IDs (UUIDs), not user-facing identifiers. User-facing identifiers belong in a plain <code>string</code> attribute (such as <code>external_id</code>) or as an ExternalID.</p>
 </div>
 <h3 id="self-referential-links">Self-Referential Links<a class="headerlink" href="#self-referential-links" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="w">  </span><span class="nt">parent</span><span class="p">:</span>
@@ -2301,8 +2301,8 @@
 </code></pre></div>
 <p>With this schema, Cappella can traverse <code>Dataset.sample -&gt; Sample.donor -&gt; Donor</code> automatically when you pass criteria like <code>donor.diagnosis=CTE</code>.</p>
 <hr />
-<h2 id="hippo-extensions-annotations">Hippo Extensions (Annotations)<a class="headerlink" href="#hippo-extensions-annotations" title="Permanent link">&para;</a></h2>
-<p>Hippo extends standard LinkML with storage and indexing annotations. These are expressed using LinkML's <code>annotations</code> mechanism and are specific to Hippo's storage layer.</p>
+<h2 id="mosaic-extensions-annotations">Mosaic Extensions (Annotations)<a class="headerlink" href="#mosaic-extensions-annotations" title="Permanent link">&para;</a></h2>
+<p>Mosaic extends standard LinkML with storage and indexing annotations. These are expressed using LinkML's <code>annotations</code> mechanism and are specific to Mosaic's storage layer.</p>
 <h3 id="full-text-search">Full-Text Search<a class="headerlink" href="#full-text-search" title="Permanent link">&para;</a></h3>
 <p>Mark an attribute for full-text search:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="w">  </span><span class="nt">notes</span><span class="p">:</span>
@@ -2315,7 +2315,7 @@
 <a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">    </span><span class="nt">annotations</span><span class="p">:</span>
 <a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">      </span><span class="nt">hippo_search</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fts5</span>
 </code></pre></div>
-<p>Query via <code>HippoClient.search()</code> or the REST API:
+<p>Query via <code>MosaicClient.search()</code> or the REST API:
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">results</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;Sample&quot;</span><span class="p">,</span> <span class="s2">&quot;hippocampus cortex&quot;</span><span class="p">)</span>
 </code></pre></div></p>
 <h3 id="database-indexes">Database Indexes<a class="headerlink" href="#database-indexes" title="Permanent link">&para;</a></h3>
@@ -2410,7 +2410,7 @@
 <a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="w">    </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;age_at_death</span><span class="nv"> </span><span class="s">must</span><span class="nv"> </span><span class="s">be</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">18</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">120&quot;</span>
 </code></pre></div>
 <h3 id="referential-integrity-validator">Referential Integrity Validator<a class="headerlink" href="#referential-integrity-validator" title="Permanent link">&para;</a></h3>
-<p>Since Hippo doesn't enforce foreign keys at the storage level, use a validator if you need hard enforcement:</p>
+<p>Since Mosaic doesn't enforce foreign keys at the storage level, use a validator if you need hard enforcement:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nt">validators</span><span class="p">:</span>
 <a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">donor_must_exist</span>
 <a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">    </span><span class="nt">entity_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sample</span>

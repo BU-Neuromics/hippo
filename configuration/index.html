@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Configuration - Hippo</title>
+        <title>Configuration - Mosaic</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hippo-configuration-reference" class="md-skip">
+        <a href="#mosaic-configuration-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -886,15 +886,37 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hippoconfig" class="md-nav__link">
+  <a href="#config-file-discovery-mosaicyaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HippoConfig
+        Config file discovery (mosaic.yaml)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="HippoConfig">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mosaicconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MosaicConfig
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MosaicConfig">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -909,10 +931,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#template-configjson-from-hippo-init" class="md-nav__link">
+  <a href="#template-configjson-from-mosaic-init" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Template config.json (from hippo init)
+        Template config.json (from mosaic init)
       
     </span>
   </a>
@@ -998,10 +1020,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hippo-specific-annotations" class="md-nav__link">
+  <a href="#mosaic-specific-annotations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hippo-Specific Annotations
+        Mosaic-Specific Annotations
       
     </span>
   </a>
@@ -1739,15 +1761,37 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hippoconfig" class="md-nav__link">
+  <a href="#config-file-discovery-mosaicyaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HippoConfig
+        Config file discovery (mosaic.yaml)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="HippoConfig">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mosaicconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MosaicConfig
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MosaicConfig">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1762,10 +1806,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#template-configjson-from-hippo-init" class="md-nav__link">
+  <a href="#template-configjson-from-mosaic-init" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Template config.json (from hippo init)
+        Template config.json (from mosaic init)
       
     </span>
   </a>
@@ -1851,10 +1895,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hippo-specific-annotations" class="md-nav__link">
+  <a href="#mosaic-specific-annotations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hippo-Specific Annotations
+        Mosaic-Specific Annotations
       
     </span>
   </a>
@@ -2002,18 +2046,30 @@
   
 
 
-<h1 id="hippo-configuration-reference">Hippo Configuration Reference<a class="headerlink" href="#hippo-configuration-reference" title="Permanent link">&para;</a></h1>
-<p>Complete reference for configuring Hippo, the LinkML runtime for the DataHelix platform (the platform's structured domain graph; metadata tracking is one application).</p>
+<h1 id="mosaic-configuration-reference">Mosaic Configuration Reference<a class="headerlink" href="#mosaic-configuration-reference" title="Permanent link">&para;</a></h1>
+<p>Complete reference for configuring Mosaic, the LinkML runtime for the BASS platform (the platform's structured domain graph; metadata tracking is one application).</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>Hippo uses two primary configuration files:</p>
+<p>Mosaic uses two primary configuration files:</p>
 <ol>
 <li><strong><code>config.json</code></strong> -- Main application configuration that specifies the schema path and storage settings</li>
 <li><strong>Schema files (YAML or JSON)</strong> -- Define entity types, attributes, validators, and inheritance in LinkML format</li>
 </ol>
-<p>Configuration is loaded via <code>load_hippo_config()</code> from <code>config.json</code>, and schemas are loaded via <code>SchemaParser</code> or <code>load_schema()</code>.</p>
+<p>Configuration is loaded via <code>load_mosaic_config()</code>, and schemas are loaded via <code>SchemaParser</code> or <code>load_schema()</code>.</p>
 <hr />
-<h2 id="hippoconfig">HippoConfig<a class="headerlink" href="#hippoconfig" title="Permanent link">&para;</a></h2>
-<p>The main configuration model for the Hippo application. Loaded from <code>config.json</code>.</p>
+<h2 id="config-file-discovery-mosaicyaml">Config file discovery (<code>mosaic.yaml</code>)<a class="headerlink" href="#config-file-discovery-mosaicyaml" title="Permanent link">&para;</a></h2>
+<p>When no explicit <code>--config</code> is given, Mosaic scans the working directory in
+this order: <code>config.json</code>, <code>mosaic.yaml</code>, <code>mosaic.yml</code>, then the legacy
+<code>hippo.yaml</code> / <code>hippo.yml</code> (pre-rename spellings, ADR-0004 — still honored
+with a <code>DeprecationWarning</code>). When both <code>mosaic.yaml</code> and <code>hippo.yaml</code> exist,
+<code>mosaic.yaml</code> wins silently. <code>mosaic init</code> writes <code>mosaic.yaml</code>.</p>
+<h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>Runtime environment variables use the <code>MOSAIC_</code> prefix (<code>MOSAIC_CACHE_DIR</code>,
+<code>MOSAIC_RECIPE_CACHE</code>, <code>MOSAIC_TUI_TOKEN</code>, <code>MOSAIC_DATABASE_URL</code>). The legacy
+<code>HIPPO_</code> spellings are honored as a fallback for the deprecation window — one
+<code>DeprecationWarning</code> per variable. <code>${MOSAIC_*}</code> references inside config
+values fall back the same way.</p>
+<h2 id="mosaicconfig">MosaicConfig<a class="headerlink" href="#mosaicconfig" title="Permanent link">&para;</a></h2>
+<p>The main configuration model for the Mosaic application. Loaded from <code>config.json</code>.</p>
 <table>
 <thead>
 <tr>
@@ -2040,7 +2096,7 @@
 <td><code>database_url</code></td>
 <td><code>str</code></td>
 <td><code>None</code></td>
-<td>Connection string for the database. For SQLite: <code>hippo.db</code> or absolute path</td>
+<td>Connection string for the database. For SQLite: <code>mosaic.db</code> or absolute path</td>
 </tr>
 <tr>
 <td><code>validation_enabled</code></td>
@@ -2074,25 +2130,25 @@
 </tr>
 </tbody>
 </table>
-<p><code>schema_path</code> is <strong>required</strong> -- <code>HippoConfig</code> will not instantiate without it.</p>
+<p><code>schema_path</code> is <strong>required</strong> -- <code>MosaicConfig</code> will not instantiate without it.</p>
 <h3 id="example-configjson">Example config.json<a class="headerlink" href="#example-configjson" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;schema_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./schemas&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">&quot;storage_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">&quot;database_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./data/hippo.db&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">&quot;database_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./data/mosaic.db&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">&quot;validation_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">&quot;validation_fail_fast&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">&quot;write_path_validation_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">&quot;validators_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./validators.yaml&quot;</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">}</span>
 </code></pre></div>
-<h3 id="template-configjson-from-hippo-init">Template config.json (from <code>hippo init</code>)<a class="headerlink" href="#template-configjson-from-hippo-init" title="Permanent link">&para;</a></h3>
-<p>The <code>basic</code> template generated by <code>hippo init</code> produces:</p>
+<h3 id="template-configjson-from-mosaic-init">Template config.json (from <code>mosaic init</code>)<a class="headerlink" href="#template-configjson-from-mosaic-init" title="Permanent link">&para;</a></h3>
+<p>The <code>basic</code> template generated by <code>mosaic init</code> produces:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.1&quot;</span><span class="p">,</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hippo.db&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mosaic.db&quot;</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="p">},</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">&quot;schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;linkml&quot;</span>
@@ -2102,11 +2158,11 @@
 <p>The <code>full</code> template includes additional sections:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.1&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hippo-project&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hippo Project&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mosaic-project&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Mosaic Project&quot;</span><span class="p">,</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">&quot;storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hippo.db&quot;</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mosaic.db&quot;</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="p">},</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">&quot;schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;linkml&quot;</span><span class="p">,</span>
@@ -2407,8 +2463,8 @@
 </tr>
 </tbody>
 </table>
-<h3 id="hippo-specific-annotations">Hippo-Specific Annotations<a class="headerlink" href="#hippo-specific-annotations" title="Permanent link">&para;</a></h3>
-<p>Hippo extends standard LinkML with storage annotations. These are expressed under the <code>annotations</code> key on attributes:</p>
+<h3 id="mosaic-specific-annotations">Mosaic-Specific Annotations<a class="headerlink" href="#mosaic-specific-annotations" title="Permanent link">&para;</a></h3>
+<p>Mosaic extends standard LinkML with storage annotations. These are expressed under the <code>annotations</code> key on attributes:</p>
 <table>
 <thead>
 <tr>
@@ -2450,7 +2506,7 @@
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Donor</span><span class="w">          </span><span class="c1"># references the Donor class</span>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">        </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p>When the <code>range</code> is a class, Hippo treats the attribute as an entity reference. This is used for <code>HippoClient.schema_references()</code> and Cappella's collection resolver.</p>
+<p>When the <code>range</code> is a class, Mosaic treats the attribute as an entity reference. This is used for <code>MosaicClient.schema_references()</code> and Cappella's collection resolver.</p>
 <hr />
 <h2 id="enum-definitions">Enum Definitions<a class="headerlink" href="#enum-definitions" title="Permanent link">&para;</a></h2>
 <p>Enums are defined at the schema top level under <code>enums:</code>. Each enum declares its allowed values under <code>permissible_values</code>:</p>
@@ -2532,7 +2588,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">{</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">&quot;schema_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./schemas&quot;</span><span class="p">,</span>
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="nt">&quot;storage_backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="nt">&quot;database_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./data/hippo.db&quot;</span><span class="p">,</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="nt">&quot;database_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./data/mosaic.db&quot;</span><span class="p">,</span>
 <a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span><span class="nt">&quot;validation_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">  </span><span class="nt">&quot;validation_fail_fast&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">  </span><span class="nt">&quot;write_path_validation_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
@@ -2718,16 +2774,16 @@
 </code></pre></div>
 <hr />
 <h2 id="loading-configuration">Loading Configuration<a class="headerlink" href="#loading-configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.config.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_hippo_config</span><span class="p">,</span> <span class="n">load_schema</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.config.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_mosaic_config</span><span class="p">,</span> <span class="n">load_schema</span>
 <a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
 <a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># Load main configuration</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_hippo_config</span><span class="p">(</span><span class="s2">&quot;config.json&quot;</span><span class="p">)</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_mosaic_config</span><span class="p">(</span><span class="s2">&quot;config.json&quot;</span><span class="p">)</span>
 <a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
 <a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1"># Load a schema file</span>
 <a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="n">schema</span> <span class="o">=</span> <span class="n">load_schema</span><span class="p">(</span><span class="s2">&quot;schemas/donor.yaml&quot;</span><span class="p">)</span>
 <a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
 <a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="c1"># Load all schemas from a directory</span>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.config.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchemaParser</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.config.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchemaParser</span>
 <a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="n">parser</span> <span class="o">=</span> <span class="n">SchemaParser</span><span class="p">(</span><span class="n">schema_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;schemas&quot;</span><span class="p">))</span>
 <a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="n">schemas</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">load_schema_dir</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;schemas&quot;</span><span class="p">))</span>
 </code></pre></div>

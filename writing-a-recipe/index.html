@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Writing a Recipe - Hippo</title>
+        <title>Writing a Recipe - Mosaic</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -1776,7 +1776,7 @@
 
 
 <h1 id="writing-a-recipe">Writing a Recipe<a class="headerlink" href="#writing-a-recipe" title="Permanent link">&para;</a></h1>
-<p>A <strong>recipe</strong> is a declarative bundle that packages a LinkML schema fragment for sharing between Hippo deployments. Recipes are identified by a stable reverse-DNS <code>id</code>, verified by a sha256 content digest, and installed atomically — making schema contributions reproducible across peer instances.</p>
+<p>A <strong>recipe</strong> is a declarative bundle that packages a LinkML schema fragment for sharing between Mosaic deployments. Recipes are identified by a stable reverse-DNS <code>id</code>, verified by a sha256 content digest, and installed atomically — making schema contributions reproducible across peer instances.</p>
 <p>This guide walks through authoring a recipe from scratch: laying out the files, writing the manifest, declaring dependencies, and publishing.</p>
 <blockquote>
 <p><strong>Who this is for:</strong> researchers and engineers authoring schema extensions to share with collaborators. To <em>install</em> an existing recipe, see <a href="../installing-recipes/">Installing Recipes</a>.</p>
@@ -1795,7 +1795,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">org.broad.scrnaseq</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scrnaseq</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.2.0</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Single-cell RNA-seq metadata schema fragment for Hippo.</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Single-cell RNA-seq metadata schema fragment for Mosaic.</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nt">created_at</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-05-27T14:00:00Z&quot;</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">hippo_version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&gt;=0.3,&lt;1.0&quot;</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">license</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CC-BY-4.0</span>
@@ -1840,7 +1840,7 @@
 <tr>
 <td><code>hippo_version</code></td>
 <td>yes</td>
-<td>PEP 440 version specifier. Import fails with <code>RecipeVersionIncompatibleError</code> if the running Hippo version does not satisfy this constraint.</td>
+<td>PEP 440 version specifier. Import fails with <code>RecipeVersionIncompatibleError</code> if the running Mosaic version does not satisfy this constraint.</td>
 </tr>
 <tr>
 <td><code>description</code></td>
@@ -1855,7 +1855,7 @@
 <tr>
 <td><code>source</code></td>
 <td>no</td>
-<td>Author-declared canonical origin URI — typically a Zenodo DOI URL. Metadata only; Hippo never fetches from this field.</td>
+<td>Author-declared canonical origin URI — typically a Zenodo DOI URL. Metadata only; Mosaic never fetches from this field.</td>
 </tr>
 <tr>
 <td><code>author</code></td>
@@ -1866,7 +1866,7 @@
 </table>
 <hr />
 <h2 id="2-write-the-schema-fragment-schemayaml">2. Write the schema fragment (<code>schema.yaml</code>)<a class="headerlink" href="#2-write-the-schema-fragment-schemayaml" title="Permanent link">&para;</a></h2>
-<p><code>schema.yaml</code> is a standard <a href="https://linkml.io/">LinkML</a> schema document. Keep it focused on what your recipe contributes — do not redeclare classes or slots from an upstream recipe or from Hippo's own core schema.</p>
+<p><code>schema.yaml</code> is a standard <a href="https://linkml.io/">LinkML</a> schema document. Keep it focused on what your recipe contributes — do not redeclare classes or slots from an upstream recipe or from Mosaic's own core schema.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.org/hippo/scrnaseq</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scrnaseq</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">default_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scrnaseq</span>
@@ -1890,7 +1890,7 @@
 <a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">      </span><span class="nt">cell_count</span><span class="p">:</span>
 <a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">integer</span>
 </code></pre></div>
-<p><strong><code>default_prefix</code> must match <code>recipe.yaml</code> <code>name</code>.</strong> This is how Hippo namespaces your classes as <code>scrnaseq:SingleCellExperiment</code> in the merged schema. Hippo injects a <code>provided_by: recipe.org.broad.scrnaseq@1.2.0</code> annotation on every class and slot at import time — do not write this annotation yourself. The manifest identity always wins.</p>
+<p><strong><code>default_prefix</code> must match <code>recipe.yaml</code> <code>name</code>.</strong> This is how Mosaic namespaces your classes as <code>scrnaseq:SingleCellExperiment</code> in the merged schema. Mosaic injects a <code>provided_by: recipe.org.broad.scrnaseq@1.2.0</code> annotation on every class and slot at import time — do not write this annotation yourself. The manifest identity always wins.</p>
 <h3 id="overriding-upstream-classes">Overriding upstream classes<a class="headerlink" href="#overriding-upstream-classes" title="Permanent link">&para;</a></h3>
 <p>In-place modification of a class or slot contributed by another recipe is rejected at import time. To specialize an upstream class, use LinkML's native inheritance:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">classes</span><span class="p">:</span>
@@ -1910,10 +1910,10 @@
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://zenodo.org/record/11111/files/base-omics-2.0.0.tar.gz</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:abc123...</span>
 </code></pre></div>
-<p>The <code>parent</code> pointer tells Hippo to install the parent recipe first, then yours. A child manifest does <strong>not</strong> need to also list its parent in <code>requires.recipes</code> — the <code>parent</code> pointer is itself a typed dependency.</p>
+<p>The <code>parent</code> pointer tells Mosaic to install the parent recipe first, then yours. A child manifest does <strong>not</strong> need to also list its parent in <code>requires.recipes</code> — the <code>parent</code> pointer is itself a typed dependency.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>To scaffold a new recipe that extends an already-installed recipe, use <code>hippo recipe extend</code> (Phase 4). It creates a new directory with <code>parent</code> pre-populated from the installed <code>installed_recipes</code> registry.</p>
+<p>To scaffold a new recipe that extends an already-installed recipe, use <code>mosaic recipe extend</code> (Phase 4). It creates a new directory with <code>parent</code> pre-populated from the installed <code>installed_recipes</code> registry.</p>
 </div>
 <hr />
 <h2 id="4-declare-peer-dependencies-requires">4. Declare peer dependencies (<code>requires</code>)<a class="headerlink" href="#4-declare-peer-dependencies-requires" title="Permanent link">&para;</a></h2>
@@ -1925,18 +1925,18 @@
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">      </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://zenodo.org/record/11111/files/base-omics-2.0.0.tar.gz</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="nt">digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:abc123...</span>
 </code></pre></div>
-<p>Peer dependencies are recipes that are siblings or prerequisites, not ancestors. At install time, Hippo resolves the full dependency graph bottom-up: parent → requires.recipes → self.</p>
+<p>Peer dependencies are recipes that are siblings or prerequisites, not ancestors. At install time, Mosaic resolves the full dependency graph bottom-up: parent → requires.recipes → self.</p>
 <h3 id="reference-loader-preconditions">Reference Loader preconditions<a class="headerlink" href="#reference-loader-preconditions" title="Permanent link">&para;</a></h3>
 <p>If your schema uses classes or data contributed by a Reference Loader, declare the loader as a precondition:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">requires</span><span class="p">:</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">reference_loaders</span><span class="p">:</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ensembl==homo_sapiens.GRCh38.110</span>
 </code></pre></div>
-<p>Hippo checks that each pinned loader is installed at the declared version before importing the recipe. It does <strong>not</strong> install Reference Loaders automatically. If the loader is absent or at a different version, import fails with <code>RecipeRequiresUnsatisfiedError</code>.</p>
+<p>Mosaic checks that each pinned loader is installed at the declared version before importing the recipe. It does <strong>not</strong> install Reference Loaders automatically. If the loader is absent or at a different version, import fails with <code>RecipeRequiresUnsatisfiedError</code>.</p>
 <hr />
 <h2 id="5-compute-and-verify-the-digest">5. Compute and verify the digest<a class="headerlink" href="#5-compute-and-verify-the-digest" title="Permanent link">&para;</a></h2>
-<p>Before publishing, verify the canonical content digest with <code>hippo recipe inspect</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./my-recipe/
+<p>Before publishing, verify the canonical content digest with <code>mosaic recipe inspect</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./my-recipe/
 </code></pre></div>
 <p>Example output:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>id:           org.broad.scrnaseq
@@ -1950,12 +1950,12 @@
 </code></pre></div>
 <p>Copy the <code>digest</code> value and include it in any <code>RecipeRef</code> that references your recipe. The digest is computed over sorted file paths and their contents — identical for directory and tarball forms of the same recipe.</p>
 <p>To see every class and slot:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./my-recipe/<span class="w"> </span>--show-elements
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span>inspect<span class="w"> </span>./my-recipe/<span class="w"> </span>--show-elements
 </code></pre></div>
 <hr />
 <h2 id="6-exporting-a-live-schema-as-a-recipe">6. Exporting a live schema as a recipe<a class="headerlink" href="#6-exporting-a-live-schema-as-a-recipe" title="Permanent link">&para;</a></h2>
-<p>If you have been working directly in a live Hippo instance and want to package your locally-authored schema content as a recipe, use <code>hippo recipe export</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--out<span class="w"> </span>./my-recipe/
+<p>If you have been working directly in a live Mosaic instance and want to package your locally-authored schema content as a recipe, use <code>mosaic recipe export</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--out<span class="w"> </span>./my-recipe/
 </code></pre></div>
 <p>This writes <code>recipe.yaml</code> and <code>schema.yaml</code> to <code>./my-recipe/</code>. Only classes and slots you authored directly are included — content imported from other recipes or Reference Loaders is excluded automatically. The export also auto-populates <code>requires.recipes</code> from any upstream recipes your local classes reference via <code>is_a:</code> or slot ranges.</p>
 <p>The exported <code>recipe.yaml</code> contains stubs you must replace before publishing:</p>
@@ -1964,17 +1964,17 @@
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0.0</span><span class="w">          </span><span class="c1"># ← replace with your version</span>
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="nt">hippo_version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&gt;=0.3&quot;</span><span class="w">  </span><span class="c1"># ← adjust compatibility range</span>
 </code></pre></div>
-<p>To declare a parent lineage on the export, pass the <code>id</code> of an already-installed recipe with <code>--parent</code>. Until <code>hippo recipe list</code> ships in Phase 4, find installed recipe ids by reading <code>hippo_meta.installed_recipes</code> directly from the database:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>hippo<span class="w"> </span>recipe<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--parent<span class="w"> </span>org.broad.base-omics<span class="w"> </span>--out<span class="w"> </span>./my-recipe/
+<p>To declare a parent lineage on the export, pass the <code>id</code> of an already-installed recipe with <code>--parent</code>. Until <code>mosaic recipe list</code> ships in Phase 4, find installed recipe ids by reading <code>hippo_meta.installed_recipes</code> directly from the database:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mosaic<span class="w"> </span>recipe<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--parent<span class="w"> </span>org.broad.base-omics<span class="w"> </span>--out<span class="w"> </span>./my-recipe/
 </code></pre></div>
 <hr />
 <h2 id="7-publishing">7. Publishing<a class="headerlink" href="#7-publishing" title="Permanent link">&para;</a></h2>
-<p>Hippo has no built-in recipe registry. The recommended distribution pattern for publicly-shared recipes is a <strong>DOI-minted release</strong> (Zenodo, figshare, or similar). DOI-backed releases give stable, citable URIs that consumers can pin in <code>RecipeRef.source</code>.</p>
+<p>Mosaic has no built-in recipe registry. The recommended distribution pattern for publicly-shared recipes is a <strong>DOI-minted release</strong> (Zenodo, figshare, or similar). DOI-backed releases give stable, citable URIs that consumers can pin in <code>RecipeRef.source</code>.</p>
 <p>Suggested steps:
 1. Tag your recipe directory in a git repository.
 2. Archive a release tarball: <code>tar -czf scrnaseq-1.2.0.tar.gz scrnaseq-1.2.0/</code>
 3. Upload to Zenodo (or similar), mint a DOI, and note the direct download URL.
-4. Run <code>hippo recipe inspect</code> on the tarball to obtain the final digest.
+4. Run <code>mosaic recipe inspect</code> on the tarball to obtain the final digest.
 5. Include the download URL and digest in your recipe's README so consumers can pin them.</p>
 <div class="admonition warning">
 <p class="admonition-title">Avoid mutable URLs</p>

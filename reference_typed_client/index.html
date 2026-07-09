@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -25,7 +25,7 @@
     
     
       
-        <title>Typed Client Reference - Hippo</title>
+        <title>Typed Client Reference - Mosaic</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hippo-typed-client-reference" class="md-skip">
+        <a href="#mosaic-typed-client-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +90,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -104,7 +104,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -242,13 +242,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -567,13 +567,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -624,14 +624,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -1540,10 +1540,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#direct-import-via-hippomodels" class="md-nav__link">
+  <a href="#direct-import-via-mosaicmodels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Direct Import via hippo.models
+        Direct Import via mosaic.models
       
     </span>
   </a>
@@ -1765,10 +1765,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#direct-import-via-hippomodels" class="md-nav__link">
+  <a href="#direct-import-via-mosaicmodels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Direct Import via hippo.models
+        Direct Import via mosaic.models
       
     </span>
   </a>
@@ -1861,8 +1861,8 @@
   
 
 
-<h1 id="hippo-typed-client-reference">Hippo Typed Client Reference<a class="headerlink" href="#hippo-typed-client-reference" title="Permanent link">&para;</a></h1>
-<p>The typed client gives each schema class its own accessor on <code>HippoClient</code> —
+<h1 id="mosaic-typed-client-reference">Mosaic Typed Client Reference<a class="headerlink" href="#mosaic-typed-client-reference" title="Permanent link">&para;</a></h1>
+<p>The typed client gives each schema class its own accessor on <code>MosaicClient</code> —
 <code>client.samples.create(Sample(name="S001"))</code> — alongside the generic
 <code>client.put("Sample", {...})</code> that already exists. Both surfaces are <strong>coequal</strong>:
 every SDK capability is reachable from either, neither is preferred, and new
@@ -1870,14 +1870,14 @@ features land in both at the same time.</p>
 <p>For the full engineering spec see <a href="../design/sec9_linkml_redesign.md#98-typed-client">sec9 §9.8</a>.</p>
 <hr />
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
-<p>The typed surface is built when <code>HippoClient</code> is constructed with a <code>SchemaRegistry</code>.
+<p>The typed surface is built when <code>MosaicClient</code> is constructed with a <code>SchemaRegistry</code>.
 Without a registry the typed accessors are not present and the generic surface
 continues to work normally.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">HippoClient</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.linkml_bridge</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchemaRegistry</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">MosaicClient</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.linkml_bridge</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchemaRegistry</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">SchemaRegistry</span><span class="o">.</span><span class="n">from_yaml_file</span><span class="p">(</span><span class="s2">&quot;schemas/my_schema.yaml&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">client</span> <span class="o">=</span> <span class="n">HippoClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">client</span> <span class="o">=</span> <span class="n">MosaicClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="namespace-aware-access-patterns">Namespace-Aware Access Patterns<a class="headerlink" href="#namespace-aware-access-patterns" title="Permanent link">&para;</a></h2>
@@ -1980,7 +1980,7 @@ the <code>hippo_accessor</code> annotation:</p>
 <hr />
 <h2 id="accessor-api">Accessor API<a class="headerlink" href="#accessor-api" title="Permanent link">&para;</a></h2>
 <p>Every class accessor is an <code>EntityAccessor</code> instance. All methods forward to
-the same underlying <code>HippoClient</code> internals used by the generic surface.</p>
+the same underlying <code>MosaicClient</code> internals used by the generic surface.</p>
 <table>
 <thead>
 <tr>
@@ -2035,7 +2035,7 @@ the same underlying <code>HippoClient</code> internals used by the generic surfa
 <p><code>data</code> may be a plain <code>dict</code> or a Pydantic model instance — see <a href="#pydantic-model-access">Pydantic model access</a>.</p>
 <hr />
 <h2 id="pydantic-model-access">Pydantic Model Access<a class="headerlink" href="#pydantic-model-access" title="Permanent link">&para;</a></h2>
-<p>When <code>SchemaRegistry</code> loads a schema, Hippo generates a Pydantic v2 model class
+<p>When <code>SchemaRegistry</code> loads a schema, Mosaic generates a Pydantic v2 model class
 for each domain class and attaches it to the accessor.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">accessor</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">samples</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">Model</span> <span class="o">=</span> <span class="n">accessor</span><span class="o">.</span><span class="n">model_class</span>     <span class="c1"># Pydantic class for &quot;Sample&quot;</span>
@@ -2046,43 +2046,43 @@ for each domain class and attaches it to the accessor.</p>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">client</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">create</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;S001&quot;</span><span class="p">})</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Pydantic instance — field validation runs at construction time</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.typed_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityAccessor</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.typed_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityAccessor</span>
 <a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">sample</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">model_class</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;S001&quot;</span><span class="p">)</span>
 <a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">client</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
 </code></pre></div>
 <p>When Pydantic generation fails at load time, <code>model_class</code> is <code>None</code> and the
 accessor falls back to plain-dict operation with a logged warning.</p>
-<h3 id="direct-import-via-hippomodels">Direct Import via <code>hippo.models</code><a class="headerlink" href="#direct-import-via-hippomodels" title="Permanent link">&para;</a></h3>
-<p>As an alternative to <code>accessor.model_class</code>, Hippo registers every generated
-class under <code>hippo.models.&lt;namespace&gt;</code> so you can import classes directly:</p>
+<h3 id="direct-import-via-mosaicmodels">Direct Import via <code>mosaic.models</code><a class="headerlink" href="#direct-import-via-mosaicmodels" title="Permanent link">&para;</a></h3>
+<p>As an alternative to <code>accessor.model_class</code>, Mosaic registers every generated
+class under <code>mosaic.models.&lt;namespace&gt;</code> so you can import classes directly:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Root-namespace class</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sample</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sample</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">sample</span> <span class="o">=</span> <span class="n">Sample</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;S001&quot;</span><span class="p">)</span>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">client</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1"># Non-root namespace class (hippo_namespace: tissue)</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.models.tissue</span><span class="w"> </span><span class="kn">import</span> <span class="n">TissueSample</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.models.tissue</span><span class="w"> </span><span class="kn">import</span> <span class="n">TissueSample</span>
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># Nested namespace class (hippo_namespace: assay.quant)</span>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.models.assay.quant</span><span class="w"> </span><span class="kn">import</span> <span class="n">Measurement</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.models.assay.quant</span><span class="w"> </span><span class="kn">import</span> <span class="n">Measurement</span>
 </code></pre></div>
-<p>The <code>hippo.models</code> package is populated by <code>HippoClient.__init__</code> when a
+<p>The <code>mosaic.models</code> package is populated by <code>MosaicClient.__init__</code> when a
 <code>SchemaRegistry</code> is provided. The modules are not available until after the
-first <code>HippoClient(registry=...)</code> construction.</p>
+first <code>MosaicClient(registry=...)</code> construction.</p>
 <p>Classes are keyed by their LinkML class name (e.g. <code>Sample</code>, <code>TissueSample</code>)
 not by the accessor name (<code>samples</code>, <code>tissue_samples</code>). Root-namespace classes
-land on <code>hippo.models</code> itself; non-root classes land on
-<code>hippo.models.&lt;namespace&gt;</code>. Intermediate parent modules (e.g. <code>hippo.models.assay</code>
+land on <code>mosaic.models</code> itself; non-root classes land on
+<code>mosaic.models.&lt;namespace&gt;</code>. Intermediate parent modules (e.g. <code>mosaic.models.assay</code>
 when only <code>assay.quant</code> has classes) are registered as empty modules so import
 chains resolve.</p>
-<p><strong>Multi-client note:</strong> If multiple <code>HippoClient</code> instances with different
+<p><strong>Multi-client note:</strong> If multiple <code>MosaicClient</code> instances with different
 registries coexist in the same process, the last-constructed client's classes
-populate <code>hippo.models</code>. Concurrent multi-registry use in the same process is
+populate <code>mosaic.models</code>. Concurrent multi-registry use in the same process is
 not supported.</p>
 <hr />
 <h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
 <h3 id="load-time-errors-typedclienterror">Load-Time Errors — <code>TypedClientError</code><a class="headerlink" href="#load-time-errors-typedclienterror" title="Permanent link">&para;</a></h3>
-<p><code>HippoClient.__init__</code> raises <code>TypedClientError</code> when the schema produces an
+<p><code>MosaicClient.__init__</code> raises <code>TypedClientError</code> when the schema produces an
 ambiguous accessor surface. Four collision cases, each identified by the
 <code>.case</code> field:</p>
 <table>
@@ -2116,15 +2116,15 @@ ambiguous accessor surface. Four collision cases, each identified by the
 </tr>
 <tr>
 <td><code>"accessor_reserved"</code></td>
-<td>A class's derived or override accessor conflicts with a public <code>HippoClient</code> attribute</td>
+<td>A class's derived or override accessor conflicts with a public <code>MosaicClient</code> attribute</td>
 <td>Override with <code>hippo_accessor</code></td>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.typed_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedClientError</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.typed_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedClientError</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">client</span> <span class="o">=</span> <span class="n">HippoClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">conflicting_registry</span><span class="p">)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">client</span> <span class="o">=</span> <span class="n">MosaicClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">,</span> <span class="n">registry</span><span class="o">=</span><span class="n">conflicting_registry</span><span class="p">)</span>
 <a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">except</span> <span class="n">TypedClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">case</span><span class="p">)</span>   <span class="c1"># e.g. &quot;duplicate_accessor&quot;</span>
 <a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>        <span class="c1"># actionable message with fix suggestion</span>
@@ -2139,7 +2139,7 @@ concrete schema fix. Example:</p>
 <h3 id="write-time-errors-validationfailed">Write-Time Errors — <code>ValidationFailed</code><a class="headerlink" href="#write-time-errors-validationfailed" title="Permanent link">&para;</a></h3>
 <p>Write methods (<code>create</code>, <code>put</code>, <code>replace</code>) raise <code>ValidationFailed</code> when
 validation fails. The exception carries full context:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hippo.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationFailed</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mosaic.core.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationFailed</span>
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">client</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">create</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;bad&quot;</span><span class="p">})</span>

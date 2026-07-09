@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
+        <meta name="description" content="Mosaic (formerly Hippo) — a LinkML runtime engine — typed SDK, REST API, append-only provenance, and dynamic validation from a schema definition.">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>Design Principles - Hippo</title>
+        <title>Design Principles - Mosaic</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Hippo" class="md-header__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-header__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Hippo
+            Mosaic
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -244,13 +244,13 @@
   
   
     <li class="md-tabs__item">
-      <a href="../why-hippo/" class="md-tabs__link">
+      <a href="../why-mosaic/" class="md-tabs__link">
         
   
   
     
   
-  Why Hippo?
+  Why Mosaic?
 
       </a>
     </li>
@@ -569,13 +569,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Hippo" class="md-nav__button md-logo" aria-label="Hippo" data-md-component="logo">
+    <a href=".." title="Mosaic" class="md-nav__button md-logo" aria-label="Mosaic" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Hippo
+    Mosaic
   </label>
   
     <div class="md-nav__source">
@@ -626,14 +626,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../why-hippo/" class="md-nav__link">
+      <a href="../why-mosaic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Why Hippo?
+    Why Mosaic?
   
 
     
@@ -1435,10 +1435,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-hippo-doesnt-know-about-your-domain" class="md-nav__link">
+  <a href="#6-mosaic-doesnt-know-about-your-domain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Hippo doesn't know about your domain.
+        6. Mosaic doesn't know about your domain.
       
     </span>
   </a>
@@ -1599,10 +1599,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-hippo-doesnt-know-about-your-domain" class="md-nav__link">
+  <a href="#6-mosaic-doesnt-know-about-your-domain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Hippo doesn't know about your domain.
+        6. Mosaic doesn't know about your domain.
       
     </span>
   </a>
@@ -1630,20 +1630,20 @@
 
 
 <h1 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h1>
-<p>These six principles describe the architectural commitments behind Hippo. They exist to give you a vocabulary for two purposes: to advocate for Hippo to colleagues who are evaluating it, and to argue about whether a proposed feature or change belongs in the engine.</p>
+<p>These six principles describe the architectural commitments behind Mosaic. They exist to give you a vocabulary for two purposes: to advocate for Mosaic to colleagues who are evaluating it, and to argue about whether a proposed feature or change belongs in the engine.</p>
 <hr />
 <h2 id="1-the-schema-is-the-application">1. The schema is the application.<a class="headerlink" href="#1-the-schema-is-the-application" title="Permanent link">&para;</a></h2>
-<p>Hippo ships no data model of its own. When you define <code>Author</code>, <code>Publication</code>, and <code>Citation</code> in a LinkML file, Hippo generates the relational tables, the Python SDK methods, and the REST endpoints for those types at startup — without you editing a line of Hippo source. If you add a field, you add it in the schema; Hippo picks it up on the next <code>hippo migrate</code>. This principle is why there is no "Hippo entity type library" to learn: the entity types that exist in your deployment are exactly the ones your schema defines.</p>
+<p>Mosaic ships no data model of its own. When you define <code>Author</code>, <code>Publication</code>, and <code>Citation</code> in a LinkML file, Mosaic generates the relational tables, the Python SDK methods, and the REST endpoints for those types at startup — without you editing a line of Mosaic source. If you add a field, you add it in the schema; Mosaic picks it up on the next <code>mosaic migrate</code>. This principle is why there is no "Mosaic entity type library" to learn: the entity types that exist in your deployment are exactly the ones your schema defines.</p>
 <h2 id="2-append-only-by-construction">2. Append-only by construction.<a class="headerlink" href="#2-append-only-by-construction" title="Permanent link">&para;</a></h2>
 <p>There is no <code>client.delete()</code>. Removing an entity means setting <code>is_available = False</code>, which records the transition in the provenance log and hides the entity from default queries — the row stays in the database. Every call to <code>client.put()</code> writes a new <code>ProvenanceRecord</code> row logging who changed what and when, so you can reconstruct any entity's state at any prior timestamp. This is not a feature flag or a policy decision you configure; it is how the storage layer is built.</p>
 <h2 id="3-provenance-is-prov-o-not-prov-adjacent">3. Provenance is PROV-O, not PROV-adjacent.<a class="headerlink" href="#3-provenance-is-prov-o-not-prov-adjacent" title="Permanent link">&para;</a></h2>
-<p><code>ProvenanceRecord</code> is a first-class LinkML class with <code>class_uri: prov:Activity</code>. Its fields map directly to PROV-O predicates: <code>prov:wasGeneratedBy</code>, <code>prov:wasAttributedTo</code>, <code>prov:startedAtTime</code>. A Hippo deployment can serialize its entire provenance graph to RDF or JSON-LD and load it into a W3C PROV reasoner, an RO-Crate packager, or a lineage tool — with no transformation step, because the internal representation <em>is</em> a PROV graph. Systems that say they are "PROV-compatible" typically mean they can export to PROV formats. Hippo means it can't not.</p>
+<p><code>ProvenanceRecord</code> is a first-class LinkML class with <code>class_uri: prov:Activity</code>. Its fields map directly to PROV-O predicates: <code>prov:wasGeneratedBy</code>, <code>prov:wasAttributedTo</code>, <code>prov:startedAtTime</code>. A Mosaic deployment can serialize its entire provenance graph to RDF or JSON-LD and load it into a W3C PROV reasoner, an RO-Crate packager, or a lineage tool — with no transformation step, because the internal representation <em>is</em> a PROV graph. Systems that say they are "PROV-compatible" typically mean they can export to PROV formats. Mosaic means it can't not.</p>
 <h2 id="4-transport-is-an-adapter-not-the-architecture">4. Transport is an adapter, not the architecture.<a class="headerlink" href="#4-transport-is-an-adapter-not-the-architecture" title="Permanent link">&para;</a></h2>
-<p><code>HippoClient</code> is the system. When you run <code>hippo serve</code>, the REST API spins up a FastAPI app whose route handlers call the same <code>HippoClient</code> methods you call from a notebook — there is no separate "server code path." This means the SDK and the API surface behave identically, bugs are fixed once, and you can switch between embedded library use and REST service use without changing the code that talks to Hippo. Adding a new transport (GraphQL, gRPC) is a new adapter on top of the SDK, not a new implementation of the business logic.</p>
+<p><code>MosaicClient</code> is the system. When you run <code>mosaic serve</code>, the REST API spins up a FastAPI app whose route handlers call the same <code>MosaicClient</code> methods you call from a notebook — there is no separate "server code path." This means the SDK and the API surface behave identically, bugs are fixed once, and you can switch between embedded library use and REST service use without changing the code that talks to Mosaic. Adding a new transport (GraphQL, gRPC) is a new adapter on top of the SDK, not a new implementation of the business logic.</p>
 <h2 id="5-linkml-upstream-not-downstream">5. LinkML upstream, not downstream.<a class="headerlink" href="#5-linkml-upstream-not-downstream" title="Permanent link">&para;</a></h2>
-<p>Hippo extends LinkML schemas with <code>hippo_*</code> annotations for features the engine needs — validation tiers, reference-loader hooks, provenance configuration. Outside those annotations, Hippo uses LinkML's own toolchain: <code>linkml-validate</code>, <code>gen-sqlddl</code>, and the LinkML Python dataclasses runtime. If there is a bug in LinkML's schema parsing, the fix is a version bump in Hippo's <code>pyproject.toml</code>, not a shim in Hippo's source. The engine does not reimplement or override upstream LinkML behavior; it extends it at well-defined, bounded points.</p>
-<h2 id="6-hippo-doesnt-know-about-your-domain">6. Hippo doesn't know about your domain.<a class="headerlink" href="#6-hippo-doesnt-know-about-your-domain" title="Permanent link">&para;</a></h2>
-<p>The only entity types the Hippo core ships are <code>Entity</code>, <code>ProvenanceRecord</code>, <code>Process</code>, <code>Validator</code>, and <code>ReferenceLoader</code>. There are no biomedical entity types, no sample-tracking conventions, no ontology bindings, no field-naming standards in the engine. The VA National PTSD Brain Bank deployment — Hippo's first production use — works because it supplies a schema that defines biomedical entities; that schema is not in the Hippo repository. Domain-specific validators, reference loaders, and external adapters live in user-installed packages that register themselves via entry points. Keeping the core domain-free is what makes the same engine usable for a bibliography, a software inventory, or a clinical registry without modification.</p>
+<p>Mosaic extends LinkML schemas with <code>hippo_*</code> annotations for features the engine needs — validation tiers, reference-loader hooks, provenance configuration. Outside those annotations, Mosaic uses LinkML's own toolchain: <code>linkml-validate</code>, <code>gen-sqlddl</code>, and the LinkML Python dataclasses runtime. If there is a bug in LinkML's schema parsing, the fix is a version bump in Mosaic's <code>pyproject.toml</code>, not a shim in Mosaic's source. The engine does not reimplement or override upstream LinkML behavior; it extends it at well-defined, bounded points.</p>
+<h2 id="6-mosaic-doesnt-know-about-your-domain">6. Mosaic doesn't know about your domain.<a class="headerlink" href="#6-mosaic-doesnt-know-about-your-domain" title="Permanent link">&para;</a></h2>
+<p>The only entity types the Mosaic core ships are <code>Entity</code>, <code>ProvenanceRecord</code>, <code>Process</code>, <code>Validator</code>, and <code>ReferenceLoader</code>. There are no biomedical entity types, no sample-tracking conventions, no ontology bindings, no field-naming standards in the engine. The VA National PTSD Brain Bank deployment — Mosaic's first production use — works because it supplies a schema that defines biomedical entities; that schema is not in the Mosaic repository. Domain-specific validators, reference loaders, and external adapters live in user-installed packages that register themselves via entry points. Keeping the core domain-free is what makes the same engine usable for a bibliography, a software inventory, or a clinical registry without modification.</p>
 
 
 
