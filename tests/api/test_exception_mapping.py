@@ -1,13 +1,13 @@
 """Tests for SDK exception → HTTP status mapping in the API factory.
 
-Every ``HippoError`` subclass raised by a route must surface as a meaningful
+Every ``MosaicError`` subclass raised by a route must surface as a meaningful
 HTTP status with the standard ``ErrorResponse`` body shape (``error`` +
 ``detail``), not an anonymous 500 (sec4 §4.3).
 
 The not-found and the two validation handlers were already registered on main
 (PR #43) and are exercised here too to lock the full surface; the net-new
 mappings (409 supersession/config conflict, 400 client-side ingestion/search/
-temporal/schema, named 500 adapter/provenance) plus the ``HippoError`` fallback
+temporal/schema, named 500 adapter/provenance) plus the ``MosaicError`` fallback
 are the focus of this change.
 """
 
@@ -15,8 +15,8 @@ import pytest
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
-from hippo.api.factory import create_app
-from hippo.core.exceptions import (
+from mosaic.api.factory import create_app
+from mosaic.core.exceptions import (
     AdapterError,
     ConfigError,
     EntityAlreadySupersededError,
@@ -134,8 +134,8 @@ def test_sdk_exception_maps_to_http_status(exc, expected_status, expected_error)
         OrchestrationError(message="dependency cycle", cycle=["a", "b"]),
     ],
 )
-def test_unmapped_hippo_error_falls_back_to_named_500(exc):
-    """HippoError subclasses without a dedicated mapping get a named 500.
+def test_unmapped_mosaic_error_falls_back_to_named_500(exc):
+    """MosaicError subclasses without a dedicated mapping get a named 500.
 
     The fallback uses the concrete class name as ``error`` and carries the
     SDK message, so an unmapped error is still attributable — never an
@@ -149,7 +149,7 @@ def test_unmapped_hippo_error_falls_back_to_named_500(exc):
     assert exc.message in body["detail"]
 
 
-def test_non_hippo_exception_stays_anonymous_500():
+def test_non_mosaic_exception_stays_anonymous_500():
     """Arbitrary exceptions keep the opaque generic handler (no leaking)."""
     client = _app_raising(RuntimeError("secret internal state"))
     response = client.get("/boom")
