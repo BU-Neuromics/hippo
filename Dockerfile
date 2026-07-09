@@ -1,8 +1,8 @@
-# Hippo — DataHelix metadata tracking service
+# Mosaic (formerly Hippo) — LinkML runtime for the DataHelix platform
 # Multi-stage build: install deps -> slim runtime
 #
 # The image carries the graphql and postgres extras: the DataHelix
-# certification compose runs `hippo serve --graphql` against Postgres
+# certification compose runs `mosaic serve --graphql` against Postgres
 # (certification/compose/docker-compose.certify.yml).
 
 FROM python:3.12-slim AS builder
@@ -17,8 +17,8 @@ FROM python:3.12-slim
 ARG VERSION=dev
 ARG REVISION=unknown
 
-LABEL org.opencontainers.image.title="hippo" \
-      org.opencontainers.image.description="Hippo — LinkML runtime for the DataHelix platform" \
+LABEL org.opencontainers.image.title="mosaic" \
+      org.opencontainers.image.description="Mosaic (formerly Hippo) — LinkML runtime for the DataHelix platform" \
       org.opencontainers.image.source="https://github.com/BU-Neuromics/hippo" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${VERSION}" \
@@ -39,5 +39,5 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
-ENTRYPOINT ["hippo"]
+ENTRYPOINT ["mosaic"]
 CMD ["serve", "--host", "0.0.0.0", "--port", "8001"]
