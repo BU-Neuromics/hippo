@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Ship `py.typed` (PEP 561) + package metadata (issue #56).** Mosaic now
+  advertises inline type information to downstream type-checkers via a
+  `py.typed` marker (`src/mosaic/py.typed`), and `pyproject.toml` gains
+  `keywords` and trove `classifiers` (including `Typing :: Typed`).
+
 ### Fixed
 
 - **Mount the GA4GH DRS router in the default serve app (issue #55).** The DRS
@@ -126,6 +133,19 @@
 
 ### Fixed
 
+- **Self-referential / cyclic reference slots can now be ingested (issue #95).**
+  `hippo ingest` inserted entities one row at a time with foreign keys enforced
+  immediately, so instances forming a reference cycle (`A → B → A`, or a
+  self-loop `A → A`) failed with `FOREIGN KEY constraint failed` under every
+  insertion order — no ordering or number of passes could satisfy a cycle. The
+  whole bundle now writes inside a single staged transaction with foreign-key
+  checks **deferred to commit** (SQLite `PRAGMA defer_foreign_keys`), so rows
+  may reference each other in any order — cycles, self-loops, and plain forward
+  references all resolve and are validated together at commit. Ingest is now
+  atomic: a genuinely dangling reference fails the commit and rolls the whole
+  bundle back rather than leaving a partial write. Deferral is enabled for the
+  `staged_transaction` scope generally, so `batch_put` gains the same cyclic
+  support.
 - **References ranged on a polymorphic base class no longer fail their foreign
   key on ingest (issue #93).** `hippo migrate` emitted a foreign key against
   the base-class table for any single-valued reference whose declared range is
