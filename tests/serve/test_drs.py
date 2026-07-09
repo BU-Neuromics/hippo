@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from hippo.api.factory import create_app
-from hippo.serve.routers import drs
+from mosaic.api.factory import create_app
+from mosaic.serve.routers import drs
 
 
 def _make_raw_entity(
@@ -42,7 +42,7 @@ def _make_full_entity(
 
 
 def _make_client(raw_entity=None, full_entity=None):
-    """Build a mock HippoClient configured for DRS tests."""
+    """Build a mock MosaicClient configured for DRS tests."""
     mock_client = MagicMock()
     mock_client.storage.read.return_value = raw_entity
     if full_entity is not None:
@@ -57,10 +57,10 @@ def app_no_client():
 
 
 class TestDrsMountedInDefaultApp:
-    """The DRS router must be part of the default ``hippo serve`` app."""
+    """The DRS router must be part of the default ``mosaic serve`` app."""
 
     def test_default_app_exposes_drs_route(self):
-        from hippo.serve import create_default_app
+        from mosaic.serve import create_default_app
 
         app = create_default_app()
         # Assert via the OpenAPI path map — robust across FastAPI versions and
@@ -69,7 +69,7 @@ class TestDrsMountedInDefaultApp:
         assert "/ga4gh/drs/v1/objects/{object_id}" in app.openapi()["paths"]
 
     def test_default_app_resolves_drs_object(self):
-        from hippo.serve import create_default_app
+        from mosaic.serve import create_default_app
 
         uri = "s3://bucket/file.bam"
         raw = _make_raw_entity(data={"uri": uri})

@@ -155,8 +155,8 @@ jobs:
             image-digest.json
 
   pypi:
-    # Gated until the distribution-name decision is settled ("hippo" is taken
-    # on PyPI) and a trusted publisher is configured — see RELEASING.md.
+    # Gated until a trusted publisher is configured for the datahelix-mosaic
+    # distribution — see RELEASING.md.
     # Flip on by setting the repository variable PYPI_PUBLISH to "true".
     if: vars.PYPI_PUBLISH == 'true'
     needs: [validate, build]

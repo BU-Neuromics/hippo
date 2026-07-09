@@ -6,8 +6,50 @@
 
 - **Mount the GA4GH DRS router in the default serve app (issue #55).** The DRS
   read-only router (`GET /ga4gh/drs/v1/objects/{object_id}`) shipped with tests
-  but was never added to `create_default_app()`, so `hippo serve` silently
+  but was never added to `create_default_app()`, so `mosaic serve` silently
   omitted it. It is now mounted in the default router set.
+
+## v0.11.0 — 2026-07-08 (Hippo is now Mosaic)
+
+### Changed
+
+- **The component is renamed Hippo → Mosaic** (ADR-0004). The distribution
+  is now `datahelix-mosaic` (platform ADR-0002 prefixed-dist convention),
+  the import package is `mosaic`, the CLI is `mosaic`, and the public
+  client class is `MosaicClient`. This is a naming change only — **no
+  data-model impact**: LinkML schema-layer names (`hippo_core`,
+  `hippo_ext`, `hippo_*` annotation keys), SQL identifiers (`hippo_meta`),
+  and on-disk provenance are untouched.
+- Canonical entry-point groups are now `mosaic.storage_adapters`,
+  `mosaic.write_validators`, `mosaic.schema_packages`,
+  `mosaic.reference_loaders`, and `mosaic.reference_loader_cli`. The
+  legacy `hippo.*` groups are still resolved (mosaic canonical, dedup by
+  entry-point name), and built-ins are registered under both spellings.
+  New third-party plugins should be named `mosaic-reference-<name>` /
+  `mosaic-adapter-<name>`; `hippo-reference-*` packages remain
+  discoverable for the whole deprecation window.
+- Runtime config is now `mosaic.yaml` (written by `mosaic init`);
+  `hippo.yaml` / `hippo.yml` are still auto-detected as a fallback with a
+  `DeprecationWarning`. The default SQLite path for new deployments is
+  `data/mosaic.db`; an existing `data/hippo.db` is still picked up.
+- Environment variables are now `MOSAIC_*` (`MOSAIC_CACHE_DIR`,
+  `MOSAIC_RECIPE_CACHE`, `MOSAIC_TUI_TOKEN`, `MOSAIC_DATABASE_URL`); the
+  `HIPPO_*` spellings are honored as a fallback with a one-time
+  `DeprecationWarning` per variable.
+
+### Deprecated
+
+- `import hippo` — a shim package re-exports mosaic's surface and aliases
+  every `hippo.*` submodule to the same module object as its `mosaic.*`
+  counterpart (module identity holds; `isinstance` checks are safe).
+  Emits one `DeprecationWarning` on import.
+- The `hippo` console script — delegates to `mosaic` after printing a
+  deprecation notice to stderr.
+- `HippoClient` — assignment alias of `MosaicClient` (also `HippoError`,
+  `HippoConfig`, `load_hippo_config`).
+- Deprecation window: the `hippo` aliases (import shim, CLI alias, legacy
+  entry-point groups, config/env fallbacks) will be kept for **at least
+  two minor releases**; removal will be decided by a future ADR.
 
 ## v0.10.6 — 2026-07-08 (Postgres write parity: updates, availability, boolean filters)
 
