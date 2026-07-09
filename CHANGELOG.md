@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Ship `py.typed` (PEP 561) + package metadata (issue #56).** Mosaic now
+  advertises inline type information to downstream type-checkers via a
+  `py.typed` marker (`src/mosaic/py.typed`), and `pyproject.toml` gains
+  `keywords` and trove `classifiers` (including `Typing :: Typed`).
+
 ## v0.11.0 — 2026-07-08 (Hippo is now Mosaic)
 
 ### Changed
