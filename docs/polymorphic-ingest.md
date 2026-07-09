@@ -1,6 +1,6 @@
 # Polymorphic Ingest
 
-This guide explains how Hippo ingests **polymorphic collections** — collections
+This guide explains how Mosaic ingests **polymorphic collections** — collections
 whose members can be one of several subtypes of a common base class — and how to
 fix the most common error you may hit when authoring them.
 
@@ -12,12 +12,12 @@ field(s)…"* or *"…is an abstract base class…"*, jump to
 
 ## Background
 
-Hippo stores **one table per concrete class**. A `SolidSample` is stored in the
+Mosaic stores **one table per concrete class**. A `SolidSample` is stored in the
 `SolidSample` table, an `RNASeqAssay` in the `RNASeqAssay` table, and so on. An
 entity only keeps its class-specific fields if it is stored as that class — there
 is no shared "samples" table that could hold every subtype's columns.
 
-When you `hippo ingest` a bundle, each top-level key is a **collection accessor**
+When you `mosaic ingest` a bundle, each top-level key is a **collection accessor**
 and its value is a list of instances:
 
 ```yaml
@@ -32,10 +32,10 @@ assays:
     read_length: 150
 ```
 
-The question Hippo must answer for every instance is: **which concrete class do I
+The question Mosaic must answer for every instance is: **which concrete class do I
 store this as?** For a collection of a single concrete type the answer is obvious.
 For a *polymorphic* collection — `samples:` holding both `SolidSample` and
-`LiquidSample`, or `assays:` holding `RNASeqAssay` — Hippo needs a signal in the
+`LiquidSample`, or `assays:` holding `RNASeqAssay` — Mosaic needs a signal in the
 data that names each instance's real type. That signal is the LinkML
 **type designator**.
 
@@ -45,7 +45,7 @@ data that names each instance's real type. That signal is the LinkML
 
 Mark one slot on the base class with `designates_type: true`. Its value on each
 instance names the concrete subclass that instance should be stored as. This is
-standard LinkML — `linkml-validate` understands it, and so does Hippo.
+standard LinkML — `linkml-validate` understands it, and so does Mosaic.
 
 ```yaml
 classes:
@@ -86,7 +86,7 @@ then its `class_uri`, then the CURIE/short form of that URI. Using the bare clas
 name (`category: SolidSample`) is the simplest and recommended form.
 
 !!! note "Accessor names"
-    Collection keys follow Hippo's accessor convention — `snake_case(ClassName)`
+    Collection keys follow Mosaic's accessor convention — `snake_case(ClassName)`
     pluralized (e.g. `Sample` → `samples`, `RNASeqAssay` → `rna_seq_assays`),
     overridable per class with the `hippo_accessor` annotation. Both the **base**
     accessor (`samples:`, dispatched by `category`) and the **concrete** accessors
@@ -96,14 +96,14 @@ name (`category: SolidSample`) is the simplest and recommended form.
 
 ## Fixing the dispatch error
 
-Hippo refuses to ingest an instance when it cannot determine the concrete class to
+Mosaic refuses to ingest an instance when it cannot determine the concrete class to
 store it as — rather than silently dropping the subtype's fields. You will see one
 of these messages:
 
 ### "…carries field(s) […] that '<Base>' does not define …declares no type designator"
 
 The collection's base class has subclasses, and your instance has fields that only
-exist on a subclass — but the base declares no `designates_type` slot, so Hippo
+exist on a subclass — but the base declares no `designates_type` slot, so Mosaic
 can't tell which subclass you mean. **Two ways to fix it:**
 
 1. **Add a discriminator (recommended).** Mark a slot on the base
@@ -138,7 +138,7 @@ can't tell which subclass you mean. **Two ways to fix it:**
 
 ### "…is an abstract base class and is never stored directly…"
 
-You ingested an instance under an **abstract** base accessor but Hippo couldn't
+You ingested an instance under an **abstract** base accessor but Mosaic couldn't
 route it to a concrete subclass — either the base declares no designator, or this
 instance is missing the designator value. Fix it by setting the designator slot on
 each instance to a concrete subclass name (the error lists the valid options), or
@@ -151,12 +151,12 @@ one of the concrete subclass names listed in the error (matched by class name).
 
 ---
 
-## Why Hippo refuses instead of guessing
+## Why Mosaic refuses instead of guessing
 
 Storing a subtype instance as its base class would compile and "succeed" — but the
 subtype's columns don't exist on the base table, so those values would vanish with
 no error. Because that silent data loss is exactly the failure mode this behavior
-prevents, Hippo fails loudly with a fix instead. Declaring the `designates_type`
+prevents, Mosaic fails loudly with a fix instead. Declaring the `designates_type`
 discriminator (or using the concrete accessor) is the idiomatic, lossless path.
 
 ## References to a polymorphic base
@@ -165,7 +165,7 @@ A slot whose range **is** a polymorphic base — e.g. `Sighting.animal` ranged o
 `Animal`, or `Measurement.person` ranged on a `Person` base — points at a
 referent that may be any of the base's concrete subtypes. Because each subtype
 is dispatched into its own table (above), the base table is not where those
-referents live, so Hippo stores such a reference as a plain id value rather
+referents live, so Mosaic stores such a reference as a plain id value rather
 than a table-level foreign key: the id resolves across the subtype tables at
 read time. This applies to both abstract bases and concrete bases that have
 concrete subclasses. A reference to a concrete *leaf* class (no subclasses)

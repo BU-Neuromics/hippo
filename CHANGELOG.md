@@ -2,6 +2,121 @@
 
 ## [Unreleased]
 
+## v0.11.0 — 2026-07-08 (Hippo is now Mosaic)
+
+### Changed
+
+- **The component is renamed Hippo → Mosaic** (ADR-0004). The distribution
+  is now `datahelix-mosaic` (platform ADR-0002 prefixed-dist convention),
+  the import package is `mosaic`, the CLI is `mosaic`, and the public
+  client class is `MosaicClient`. This is a naming change only — **no
+  data-model impact**: LinkML schema-layer names (`hippo_core`,
+  `hippo_ext`, `hippo_*` annotation keys), SQL identifiers (`hippo_meta`),
+  and on-disk provenance are untouched.
+- Canonical entry-point groups are now `mosaic.storage_adapters`,
+  `mosaic.write_validators`, `mosaic.schema_packages`,
+  `mosaic.reference_loaders`, and `mosaic.reference_loader_cli`. The
+  legacy `hippo.*` groups are still resolved (mosaic canonical, dedup by
+  entry-point name), and built-ins are registered under both spellings.
+  New third-party plugins should be named `mosaic-reference-<name>` /
+  `mosaic-adapter-<name>`; `hippo-reference-*` packages remain
+  discoverable for the whole deprecation window.
+- Runtime config is now `mosaic.yaml` (written by `mosaic init`);
+  `hippo.yaml` / `hippo.yml` are still auto-detected as a fallback with a
+  `DeprecationWarning`. The default SQLite path for new deployments is
+  `data/mosaic.db`; an existing `data/hippo.db` is still picked up.
+- Environment variables are now `MOSAIC_*` (`MOSAIC_CACHE_DIR`,
+  `MOSAIC_RECIPE_CACHE`, `MOSAIC_TUI_TOKEN`, `MOSAIC_DATABASE_URL`); the
+  `HIPPO_*` spellings are honored as a fallback with a one-time
+  `DeprecationWarning` per variable.
+
+### Deprecated
+
+- `import hippo` — a shim package re-exports mosaic's surface and aliases
+  every `hippo.*` submodule to the same module object as its `mosaic.*`
+  counterpart (module identity holds; `isinstance` checks are safe).
+  Emits one `DeprecationWarning` on import.
+- The `hippo` console script — delegates to `mosaic` after printing a
+  deprecation notice to stderr.
+- `HippoClient` — assignment alias of `MosaicClient` (also `HippoError`,
+  `HippoConfig`, `load_hippo_config`).
+- Deprecation window: the `hippo` aliases (import shim, CLI alias, legacy
+  entry-point groups, config/env fallbacks) will be kept for **at least
+  two minor releases**; removal will be decided by a future ADR.
+
+## v0.10.6 — 2026-07-08 (Postgres write parity: updates, availability, boolean filters)
+
+### Fixed
+
+- **Updates and availability changes work on postgres.** The ingestion
+  service calls `storage.update_data` / `storage.set_availability` /
+  `storage.mark_superseded` on any adapter; the postgres adapter had none
+  of them, so every SDK/transport update, `set<T>Availability`, and
+  supersede crashed with AttributeError. All three now mirror the SQLite
+  semantics over the generic `entities` table (document update + version
+  bump + provenance; availability flip + `availability_change` record).
+- **Boolean equality filters match on postgres.** `data->>field` yields
+  JSON literals (`true`/`false`) but the filter compared against
+  `str(False) == "False"`, silently matching nothing — boolean facets
+  returned empty sets. Filter values are now rendered as JSONB text.
+  Both found by the DataHelix certification golden path (datahelix#45).
+
+## v0.10.5 — 2026-07-08 (Postgres FTS parity at init)
+
+### Fixed
+
+- **Search works on a fresh postgres deployment.** SQLite creates FTS
+  shadow tables alongside its typed tables, but the postgres adapter never
+  created them, so `search()` (and the GraphQL `search<T>s` fields) crashed
+  with `relation "fts_<type>_<slot>" does not exist` on any deployment
+  that had not created them explicitly. `_init_database` now creates the
+  shadow tables for every `hippo_search` slot from the schema registry
+  (idempotent), so ingestion syncs content from the first write and search
+  works out of the box. Found by the DataHelix certification golden path
+  (datahelix#45).
+
+## v0.10.4 — 2026-07-08 (String slots round-trip verbatim)
+
+### Fixed
+
+- **Scalar `range: string` slots no longer JSON-decode on read (SQLite
+  adapter).** `_decode_column_value` decoded any stored text that parsed
+  as a JSON container, so a string slot carrying serialized JSON (e.g.
+  Aperture's control-plane `payload` envelopes) came back as a dict and
+  the GraphQL `String` type refused to serialize it, nulling the whole
+  page. The decode is now schema-driven via the new
+  `SchemaRegistry.string_slot_names()` (mirroring the boolean reversal):
+  scalar string slots pass through verbatim; multivalued string slots
+  still decode their JSON arrays. Found by the aperture#15 live-seam
+  reconciliation (datahelix#45).
+
+## v0.10.3 — 2026-07-07 (Postgres FTS write fix)
+
+### Fixed
+
+- **Writes on a postgres deployment no longer crash when the schema declares
+  `hippo_search` slots (#108).** `IngestionService._sync_entity_to_fts`
+  checked FTS-table existence with the SQLite helper (`sqlite_master` + `?`
+  placeholder), which psycopg rejects as "the query has 0 placeholders but 1
+  parameters were passed" — every `put()` failed. The check now goes through
+  the storage adapter's own FTS store. Found by the first real DataHelix
+  certification boot (datahelix#45).
+
+## v0.10.2 — 2026-07-07 (Release pipeline + polymorphic-base reference fix)
+
+### Added
+
+- **Release pipeline (issue #97, DataHelix 1.0 epic P1.1).** Pushing a
+  `vX.Y.Z` tag now builds and publishes a wheel/sdist and a digest-addressed
+  image at `ghcr.io/bu-neuromics/hippo`, attaching the digest as an
+  `image-digest.json` release asset for the DataHelix certification ledger
+  (`composition.lock.json`). PyPI publishing is gated behind the
+  `PYPI_PUBLISH` repository variable pending the distribution-name decision
+  (`hippo` is taken on PyPI). The Dockerfile now actually builds (the old
+  builder stage never copied `src/`) and carries the `graphql` and `postgres`
+  extras the certification compose requires. Process documented in
+  `RELEASING.md`.
+
 ### Fixed
 
 - **Self-referential / cyclic reference slots can now be ingested (issue #95).**
