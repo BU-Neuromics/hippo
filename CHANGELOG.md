@@ -16,6 +16,17 @@
   now deferred (FK enforcement relaxed for the duration of the bundle
   transaction) so the whole set commits atomically. Fixes #95.
 
+### Added
+
+- **REST layer maps the full SDK exception hierarchy to HTTP statuses**
+  (sec4 §4.3): `EntityAlreadySupersededError`/`ConfigError` → 409,
+  `ValidationFailure` → 422, `IngestionError`/`SearchCapabilityError`/
+  `TemporalQueryError`/`SchemaError` → 400, and a named+logged 500
+  catch-all for every other `HippoError` (`AdapterError`,
+  `ProvenanceIntegrityError`, the recipe/migration/cache/orchestration
+  family). Previously all of these fell through to an anonymous generic
+  500. Fixes #62.
+
 ## v0.10.6 — 2026-07-08 (Postgres write parity: updates, availability, boolean filters)
 
 ### Fixed

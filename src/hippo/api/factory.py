@@ -12,8 +12,16 @@ from hippo.api.exceptions import EntityNotFoundError
 from hippo.api.schemas import ErrorResponse
 from hippo.core.client import HippoClient
 from hippo.core.exceptions import (
+    ConfigError,
+    EntityAlreadySupersededError,
+    HippoError,
+    IngestionError,
+    SchemaError,
+    SearchCapabilityError,
+    TemporalQueryError,
     ValidationError as HippoValidationError,
     ValidationFailed,
+    ValidationFailure,
 )
 from hippo.core.middleware import PassThroughAuthMiddleware
 
@@ -125,6 +133,57 @@ def create_app(
         return JSONResponse(status_code=422, content=envelope)
 
     app.add_exception_handler(ValidationFailed, _validation_failed_handler)
+
+    def _hippo_error_handler(status_code: int, error_label: str):
+        """Build a handler mapping a ``HippoError`` subclass to *status_code*."""
+
+        def handler(request: Request, exc: HippoError) -> JSONResponse:
+            return JSONResponse(
+                status_code=status_code,
+                content=ErrorResponse(error=error_label, detail=exc.message).model_dump(),
+            )
+
+        return handler
+
+    # sec4 §4.3 REST status mapping for the rest of the HippoError hierarchy
+    # (issue #62). EntityNotFoundError (404), ValidationError (422), and
+    # ValidationFailed (422) are already registered above and untouched.
+    app.add_exception_handler(
+        EntityAlreadySupersededError, _hippo_error_handler(409, "Already Superseded")
+    )
+    app.add_exception_handler(ConfigError, _hippo_error_handler(409, "Config Error"))
+    app.add_exception_handler(
+        ValidationFailure, _hippo_error_handler(422, "Validation Failure")
+    )
+    app.add_exception_handler(
+        IngestionError, _hippo_error_handler(400, "Ingestion Error")
+    )
+    app.add_exception_handler(
+        SearchCapabilityError, _hippo_error_handler(400, "Search Capability Error")
+    )
+    app.add_exception_handler(
+        TemporalQueryError, _hippo_error_handler(400, "Temporal Query Error")
+    )
+    app.add_exception_handler(SchemaError, _hippo_error_handler(400, "Schema Error"))
+
+    def _hippo_error_fallback_handler(request: Request, exc: HippoError) -> JSONResponse:
+        """Catch-all for every other ``HippoError`` — 500, named, logged.
+
+        Covers ``AdapterError``/``ProvenanceIntegrityError`` and the
+        recipe/migration/cache/orchestration families, which sec4 §4.3
+        treats identically (adapter/storage failure): distinguishable from
+        an opaque non-Hippo 500 by the exception's own class name, and
+        logged server-side for operators.
+        """
+        logger.exception("%s: %s", type(exc).__name__, exc)
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(
+                error=type(exc).__name__, detail=exc.message
+            ).model_dump(),
+        )
+
+    app.add_exception_handler(HippoError, _hippo_error_fallback_handler)
 
     async def generic_exception_handler(request: Request, exc: Exception):
         logger.exception("Unhandled exception: %s", exc)
