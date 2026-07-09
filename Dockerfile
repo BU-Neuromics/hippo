@@ -30,9 +30,9 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 
 # Default data and config directories
-RUN mkdir -p /data/hippo-db /app/schemas && chown -R hippo:hippo /data /app
+RUN mkdir -p /data/hippo-db /app/schemas && chown -R datahelix:datahelix /data /app
 
-USER hippo
+USER datahelix
 
 EXPOSE 8001
 
