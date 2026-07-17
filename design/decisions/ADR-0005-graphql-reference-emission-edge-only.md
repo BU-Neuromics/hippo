@@ -1,8 +1,8 @@
 # ADR-0005: GraphQL reference emission is edge-only
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-17
-- **Deciders:** labadorf, design session (pending)
+- **Deciders:** labadorf
 - **Related:** sec3 (graph-shaped API over relational storage), sec3b (reference stored
   inline as the target id string), sec9 §9.5 (reference storage), ADR-0002 (multivalued
   reference slots persist as relationships; no-silent-loss invariant), ADR-0004 (Hippo→Mosaic
