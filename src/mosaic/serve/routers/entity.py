@@ -5,7 +5,7 @@ Provides endpoints for CRUD operations on entities.
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from mosaic.api.exceptions import EntityNotFoundError
 from mosaic.core.client import MosaicClient
@@ -25,27 +25,6 @@ async def get_client(request: Request) -> MosaicClient:
     if hasattr(request.app.state, "hippo_client"):
         return request.app.state.hippo_client
     return MosaicClient()
-
-
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints.
-
-    Args:
-        authorization: Authorization header value.
-
-    Returns:
-        Auth context dict with user info.
-
-    Raises:
-        HTTPException: If authorization header is missing or invalid.
-    """
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
 
 
 # Query params consumed by ``list_entities`` itself — everything else on the
@@ -100,7 +79,6 @@ async def list_entities(
         ),
     ),
     as_of: Optional[str] = Query(None, description="ISO-8601 transaction-time; reconstruct results as the graph stood at this time (sec6 §6.8 / ADR-0001). Omitted = current state."),
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """List entities with optional filtering and pagination.
 
@@ -112,7 +90,6 @@ async def list_entities(
         filter_mode: How to combine filters — "and" or "or".
         updated_since: Optional ISO 8601 watermark for polling callers.
         as_of: Optional ISO-8601 transaction-time for as-of reconstruction.
-        auth: Authentication context.
 
     Returns:
         Paginated response envelope with items, total, limit, and offset.
@@ -152,7 +129,6 @@ async def get_entity(
     entity_id: str,
     request: Request,
     expand: Optional[str] = Query(None, description="Expand related entities"),
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Get an entity by ID.
 
@@ -160,7 +136,6 @@ async def get_entity(
         entity_id: The ID of the entity to retrieve.
         request: FastAPI request object.
         expand: Optional expand path for related entities.
-        auth: Authentication context.
 
     Returns:
         Entity object with all fields.
@@ -192,7 +167,6 @@ async def replace_entity(
     entity_type: str,
     entity_id: str,
     request: Request,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Full replacement of an existing entity (PUT semantics).
 
@@ -203,7 +177,6 @@ async def replace_entity(
         entity_type: The entity type.
         entity_id: The ID of the entity to replace.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         The replaced entity.
@@ -233,14 +206,12 @@ async def replace_entity(
 async def delete_entity(
     entity_id: str,
     request: Request,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Delete an entity (soft delete).
 
     Args:
         entity_id: The ID of the entity to delete.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         Deletion confirmation.

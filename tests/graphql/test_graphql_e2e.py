@@ -36,9 +36,10 @@ def _create_sample(gql, name="S1", **fields) -> str:
 
 
 class TestAuthAndMounting:
-    def test_operations_require_bearer_token(self, client):
+    def test_operations_do_not_require_bearer_token(self, client):
+        """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
         response = client.post("/graphql", json={"query": "{ __typename }"})
-        assert response.status_code == 401
+        assert response.status_code == 200
 
     def test_graphiql_ide_loads_without_auth(self, client):
         response = client.get("/graphql", headers={"Accept": "text/html"})

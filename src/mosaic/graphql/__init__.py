@@ -85,7 +85,6 @@ def create_graphql_router(
     hippo_client: "MosaicClient",
     path: str = "",
     graphiql: bool = True,
-    auth_required: bool = True,
     max_query_depth: int = DEFAULT_MAX_QUERY_DEPTH,
 ) -> Any:
     """Create a FastAPI-mountable GraphQL router for ``hippo_client``.
@@ -107,6 +106,5 @@ def create_graphql_router(
         hippo_client,
         path=path,
         graphiql=graphiql,
-        auth_required=auth_required,
         max_query_depth=max_query_depth,
     )

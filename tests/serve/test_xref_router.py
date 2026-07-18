@@ -89,8 +89,9 @@ class TestXrefEndpoint:
         assert resp.status_code == 404
         assert "STARLIMS" in resp.json()["detail"]
 
-    def test_requires_auth(self, api):
-        assert api.get("/xref/STARLIMS/BC-1").status_code == 401
+    def test_without_auth_header(self, api):
+        """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
+        assert api.get("/xref/STARLIMS/BC-1").status_code == 404
 
     def test_lookup_after_update(self, api):
         eid = _create_sample(api)

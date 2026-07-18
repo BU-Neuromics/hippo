@@ -5,7 +5,7 @@ Provides endpoints for managing entity availability.
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel
 
 from mosaic.api.exceptions import EntityNotFoundError
@@ -19,17 +19,6 @@ async def get_client(request: Request) -> MosaicClient:
     if hasattr(request.app.state, "hippo_client"):
         return request.app.state.hippo_client
     return MosaicClient()
-
-
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints."""
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
 
 
 class AvailabilityRequest(BaseModel):
@@ -50,14 +39,12 @@ class BulkAvailabilityRequest(BaseModel):
 async def get_entity_availability(
     entity_id: str,
     request: Request,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Get the availability status of an entity.
 
     Args:
         entity_id: The ID of the entity.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         Availability information.
@@ -82,7 +69,6 @@ async def set_entity_availability(
     entity_id: str,
     request: Request,
     body: AvailabilityRequest,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Set the availability status of an entity.
 
@@ -90,7 +76,6 @@ async def set_entity_availability(
         entity_id: The ID of the entity.
         request: FastAPI request object.
         body: Availability request with is_available flag.
-        auth: Authentication context.
 
     Returns:
         Updated availability information.
@@ -119,7 +104,6 @@ async def bulk_availability(
     entity_type: str,
     request: Request,
     body: BulkAvailabilityRequest,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Change availability status for multiple entities at once.
 
@@ -127,7 +111,6 @@ async def bulk_availability(
         entity_type: The entity type.
         request: FastAPI request object.
         body: Bulk availability request with entity IDs and target status.
-        auth: Authentication context.
 
     Returns:
         Summary of successes and failures. Returns 207 on partial failure.

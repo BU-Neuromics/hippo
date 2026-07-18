@@ -11,16 +11,16 @@ configured client's ``SchemaRegistry``. At request time resolvers use
 read (injected by ``create_default_app`` from the config-driven factory,
 issue #42) — so both transports always serve the same deployment.
 
-Auth mirrors the REST routers' bearer-token convention: GraphQL
-operations (POST) require an ``Authorization: Bearer <token>`` header;
-GET requests are exempt so the GraphiQL IDE can load in a browser.
+Mosaic holds zero authn/authz (issue #54 Part A) — ``PassThroughAuthMiddleware``
+(``mosaic.core.middleware``) extracts an actor for provenance only, and a
+Bridge deployment wraps this transport the same as REST.
 """
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Request
 from strawberry.fastapi import GraphQLRouter
 
 from mosaic.core.client import MosaicClient
@@ -30,30 +30,10 @@ from mosaic.graphql.resolvers import build_graphql_schema
 from mosaic.graphql.schema_builder import GraphQLTypeBuilder
 
 
-async def require_graphql_auth(
-    request: Request,
-    authorization: Optional[str] = Header(None),
-) -> dict[str, Any]:
-    """Bearer auth for GraphQL operations (same contract as REST routers).
-
-    GET requests pass through so the GraphiQL IDE HTML can load; every
-    operation execution (POST) requires a bearer token.
-    """
-    if request.method == "GET":
-        return {"user_id": "anonymous", "token": None}
-    if authorization is None or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-    token = authorization[7:]
-    if not token:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-    return {"user_id": "default", "token": token}
-
-
 def create_graphql_router(
     hippo_client: MosaicClient,
     path: str = "",
     graphiql: bool = True,
-    auth_required: bool = True,
     max_query_depth: int = DEFAULT_MAX_QUERY_DEPTH,
 ) -> GraphQLRouter:
     """Build the GraphQL router for one Mosaic deployment.
@@ -71,7 +51,6 @@ def create_graphql_router(
         path: Router-internal path (mount point is chosen by the caller
             via ``app.include_router(..., prefix="/graphql")``).
         graphiql: Serve the GraphiQL IDE on GET requests.
-        auth_required: Require bearer auth on operation execution.
         max_query_depth: Maximum query nesting depth (hardening;
             introspection is exempt).
 
@@ -107,12 +86,10 @@ def create_graphql_router(
             "request": request,
         }
 
-    dependencies = [Depends(require_graphql_auth)] if auth_required else None
     return GraphQLRouter(
         schema,
         path=path,
         graphql_ide="graphiql" if graphiql else None,
         context_getter=context_getter,
-        dependencies=dependencies,
         tags=["graphql"],
     )
