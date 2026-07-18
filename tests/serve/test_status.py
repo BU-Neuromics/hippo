@@ -104,8 +104,9 @@ class TestClientStatus:
 class TestStatusEndpoint:
     """REST /status endpoint."""
 
-    def test_status_requires_auth(self, client) -> None:
-        assert client.get("/status").status_code == 401
+    def test_status_without_auth_header(self, client) -> None:
+        """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
+        assert client.get("/status").status_code == 200
 
     def test_status_returns_summary(self, client, hippo_client) -> None:
         hippo_client.put("Sample", {"name": "s1"})

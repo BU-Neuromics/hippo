@@ -10,9 +10,9 @@ in the OpenAPI document; they will be removed together with the
 ExternalID entity in a future major release.
 """
 
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Path, Request
+from fastapi import APIRouter, Body, HTTPException, Path, Request
 from pydantic import BaseModel
 
 from mosaic.api.exceptions import EntityNotFoundError
@@ -26,17 +26,6 @@ async def get_client(request: Request) -> MosaicClient:
     if hasattr(request.app.state, "hippo_client"):
         return request.app.state.hippo_client
     return MosaicClient()
-
-
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints."""
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
 
 
 class ExternalIdRequest(BaseModel):
@@ -59,7 +48,6 @@ async def get_entity_by_external_id(
     id_type: str = Path(..., description="External ID type"),
     external_id: str = Path(..., description="External ID value"),
     request: Request = None,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Get an entity by its external ID.
 
@@ -69,7 +57,6 @@ async def get_entity_by_external_id(
         id_type: The type of external ID.
         external_id: The external ID value.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         Entity information.
@@ -100,7 +87,6 @@ async def list_entity_external_ids(
     entity_id: str,
     request: Request = None,
     include_superseded: bool = False,
-    auth: dict = Depends(require_auth),
 ) -> list[dict[str, Any]]:
     """List all external IDs for an entity.
 
@@ -111,7 +97,6 @@ async def list_entity_external_ids(
         entity_id: The ID of the entity.
         request: FastAPI request object.
         include_superseded: Include superseded IDs.
-        auth: Authentication context.
 
     Returns:
         List of external ID records.
@@ -145,7 +130,6 @@ async def register_external_id(
     entity_id: str,
     request: Request,
     body: ExternalIdRequest,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Register an external ID for an entity.
 
@@ -156,7 +140,6 @@ async def register_external_id(
         entity_id: The ID of the entity.
         request: FastAPI request object.
         body: External ID registration request.
-        auth: Authentication context.
 
     Returns:
         Created external ID record.

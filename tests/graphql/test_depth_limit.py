@@ -65,9 +65,7 @@ class TestConfigurableDepthLimit:
 
         app = FastAPI()
         app.state.hippo_client = hippo_client
-        router = create_graphql_router(
-            hippo_client, auth_required=False, max_query_depth=3
-        )
+        router = create_graphql_router(hippo_client, max_query_depth=3)
         app.include_router(router, prefix="/graphql")
 
         with TestClient(app) as api:

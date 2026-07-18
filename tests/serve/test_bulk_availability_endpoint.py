@@ -82,10 +82,12 @@ def test_bulk_partial_failure(client):
     assert body["failed"] == 1
 
 
-def test_bulk_requires_auth(client):
-    """Bulk availability requires authentication."""
+def test_bulk_without_auth_header(client):
+    """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
+    _create_entity(client, "b4", "no-header")
+
     response = client.post(
         "/entities/Sample/bulk-availability",
-        json={"entity_ids": ["x"], "is_available": False},
+        json={"entity_ids": ["b4"], "is_available": False},
     )
-    assert response.status_code == 401
+    assert response.status_code == 200

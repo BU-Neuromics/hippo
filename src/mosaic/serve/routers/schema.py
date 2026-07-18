@@ -3,9 +3,9 @@
 Exposes the loaded LinkML schema (via :class:`SchemaRegistry`) as JSON.
 """
 
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Request
+from fastapi import APIRouter, HTTPException, Path, Request
 
 router = APIRouter(prefix="/schemas", tags=["schemas"])
 
@@ -14,12 +14,6 @@ async def get_client(request: Request):
     if hasattr(request.app.state, "hippo_client"):
         return request.app.state.hippo_client
     return None
-
-
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    if authorization is None or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-    return {"user_id": "default"}
 
 
 def _describe_class(registry, class_name: str) -> dict[str, Any]:
@@ -45,7 +39,6 @@ def _describe_class(registry, class_name: str) -> dict[str, Any]:
 @router.get("")
 async def list_schemas(
     request: Request,
-    auth: dict = Depends(require_auth),
 ) -> list[dict[str, Any]]:
     client = await get_client(request)
     if client is None or client._registry is None:
@@ -58,7 +51,6 @@ async def list_schemas(
 async def get_schema(
     schema_name: str = Path(..., description="Class name"),
     request: Request = None,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     client = await get_client(request)
     if client is None or client._registry is None or not client._registry.has_class(
@@ -74,7 +66,6 @@ async def get_schema(
 async def get_schema_references(
     entity_type: str = Path(..., description="Entity type name"),
     request: Request = None,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     client = await get_client(request)
     if client is None or client._registry is None or not client._registry.has_class(

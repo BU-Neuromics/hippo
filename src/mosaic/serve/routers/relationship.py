@@ -3,9 +3,9 @@
 Provides endpoints for managing entity relationships.
 """
 
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request, Path
+from fastapi import APIRouter, Body, HTTPException, Request, Path
 from pydantic import BaseModel
 
 from mosaic.api.exceptions import EntityNotFoundError
@@ -21,17 +21,6 @@ async def get_client(request: Request) -> MosaicClient:
     return MosaicClient()
 
 
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints."""
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
-
-
 class RelationshipRequest(BaseModel):
     """Request body for creating a relationship."""
 
@@ -43,14 +32,12 @@ class RelationshipRequest(BaseModel):
 async def get_entity_relationships(
     entity_id: str,
     request: Request,
-    auth: dict = Depends(require_auth),
 ) -> list[dict[str, Any]]:
     """Get all relationships for an entity.
 
     Args:
         entity_id: The ID of the entity.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         List of relationships.
@@ -73,7 +60,6 @@ async def create_relationship(
     entity_id: str,
     request: Request,
     body: RelationshipRequest,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Create a relationship between entities.
 
@@ -81,7 +67,6 @@ async def create_relationship(
         entity_id: The ID of the source entity.
         request: FastAPI request object.
         body: Relationship request with target and type.
-        auth: Authentication context.
 
     Returns:
         Created relationship.
@@ -112,7 +97,6 @@ async def delete_relationship(
     entity_id: str,
     rel_id: str = Path(..., description="Relationship ID"),
     request: Request = None,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Delete a relationship.
 
@@ -120,7 +104,6 @@ async def delete_relationship(
         entity_id: The ID of the source entity.
         rel_id: The ID of the relationship to delete.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         Deletion confirmation.

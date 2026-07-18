@@ -10,9 +10,9 @@ separate per-entity xref endpoint exists. This router replaces the
 deprecated ``/external-ids`` endpoints backed by the ExternalID entity.
 """
 
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Path, Request
+from fastapi import APIRouter, HTTPException, Path, Request
 
 from mosaic.core.client import MosaicClient
 
@@ -24,17 +24,6 @@ async def get_client(request: Request) -> MosaicClient:
     if hasattr(request.app.state, "hippo_client"):
         return request.app.state.hippo_client
     return MosaicClient()
-
-
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints."""
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
 
 
 @router.get(
@@ -53,7 +42,6 @@ async def find_by_xref(
     system: str = Path(..., description="External system name (e.g. STARLIMS)"),
     value: str = Path(..., description="Identifier value in that system"),
     request: Request = None,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Resolve ``(system, value)`` to the entity envelope holding it.
 

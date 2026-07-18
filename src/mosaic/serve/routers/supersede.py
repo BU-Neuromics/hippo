@@ -3,9 +3,9 @@
 Provides endpoints for managing entity supersession.
 """
 
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel
 
 from mosaic.api.exceptions import EntityNotFoundError
@@ -21,17 +21,6 @@ async def get_client(request: Request) -> MosaicClient:
     return MosaicClient()
 
 
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints."""
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
-
-
 class SupersedeRequest(BaseModel):
     """Request body for superseding an entity."""
 
@@ -45,7 +34,6 @@ async def supersede_entity(
     entity_id: str,
     request: Request,
     body: SupersedeRequest,
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Supersede an entity's external ID with a new one.
 
@@ -53,7 +41,6 @@ async def supersede_entity(
         entity_id: The ID of the entity.
         request: FastAPI request object.
         body: Supersession request with old and new external IDs.
-        auth: Authentication context.
 
     Returns:
         New external ID record.
@@ -79,14 +66,12 @@ async def supersede_entity(
 async def get_superseded_entities(
     entity_id: str,
     request: Request,
-    auth: dict = Depends(require_auth),
 ) -> list[dict[str, Any]]:
     """Get superseded external IDs for an entity.
 
     Args:
         entity_id: The ID of the entity.
         request: FastAPI request object.
-        auth: Authentication context.
 
     Returns:
         List of superseded external IDs.

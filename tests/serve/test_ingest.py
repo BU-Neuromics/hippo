@@ -14,10 +14,12 @@ def client():
     return TestClient(app)
 
 
-def test_ingest_without_auth_returns_401(client):
-    """Test that ingest without auth returns 401."""
-    response = client.post("/ingest", json={"entity_type": "test", "data": {}})
-    assert response.status_code == 401
+def test_ingest_without_auth_header_returns_200(client):
+    """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
+    response = client.post(
+        "/ingest", json={"entity_type": "sample", "data": {"name": "Test Entity"}}
+    )
+    assert response.status_code == 200
 
 
 def test_ingest_missing_entity_type_returns_422(client):

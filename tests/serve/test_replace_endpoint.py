@@ -69,7 +69,7 @@ def test_put_returns_404_for_missing(client):
     assert response.status_code == 404
 
 
-def test_put_requires_auth(client):
-    """PUT requires authentication."""
+def test_put_without_auth_header(client):
+    """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
     response = client.put("/entities/Sample/e1", json={"name": "test"})
-    assert response.status_code == 401
+    assert response.status_code == 404

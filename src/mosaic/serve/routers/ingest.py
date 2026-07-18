@@ -4,9 +4,9 @@ Provides endpoints for creating entities.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 
 from mosaic.api.exceptions import EntityNotFoundError
@@ -34,7 +34,9 @@ def _operations_from_body(entities: Any) -> list[WriteOperation]:
     ops: list[WriteOperation] = []
     for i, item in enumerate(entities):
         if not isinstance(item, dict):
-            raise HTTPException(status_code=422, detail=f"entities[{i}] must be an object")
+            raise HTTPException(
+                status_code=422, detail=f"entities[{i}] must be an object"
+            )
         entity_type = item.get("entity_type")
         data = item.get("data")
         if not entity_type:
@@ -60,17 +62,6 @@ async def get_client(request: Request) -> MosaicClient:
     return MosaicClient()
 
 
-async def require_auth(authorization: Optional[str] = Header(None)) -> dict:
-    """Require authentication for protected endpoints."""
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized access")
-
-    return {"user_id": "default"}
-
-
 class IngestRequest(BaseModel):
     """Request body for entity ingestion."""
 
@@ -82,14 +73,12 @@ class IngestRequest(BaseModel):
 async def ingest_entity(
     request: Request,
     body: dict[str, Any] = Body(...),
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Create a new entity.
 
     Args:
         request: FastAPI request object.
         body: Entity data containing entity_type and data fields.
-        auth: Authentication context.
 
     Returns:
         Created entity with generated ID and timestamps.
@@ -131,7 +120,6 @@ async def ingest_entity(
 async def validate_batch_endpoint(
     request: Request,
     body: dict[str, Any] = Body(...),
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Whole-set dry-run validation (no writes) — issue #84 increment 1.
 
@@ -150,7 +138,6 @@ async def validate_batch_endpoint(
 async def ingest_batch(
     request: Request,
     body: dict[str, Any] = Body(...),
-    auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
     """Atomic multi-entity write (batch unit-of-work) — issue #84 increment 2.
 

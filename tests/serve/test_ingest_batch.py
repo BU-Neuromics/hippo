@@ -47,9 +47,14 @@ def client(hippo_client):
 
 
 class TestValidateEndpoint:
-    def test_requires_auth(self, client):
+    def test_without_auth_header(self, client):
+        """Mosaic holds zero authn/authz (#54 Part A) — no header required.
+
+        An empty ``entities`` list is itself invalid (non-empty required),
+        so this exercises real request processing, not an auth gate.
+        """
         r = client.post("/ingest/validate", json={"entities": []})
-        assert r.status_code == 401
+        assert r.status_code == 422
 
     def test_missing_entities_is_422(self, client):
         r = client.post("/ingest/validate", json={}, headers=AUTH)
@@ -74,9 +79,14 @@ class TestValidateEndpoint:
 
 
 class TestBatchEndpoint:
-    def test_requires_auth(self, client):
+    def test_without_auth_header(self, client):
+        """Mosaic holds zero authn/authz (#54 Part A) — no header required.
+
+        An empty ``entities`` list is itself invalid (non-empty required),
+        so this exercises real request processing, not an auth gate.
+        """
         r = client.post("/ingest/batch", json={"entities": []})
-        assert r.status_code == 401
+        assert r.status_code == 422
 
     def test_missing_entities_is_422(self, client):
         r = client.post("/ingest/batch", json={}, headers=AUTH)

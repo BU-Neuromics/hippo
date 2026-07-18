@@ -14,22 +14,22 @@ def client():
     return TestClient(app)
 
 
-def test_list_entities_without_auth_returns_401(client):
-    """Test that listing entities without auth returns 401."""
+def test_list_entities_without_auth_header_returns_200(client):
+    """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
     response = client.get("/entities")
-    assert response.status_code == 401
+    assert response.status_code == 200
 
 
 def test_list_entities_with_auth_returns_200(client):
-    """Test that listing entities with auth returns 200."""
+    """An Authorization header is accepted (and ignored) if a caller sends one."""
     response = client.get("/entities", headers={"Authorization": "Bearer test-token"})
     assert response.status_code == 200
 
 
-def test_get_entity_without_auth_returns_401(client):
-    """Test that getting entity without auth returns 401."""
+def test_get_entity_without_auth_header_returns_404(client):
+    """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
     response = client.get("/entities/test-id")
-    assert response.status_code == 401
+    assert response.status_code == 404
 
 
 def test_get_entity_with_auth_returns_404(client):
@@ -40,7 +40,7 @@ def test_get_entity_with_auth_returns_404(client):
     assert response.status_code == 404
 
 
-def test_delete_entity_without_auth_returns_401(client):
-    """Test that deleting entity without auth returns 401."""
+def test_delete_entity_without_auth_header_returns_404(client):
+    """Mosaic holds zero authn/authz (#54 Part A) — no header required."""
     response = client.delete("/entities/test-id")
-    assert response.status_code == 401
+    assert response.status_code == 404
